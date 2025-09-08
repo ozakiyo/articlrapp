@@ -8,10 +8,9 @@ services:
         condition: service_healthy
     volumes:
       - ./nodeapp:/root/app
-    #command: tail -f /dev/null
 
   db:
-    build: ./db
+    image: mysql:8.0
     environment:
       MYSQL_ROOT_PASSWORD: root111
       MYSQL_DATABASE: articledb
