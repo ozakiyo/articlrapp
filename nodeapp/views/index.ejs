@@ -13,14 +13,34 @@
 </head>
 <body>
   <div class="container">
+  <div class="form-container">
     <form action="/generate" method="POST">
-      <input type="text" name="keyword" placeholder="キーワードを入力" required>
-      <button type="submit">記事生成</button>
+      <label for="keyword">キーワード</label>
+        <input type="text" id="keyword" name="keyword" placeholder="キーワードを入力" required>
+
+        <label for="competitorUrl1">競合記事URL 1</label>
+        <input type="text" id="competitorUrl1" name="competitorUrl1" placeholder="https://example.com/article1">
+
+        <label for="competitorUrl2">競合記事URL 2</label>
+        <input type="text" id="competitorUrl2" name="competitorUrl2" placeholder="https://example.com/article2">
+
+        <label for="competitorUrl3">競合記事URL 3</label>
+        <input type="text" id="competitorUrl3" name="competitorUrl3" placeholder="https://example.com/article3">
+
+        <button type="submit">記事生成</button>
     </form>
+  </div>
     <h1><%= title %></h1>
 
-<% sections.forEach(section => { %>
-  <p><%= section.body.replace(/\n/g, '<br>') %></p>
-<% }) %>
+    <% if (title) { %>
+      <h1><%= title %></h1>
+      <div class="article">
+        <% sections.forEach(section => { %>
+          <div class="section"><%= section.body.replace(/\n/g, '<br>') %></div>
+        <% }) %>
+      </div>
+    <% } %>
+    
+  </div>
 </body>
 </html>
