@@ -1,13 +1,14 @@
 services:
   app:
-    build: ./nodeapp
+    build: ./server
     ports:
       - "3001:3001"
     depends_on:
       db:
         condition: service_healthy
     volumes:
-      - ./nodeapp:/root/app
+      - ./server:/root/app
+    command: bash -lc "npm install && node app.js"
 
   db:
     image: mysql:8.0
