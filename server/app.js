@@ -7,7 +7,8 @@ const cheerio = require('cheerio');
 const iconv = require('iconv-lite');
 const basicAuth = require('express-basic-auth');
 
-dotenv.config();
+// Load .env file from the server directory
+dotenv.config({ path: path.join(__dirname, '.env') });
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -17,9 +18,12 @@ const clientDistPath = path.join(__dirname, 'public');
 const clientIndexPath = path.join(clientDistPath, 'index.html');
 
 // Basic Authentication Middleware
+const basicAuthUser = process.env.BASIC_AUTH_USER || 'admin';
+const basicAuthPass = process.env.BASIC_AUTH_PASSWORD || 'password';
+
 const basicAuthMiddleware = basicAuth({
   users: {
-    [process.env.BASIC_AUTH_USER || 'admin']: process.env.BASIC_AUTH_PASSWORD || 'password'
+    [basicAuthUser]: basicAuthPass
   },
   challenge: true,
   realm: 'ArticlrApp',
