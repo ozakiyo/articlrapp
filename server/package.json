@@ -7,14 +7,15 @@
     "dev": "nodemon app.js"
   },
   "dependencies": {
+    "@google/generative-ai": "^0.17.0",
     "body-parser": "^1.20.3",
     "cheerio": "^1.0.0-rc.12",
     "dotenv": "^16.6.1",
     "express": "^4.21.2",
+    "express-basic-auth": "^1.2.1",
     "got-scraping": "^4.0.6",
     "iconv-lite": "^0.6.3",
-    "playwright": "^1.56.1",
-    "@google/generative-ai": "^0.17.0"
+    "playwright": "^1.56.1"
   },
   "devDependencies": {
     "nodemon": "^3.1.7"

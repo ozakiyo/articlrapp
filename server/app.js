@@ -5,6 +5,7 @@ const path = require('path');
 const { chromium } = require('playwright');
 const cheerio = require('cheerio');
 const iconv = require('iconv-lite');
+const basicAuth = require('express-basic-auth');
 
 dotenv.config();
 
@@ -14,6 +15,21 @@ app.use(express.json());
 
 const clientDistPath = path.join(__dirname, 'public');
 const clientIndexPath = path.join(clientDistPath, 'index.html');
+
+// Basic Authentication Middleware
+const basicAuthMiddleware = basicAuth({
+  users: {
+    [process.env.BASIC_AUTH_USER || 'admin']: process.env.BASIC_AUTH_PASSWORD || 'password'
+  },
+  challenge: true,
+  realm: 'ArticlrApp',
+  unauthorizedResponse: () => {
+    return { error: '認証が必要です。' };
+  }
+});
+
+// Apply basic auth to all routes
+app.use(basicAuthMiddleware);
 
 if (fs.existsSync(clientDistPath)) {
   console.log('📦 Serving static assets from:', clientDistPath);
@@ -175,7 +191,7 @@ async function scrape(url) {
   }
 }
 
-app.get('/', (req, res) => {
+app.get('/', (_req, res) => {
   console.log('📨 GET /');
   if (fs.existsSync(clientIndexPath)) {
     console.log('➡️ Serving React index.html');
