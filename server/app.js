@@ -207,6 +207,103 @@ app.get('/', (_req, res) => {
   );
 });
 
+// Clean up old PIXTA screenshots (older than 1 hour)
+function cleanupOldScreenshots() {
+  const publicDir = path.join(__dirname, 'public');
+  const oneHourAgo = Date.now() - 60 * 60 * 1000; // 1 hour in milliseconds
+
+  try {
+    const files = fs.readdirSync(publicDir);
+    let deletedCount = 0;
+
+    files.forEach((file) => {
+      if (file.startsWith('pixta_') && file.endsWith('.png')) {
+        const filePath = path.join(publicDir, file);
+        const stats = fs.statSync(filePath);
+
+        if (stats.mtimeMs < oneHourAgo) {
+          fs.unlinkSync(filePath);
+          deletedCount++;
+          console.log('🗑️ Deleted old screenshot:', file);
+        }
+      }
+    });
+
+    if (deletedCount > 0) {
+      console.log(`✅ Cleaned up ${deletedCount} old screenshot(s)`);
+    }
+  } catch (err) {
+    console.error('⚠️ Screenshot cleanup failed:', err.message);
+  }
+}
+
+app.get('/api/searchPIXTAimage', async (req, res) => {
+  const { keyword } = req.query;
+
+  console.log('🔍 GET /api/searchPIXTAimage called with keyword:', keyword);
+
+  if (!keyword) {
+    console.warn('⚠️ keyword is missing in query');
+    return res.status(400).json({ error: 'キーワードを指定してください。' });
+  }
+
+  // Clean up old screenshots before creating a new one
+  cleanupOldScreenshots();
+
+  const searchUrl = `https://pixta.jp/tags/${encodeURIComponent(keyword)}`;
+  console.log('🌐 Searching PIXTA:', searchUrl);
+
+  let browser;
+  try {
+    browser = await chromium.launch({ headless: true });
+    const page = await browser.newPage();
+
+    console.log('📸 Navigating to PIXTA search results');
+    await page.goto(searchUrl, { waitUntil: 'networkidle', timeout: 30000 });
+
+    // スクリーンショットを取得
+    const screenshotPath = path.join(__dirname, 'public', `pixta_${keyword}_${Date.now()}.png`);
+    await page.screenshot({ path: screenshotPath, fullPage: true });
+    console.log('📷 Screenshot saved:', screenshotPath);
+
+    // 素材情報を取得
+    console.log('🔍 Extracting image data from search results');
+    const images = await page.$$eval('.item-list--large__wrap', (elements) => {
+      return elements.map((el) => {
+        // div要素のid属性から素材番号を取得
+        const divWithId = el.querySelector('div[id]');
+        const materialNo = divWithId ? divWithId.id : null;
+
+        // img要素のdata-src属性またはsrc属性から画像URLを取得
+        const img = el.querySelector('img.lozad');
+        const srcUrl = img ? (img.getAttribute('data-src') || img.getAttribute('src')) : null;
+
+        return materialNo && srcUrl ? { materialNo, srcUrl } : null;
+      }).filter(item => item !== null);
+    });
+
+    console.log(`✅ Found ${images.length} images from PIXTA`);
+
+    await page.close();
+
+    res.json({
+      PIXTAimages: images,
+      screenshot: path.basename(screenshotPath)
+    });
+  } catch (err) {
+    console.error('❌ PIXTA search failed:', err.message);
+    res.status(500).json({
+      error: 'PIXTA検索に失敗しました。',
+      details: err.message
+    });
+  } finally {
+    if (browser) {
+      await browser.close();
+      console.log('🧹 Closed browser instance');
+    }
+  }
+});
+
 app.post('/api/generate', async (req, res) => {
   const requestStartedAt = Date.now();
   const {
