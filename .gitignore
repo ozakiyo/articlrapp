@@ -7,3 +7,4 @@ server/playwright-report
 server/test-results
 server/.env
 docker-data
+.DS_Store
