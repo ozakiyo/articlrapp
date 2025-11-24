@@ -9,7 +9,7 @@ COPY package*.json ./
 RUN npm install
 
 # server 内のコードをコピー
-COPY ...
+COPY ..
 
 # PORT は Render が自動設定
 ENV PORT $PORT
