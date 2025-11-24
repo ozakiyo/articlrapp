@@ -1,6 +1,8 @@
 services:
   app:
-    build: .
+    build: 
+      context: ./server   # build context を server フォルダに設定
+      dockerfile: Dockerfile  # server 内の Dockerfile を指定
     ports:
       - "3001:3001"
     depends_on:
