@@ -1,20 +1,20 @@
-# Use Playwright base image with Node.js 20 and browsers preinstalled
-FROM mcr.microsoft.com/playwright:v1.56.1-jammy
+# Node.js 20 の軽量イメージ
+FROM node:20-alpine
 
-# Set the working directory in the container
+# 作業ディレクトリ
 WORKDIR /root/app
 
-# Copy package.json and package-lock.json to the working directory
-COPY package*.json ./
-
-# Install any needed packages
+# server/package*.json をコピーして依存インストール
+COPY server/package*.json ./
 RUN npm install
 
-# Bundle app source
-COPY . .
+# server 内のコードをコピー
+COPY server/ .
 
-# Make port 3001 available to the world outside this container
-EXPOSE 3001
+# PORT は Render が自動設定
+ENV PORT $PORT
+EXPOSE $PORT
 
-# Define the command to run the app
+# サーバー起動
 CMD ["node", "app.js"]
+
