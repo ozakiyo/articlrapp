@@ -5,7 +5,7 @@ FROM node:20-alpine
 WORKDIR /root/app
 
 # server/package*.json をコピーして依存インストール
-COPY server/package*.json ./
+COPY package*.json ./
 RUN npm install
 
 # server 内のコードをコピー
