@@ -39,7 +39,7 @@ AI 記事生成のための React + Express プロジェクトです。競合記
 articlrapp/
 ├── client/              # React フロントエンド
 │   ├── src/
-│   │   ├── App.jsx     # メインコンポーネント
+│   │   ├── App.jsx     # メインコンポーネント #フロント
 │   │   ├── main.jsx    # エントリーポイント
 │   │   └── styles.css  # スタイルシート
 │   ├── vite.config.js  # Vite 設定
@@ -50,7 +50,7 @@ articlrapp/
 │   ├── .env            # 環境変数（要設定）
 │   ├── .env.example    # 環境変数テンプレート
 │   ├── public/         # ビルド済み React + スクリーンショット
-│   ├── Dockerfile
+│   ├── Dockerfilecd
 │   └── package.json
 ├── db/                  # MySQL コンテナ設定
 │   └── Dockerfile

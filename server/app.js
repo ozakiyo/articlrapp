@@ -49,10 +49,10 @@ async function getGeminiModel() {
     if (!apiKey) {
       throw new Error('GEMINI_API_KEY is not set');
     }
-    console.log('⚙️ Initializing Gemini model: gemini-2.0-flash');
+    console.log('⚙️ Initializing Gemini model: gemini-pro');
     const { GoogleGenerativeAI } = await import('@google/generative-ai');
     const genAI = new GoogleGenerativeAI(apiKey);
-    geminiModel = genAI.getGenerativeModel({ model: 'gemini-2.0-flash' });
+    geminiModel = genAI.getGenerativeModel({ model: 'gemini-pro' });
   }
   return geminiModel;
 }
@@ -170,14 +170,14 @@ async function scrape(url) {
     const text = await page.$eval('body', (el) => el.innerText || '');
     const normalized = text.replace(/\s+/g, ' ').trim();
     console.log(`📝 Scraped ${normalized.length} characters from`, url);
-    return normalized.slice(0, 8000);
+    return normalized.slice(0, 3000);
   } catch (err) {
     console.error('❌ Playwright scraping failed', url, err.message);
     console.log('🔁 Attempting HTTP fallback for', url);
     try {
       const fallbackText = await scrapeWithHttpClient(url);
       console.log('✅ Fallback succeeded for', url);
-      return fallbackText.slice(0, 8000);
+      return fallbackText.slice(0, 3000);
     } catch (fallbackErr) {
       console.error(
         '💥 Fallback scraping also failed',
