@@ -23,13 +23,13 @@ const basicAuthPass = process.env.BASIC_AUTH_PASSWORD || 'password';
 
 const basicAuthMiddleware = basicAuth({
   users: {
-    [basicAuthUser]: basicAuthPass
+    [basicAuthUser]: basicAuthPass,
   },
   challenge: true,
   realm: 'ArticlrApp',
   unauthorizedResponse: () => {
     return { error: '認証が必要です。' };
-  }
+  },
 });
 
 // Apply basic auth to all routes
@@ -42,20 +42,21 @@ if (fs.existsSync(clientDistPath)) {
   console.log('⚠️ React build not found at:', clientDistPath);
 }
 
-let geminiModel;
+let genAI;
 async function getGeminiModel() {
-  if (!geminiModel) {
+  if (!genAI) {
     const apiKey = process.env.GEMINI_API_KEY;
     if (!apiKey) {
       throw new Error('GEMINI_API_KEY is not set');
     }
-    console.log('⚙️ Initializing Gemini model: gemini-pro');
+    console.log('⚙️ Initializing Gemini API');
     const { GoogleGenerativeAI } = await import('@google/generative-ai');
-    const genAI = new GoogleGenerativeAI(apiKey);
-    geminiModel = genAI.getGenerativeModel({ model: 'gemini-pro' });
+    genAI = new GoogleGenerativeAI(apiKey);
   }
-  return geminiModel;
+  return genAI;
 }
+
+const GEMINI_MODEL = process.env.GEMINI_MODEL?.trim() || 'gemini-flash-latest';
 
 let gotScrapingClient;
 async function getGotScraping() {
@@ -170,14 +171,14 @@ async function scrape(url) {
     const text = await page.$eval('body', (el) => el.innerText || '');
     const normalized = text.replace(/\s+/g, ' ').trim();
     console.log(`📝 Scraped ${normalized.length} characters from`, url);
-    return normalized.slice(0, 3000);
+    return normalized.slice(0, 1000);
   } catch (err) {
     console.error('❌ Playwright scraping failed', url, err.message);
     console.log('🔁 Attempting HTTP fallback for', url);
     try {
       const fallbackText = await scrapeWithHttpClient(url);
       console.log('✅ Fallback succeeded for', url);
-      return fallbackText.slice(0, 3000);
+      return fallbackText.slice(0, 1000);
     } catch (fallbackErr) {
       console.error(
         '💥 Fallback scraping also failed',
@@ -262,24 +263,32 @@ app.get('/api/searchPIXTAimage', async (req, res) => {
     await page.goto(searchUrl, { waitUntil: 'networkidle', timeout: 30000 });
 
     // スクリーンショットを取得
-    const screenshotPath = path.join(__dirname, 'public', `pixta_${keyword}_${Date.now()}.png`);
+    const screenshotPath = path.join(
+      __dirname,
+      'public',
+      `pixta_${keyword}_${Date.now()}.png`
+    );
     await page.screenshot({ path: screenshotPath, fullPage: true });
     console.log('📷 Screenshot saved:', screenshotPath);
 
     // 素材情報を取得
     console.log('🔍 Extracting image data from search results');
     const images = await page.$$eval('.item-list--large__wrap', (elements) => {
-      return elements.map((el) => {
-        // div要素のid属性から素材番号を取得
-        const divWithId = el.querySelector('div[id]');
-        const materialNo = divWithId ? divWithId.id : null;
+      return elements
+        .map((el) => {
+          // div要素のid属性から素材番号を取得
+          const divWithId = el.querySelector('div[id]');
+          const materialNo = divWithId ? divWithId.id : null;
 
-        // img要素のdata-src属性またはsrc属性から画像URLを取得
-        const img = el.querySelector('img.lozad');
-        const srcUrl = img ? (img.getAttribute('data-src') || img.getAttribute('src')) : null;
+          // img要素のdata-src属性またはsrc属性から画像URLを取得
+          const img = el.querySelector('img.lozad');
+          const srcUrl = img
+            ? img.getAttribute('data-src') || img.getAttribute('src')
+            : null;
 
-        return materialNo && srcUrl ? { materialNo, srcUrl } : null;
-      }).filter(item => item !== null);
+          return materialNo && srcUrl ? { materialNo, srcUrl } : null;
+        })
+        .filter((item) => item !== null);
     });
 
     console.log(`✅ Found ${images.length} images from PIXTA`);
@@ -288,13 +297,13 @@ app.get('/api/searchPIXTAimage', async (req, res) => {
 
     res.json({
       PIXTAimages: images,
-      screenshot: path.basename(screenshotPath)
+      screenshot: path.basename(screenshotPath),
     });
   } catch (err) {
     console.error('❌ PIXTA search failed:', err.message);
     res.status(500).json({
       error: 'PIXTA検索に失敗しました。',
-      details: err.message
+      details: err.message,
     });
   } finally {
     if (browser) {
@@ -406,11 +415,12 @@ ${competitorTexts}
   let outlineData;
   try {
     console.log('🧠 Generating outline with Gemini');
-    const model = await getGeminiModel();
-    const outlineResult = await model.generateContent({
-      contents: [{ role: 'user', parts: [{ text: outlinePrompt }] }],
-    });
-    const outlineRaw = outlineResult.response?.text?.() || '';
+    const genAI = await getGeminiModel();
+    console.log('🪄 Using Gemini model:', GEMINI_MODEL);
+    const model = genAI.getGenerativeModel({ model: GEMINI_MODEL });
+    const outlineResult = await model.generateContent(outlinePrompt);
+    const response = await outlineResult.response;
+    const outlineRaw = response.text();
     const outlineJsonText = outlineRaw.replace(/```json|```/g, '').trim();
     outlineData = JSON.parse(outlineJsonText);
     console.log(
@@ -469,11 +479,12 @@ ${outlineJSON}
   let articleData;
   try {
     console.log('✍️ Generating article body with Gemini');
-    const model = await getGeminiModel();
-    const articleResult = await model.generateContent({
-      contents: [{ role: 'user', parts: [{ text: articlePrompt }] }],
-    });
-    const articleRaw = articleResult.response?.text?.() || '';
+    const genAI = await getGeminiModel();
+    console.log('🪄 Using Gemini model:', GEMINI_MODEL);
+    const model = genAI.getGenerativeModel({ model: GEMINI_MODEL });
+    const articleResult = await model.generateContent(articlePrompt);
+    const response = await articleResult.response;
+    const articleRaw = response.text();
     const articleJsonText = articleRaw.replace(/```json|```/g, '').trim();
     articleData = JSON.parse(articleJsonText);
     console.log(
