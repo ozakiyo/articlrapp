@@ -1,48 +1,27 @@
 import { useEffect, useState } from 'react';
-/*
-①入力情報を管理する
-②記事生成AIへPOSTする
-③PIXTA画像検索APIへGETする
-④返ってきたデータをUIに表示する
-⑤画像はモーダルで検索結果を閲覧
 
-⑴App.jsx:React フロントエンド表示部分
-PIXTA画像はまずそれほど気にしない。
-記事の部分を把握する。
-①記事生成メイン処理： handleSubmit()
-②記事画面フロント部分
-③生成記事表示箇所: フロント生成記事表示
-
-⑵app.js　バックエンド
-
-
-*/
 const initialUrls = ['', '', ''];
 
 export default function App() {
-  const [keyword, setKeyword] = useState(''); //キーワード入力
-  const [title, setTitle] = useState(''); //タイトル入力
-  const [headingfirst, setHeadingfirst] = useState(''); //タイトル入力
-  const [competitorUrls, setCompetitorUrls] = useState(initialUrls); //競合記事URLを３個配列で管理
-  const [article, setArticle] = useState(null); //生成された記事データ
-  const [isLoading, setIsLoading] = useState(false); //記事生成中のローディング表示
-  const [error, setError] = useState(''); //記事生成時のエラーメッセージ
-  const [loadingDots, setLoadingDots] = useState(0); //「考え中」のアニメーション用のドット数
-  const [searchPIXTA, setSearchPIXTA] = useState(false); //記事生成時にもPIXTAを検索するかどうか
-  const [pixtaResults, setPixtaResults] = useState(null); //画像検索の結果（画像リストとスクリーンショット）
-  const [pixtaLoading, setPixtaLoading] = useState(false); //PIXTA検索のローディング
-  const [pixtaError, setPixtaError] = useState('');　//PIXTA検索のエラー
-  const [showImageModal, setShowImageModal] = useState(false); //モーダルを開閉するフラグ
-  const [modalTab, setModalTab] = useState('images'); // 'images' or 'screenshot' モーダルのタブ
+  const [keyword, setKeyword] = useState('');
+  const [competitorUrls, setCompetitorUrls] = useState(initialUrls);
+  const [article, setArticle] = useState(null);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState('');
+  const [loadingDots, setLoadingDots] = useState(0);
+  const [searchPIXTA, setSearchPIXTA] = useState(false);
+  const [pixtaResults, setPixtaResults] = useState(null);
+  const [pixtaLoading, setPixtaLoading] = useState(false);
+  const [pixtaError, setPixtaError] = useState('');
+  const [showImageModal, setShowImageModal] = useState(false);
+  const [modalTab, setModalTab] = useState('images'); // 'images' or 'screenshot'
 
-  //①---競合URL更新　　３つのURLフォームの更新---
   const handleUrlChange = (index, value) => {
     const next = [...competitorUrls];
     next[index] = value;
     setCompetitorUrls(next);
   };
 
-  //②---PIXTA画像を検索する---
   const handlePixtaSearch = async () => {
     if (!keyword) {
       setPixtaError('キーワードを入力してください。');
@@ -51,7 +30,7 @@ export default function App() {
 
     setPixtaLoading(true);
     setPixtaError('');
-    //リクエスト処理
+
     try {
       const response = await fetch(`/api/searchPIXTAimage?keyword=${encodeURIComponent(keyword)}`);
 
@@ -70,8 +49,6 @@ export default function App() {
     }
   };
 
-  
-  //----------③記事生成（メイン処理）------------
   const handleSubmit = async (event) => {
     event.preventDefault();
     setIsLoading(true);
@@ -79,13 +56,11 @@ export default function App() {
 
     const payload = {
       keyword,
-      title,
       competitorUrl1: competitorUrls[0],
       competitorUrl2: competitorUrls[1],
       competitorUrl3: competitorUrls[2],
     };
 
-    //記事生成AIへPOST処理
     try {
       const response = await fetch('/api/generate', {
         method: 'POST',
@@ -112,13 +87,9 @@ export default function App() {
       setIsLoading(false);
     }
   };
-  //-----------③記事生成（メイン処理）------------
-  
 
-  //---⑤出力のクリア/入力のリセット---
   const handleReset = () => {
     setKeyword('');
-    setTitle('');
     setCompetitorUrls(initialUrls);
     setArticle(null);
     setError('');
@@ -126,19 +97,14 @@ export default function App() {
     setPixtaError('');
     setSearchPIXTA(false);
   };
-  //---⑤出力のクリア/入力のリセット---
 
-  //---出力だけ消す(入力は保持)---
   const handleClearOutput = () => {
     setArticle(null);
     setError('');
     setPixtaResults(null);
     setPixtaError('');
   };
-  //---出力だけ消す(入力は保持)---
 
-  //----④ローディングドットのアニメーション----
-  //記事生成中のみ、. .. ...のようにドットを増やす
   useEffect(() => {
     if (!isLoading) {
       setLoadingDots(0);
@@ -151,7 +117,6 @@ export default function App() {
 
     return () => clearInterval(handle);
   }, [isLoading]);
-  //-------------------------------
 
   const hasStructuredHeadings =
     Array.isArray(article?.headings) && article.headings.length > 0;
@@ -205,8 +170,6 @@ export default function App() {
     );
   };
 
-
-{/*-----------記事画面フロント部分------------*/}
   return (
     <div className="app">
       {isLoading && (
@@ -222,10 +185,7 @@ export default function App() {
       </header>
 
       <section className="panel">
-        {/*---フォーム---*/}
         <form className="form" onSubmit={handleSubmit}>
-
-          {/*--キーワード入力--*/}
           <label className="field">
             <span>キーワード *</span>
             <input
@@ -233,48 +193,10 @@ export default function App() {
               value={keyword}
               placeholder="例: AI ライティング"
               required
-              /*
-               required: ブラウザの標準機能を使って、
-               この欄が空のまま送信できないようにします
-               （送信しようとすると「このフィールドを入力してください」と警告が出ます）。
-              */
               onChange={(event) => setKeyword(event.target.value)}
-              /*
-              ユーザーが文字を打つたびに実行される処理です。
-              event.target.value（入力された文字）を 
-              setKeyword 関数を使ってReactの変数 keyword に保存。
-              流れ: ユーザーが打つ → onChangeが動く → setKeywordで変数が更新される
-               → value={keyword}によって画面の文字も更新される。
-              */
             />
           </label>
-          {/*---キーワード入力---*/}
 
-          {/*--タイトル入力--*/}
-          <label className="field">
-            <span>タイトル</span>
-            <input
-              type="text"
-              value={title}
-              placeholder="記事のタイトルを指定する場合に入力"
-              onChange={(event) => setTitle(event.target.value)}
-            />
-          </label>
-          {/*---タイトル入力---*/}
-
-          {/*--見出し１--*/}
-          <label className="field">
-            <span>見出し１</span>
-            <input
-              type="text"
-              value={headingfirst}
-              placeholder="記事の見出しを指定する場合に入力"
-              onChange={(event) => setTitle(event.target.value)}
-            />
-          </label>
-          {/*---見出し１---*/}
-
-          {/*---PIXTA検索ボタン---*/}
           <div className="pixta-search-section">
             <button
               type="button"
@@ -285,9 +207,7 @@ export default function App() {
               {pixtaLoading ? '検索中...' : '🖼️ PIXTA画像を検索'}
             </button>
           </div>
-          {/*---PIXTA検索ボタン---*/}
 
-          {/*----記事生成ボタン---*/}
           <label className="field checkbox-field">
             <input
               type="checkbox"
@@ -296,9 +216,7 @@ export default function App() {
             />
             <span>PIXTA画像も検索する（記事生成時）</span>
           </label>
-          {/*---記事生成ボタン---*/}
 
-          {/*---競合URL入力*3---*/}
           {competitorUrls.map((value, index) => (
             <label className="field" key={`competitor-${index}`}>
               <span>{`競合記事URL ${index + 1}`}</span>
@@ -310,7 +228,6 @@ export default function App() {
               />
             </label>
           ))}
-          {/*---競合URL入力*3---*/}
 
           <div className="actions">
             <button type="submit" disabled={isLoading}>
@@ -330,7 +247,6 @@ export default function App() {
         {error && <p className="error">{error}</p>}
       </section>
 
-      {/*---PIXTAのエラー表示・結果表示---*/}
       {pixtaError && (
         <section className="panel">
           <p className="error">{pixtaError}</p>
@@ -344,8 +260,6 @@ export default function App() {
             <h3>🖼️ PIXTA検索結果</h3>
             <p className="note">検索結果: {pixtaResults.PIXTAimages?.length || 0}件</p>
 
-            {/*---結果があれば画像一覧ボタン---*/}
-            {/*---モーダルで画像一覧（画像＋素材番号リンク）---*/}
             <div className="pixta-actions">
               {pixtaResults.PIXTAimages && pixtaResults.PIXTAimages.length > 0 && (
                 <button
@@ -360,7 +274,6 @@ export default function App() {
                 </button>
               )}
 
-              {/*---スクリーンショット表示タブ---*/}
               {pixtaResults.screenshot && (
                 <button
                   type="button"
@@ -377,9 +290,7 @@ export default function App() {
           </div>
         </section>
       )}
-{/*----------記事画面フロント部分--------*/}
 
-{/*----------生成記事表示箇所----------*/}
       {article && (
         <section className="panel">
           <h2>記事生成結果</h2>
@@ -415,7 +326,6 @@ export default function App() {
 
           {renderOutline()}
 
-          {/*---タイトル生成---*/}
           {hasStructuredArticle ? (
             <div className="generated-article">
               {displayTitle && (
@@ -425,7 +335,6 @@ export default function App() {
                 </div>
               )}
 
-              {/*---導入文生成---*/}
               {introduction && (
                 <div className="generated-block">
                   <h3>導入文</h3>
@@ -435,7 +344,6 @@ export default function App() {
                 </div>
               )}
 
-              {/*---記事の構造により３通りの表示方式に対応---*/}
               {structuredArticle.sections.map((section, index) => (
                 <div className="generated-block section-block" key={`section-${index}`}>
                   <h3>{section?.h2}</h3>
@@ -454,7 +362,6 @@ export default function App() {
                 </div>
               ))}
 
-              {/*---まとめ生成---*/}
               {summary && (
                 <div className="generated-block">
                   <h3>まとめ</h3>
@@ -490,11 +397,7 @@ export default function App() {
           )}
         </section>
       )}
-{/*----------生成記事表示箇所----------*/}
 
-
-
-{/*---PIXTA検索結果表示---*/}
       {showImageModal && pixtaResults && (
         <div className="modal-overlay" onClick={() => setShowImageModal(false)}>
           <div className="modal-content" onClick={(e) => e.stopPropagation()}>
@@ -561,7 +464,6 @@ export default function App() {
           </div>
         </div>
       )}
-{/*---PIXTA検索結果表示---*/}
     </div>
   );
 }
