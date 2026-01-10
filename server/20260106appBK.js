@@ -618,7 +618,7 @@ JSONで出力
 */
 
 /*-----⑷AIへ導入文のプロンプト作成-------*/
-const introductionPrompt = `
+const outlinePrompt = `
 あなたはSEOに強い家電専門ライターです。
 以下の競合記事を分析し、キーワード「${keyword}」、タイトル「${title}」の導入文を200文字程度で作成してください。
 
@@ -641,22 +641,24 @@ ${competitorTexts}
   `;
 //competitorTextsは、スクレイピングしたデータ
 
+const 
+
 /*------------geminiにプロンプトを送信-----------------*/
-  let introductionData;
+  let outlineData;
   try {
     //Geminiモデルに構成案の生成を依頼
     console.log('🧠 Generating outline with Gemini');
     const model = await getGeminiModel();
-    const introductionResult = await model.generateContent({
-      contents: [{ role: 'user', parts: [{ text: introductionPrompt }] }],
+    const outlineResult = await model.generateContent({
+      contents: [{ role: 'user', parts: [{ text: outlinePrompt }] }],
     });
     //AIからの返事を整形して、プログラムで扱えるオブジェクト形式に変換
-    const introductionRaw = introductionResult.response?.text?.() || '';
-    const introductionJsonText = introductionRaw.replace(/```json|```/g, '').trim();
-    introductionData = JSON.parse(introductionJsonText);
+    const outlineRaw = outlineResult.response?.text?.() || '';
+    const outlineJsonText = outlineRaw.replace(/```json|```/g, '').trim();
+    outlineData = JSON.parse(outlineJsonText);
     console.log(
       '🧾 Outline generated. H2 count:',
-      Array.isArray(introductionData.sections) ? introductionData.sections.length : 0
+      Array.isArray(outlineData.sections) ? outlineData.sections.length : 0
     );
   } catch (err) {
     //AIが構成案を作れなかったらエラー
@@ -667,159 +669,11 @@ ${competitorTexts}
     });
   }
 
-  const introductionJSON = JSON.stringify(introductionData, null, 2);
-  console.log("introductionJSON",introductionJSON);
+  const outlineJSON = JSON.stringify(outlineData, null, 2);
+  console.log("outlineJSON",outlineJSON);
   //------------------⑴フロントからの受け取り→⑵スクレイピング処理→⑶データの編集→⑷記事構成案処理→⑸記事本文---------------------
 
-//---⑸ H3-1 用プロンプト---
-const heading_h3_firstPrompt = `
-あなたはSEOに強い家電専門ライターです。
-以下の競合記事を分析し、キーワード「${keyword}」、タイトル「${title}」、H2見出し「${heading_h2_first}」の子見出し「${heading_h3_first}」の本文を200文字程度で作成してください。
-
-# 出力条件
-- JSON形式で出力
-- 形式:
-{
-  "h3": "${heading_h3_first}",
-  "content": "本文(200文字程度)"
-}
-- キーワードとの関連性が高く、検索ユーザーの意図を満たす構成にする
-- 内容は具体的で、独自の視点・根拠・事例を交えて説明且つ信頼感があり、客観的
-- 家電販売店にふさわしいフォーマルな文体
-- 数値・比較・用途別の提案など、検索ユーザーの満足度を意識
-- 製品名・価格は直接記載しない
-- 出力は厳密にJSONのみ
-
-# 参考記事
-${competitorTexts} 
-`;
-
-let heading_h3_firstData;
-try {
-  console.log('🧠 Generating H3-1 body with Gemini');
-  const model = await getGeminiModel();
-  const heading_h3_firstResult = await model.generateContent({
-    contents: [{ role: 'user', parts: [{ text: heading_h3_firstPrompt }] }],
-  });
-
-  const heading_h3_firstRaw = heading_h3_firstResult.response?.text?.() || '';
-  const heading_h3_firstJsonText = heading_h3_firstRaw
-    .replace(/```json|```/g, '')
-    .trim();
-
-  heading_h3_firstData = JSON.parse(heading_h3_firstJsonText);
-  console.log('🧾 H3-1 generated:', heading_h3_firstData);
-} catch (err) {
-  console.error('❌ H3-1 generation failed', err.message);
-  return res.status(502).json({
-    error: 'H3-1本文の生成に失敗しました。',
-    warnings,
-  });
-}
-
-// ログ（任意）
-const heading_h3_firstJSON = JSON.stringify(heading_h3_firstData, null, 2);
-console.log('heading_h3_firstJSON', heading_h3_firstJSON);
-
-//---⑸ H3-2用プロンプト---
-const heading_h3_secondPrompt = `
-あなたはSEOに強い家電専門ライターです。
-以下の競合記事を分析し、キーワード「${keyword}」、タイトル「${title}」、H2見出し「${heading_h2_first}」の子見出し「${heading_h3_second}」の本文を200文字程度で作成してください。
-
-# 出力条件
-- JSON形式で出力
-- 形式:
-{
-  "h3": "${heading_h3_second}",
-  "content": "本文(200文字程度)"
-}
-- キーワードとの関連性が高く、検索ユーザーの意図を満たす構成にする
-- 内容は具体的で、独自の視点・根拠・事例を交えて説明且つ信頼感があり、客観的
-- 家電販売店にふさわしいフォーマルな文体
-- 数値・比較・用途別の提案など、検索ユーザーの満足度を意識
-- 製品名・価格は直接記載しない
-- 出力は厳密にJSONのみ
-
-# 参考記事
-${competitorTexts} 
-`;
-
-let heading_h3_secondData;
-try {
-  console.log('🧠 Generating H3-1 body with Gemini');
-  const model = await getGeminiModel();
-  const heading_h3_secondResult = await model.generateContent({
-    contents: [{ role: 'user', parts: [{ text: heading_h3_secondPrompt }] }],
-  });
-
-  const heading_h3_secondRaw = heading_h3_secondResult.response?.text?.() || '';
-  const heading_h3_secondJsonText = heading_h3_secondRaw
-    .replace(/```json|```/g, '')
-    .trim();
-
-  heading_h3_secondData = JSON.parse(heading_h3_secondJsonText);
-  console.log('🧾 H3-1 generated:', heading_h3_secondData);
-} catch (err) {
-  console.error('❌ H3-1 generation failed', err.message);
-  return res.status(502).json({
-    error: 'H3-1本文の生成に失敗しました。',
-    warnings,
-  });
-}
-
-// ログ（任意）
-const heading_h3_secondJSON = JSON.stringify(heading_h3_secondData, null, 2);
-console.log('heading_h3_secondJSON', heading_h3_secondJSON);
-
-//---⑸ H3-3用プロンプト---
-const heading_h3_thirdPrompt = `
-あなたはSEOに強い家電専門ライターです。
-以下の競合記事を分析し、キーワード「${keyword}」、タイトル「${title}」、H2見出し「${heading_h2_first}」の子見出し「${heading_h3_third}}」の本文を200文字程度で作成してください。
-
-# 出力条件
-- JSON形式で出力
-- 形式:
-{
-  "h3": "${heading_h3_third}",
-  "content": "本文(200文字程度)"
-}
-- キーワードとの関連性が高く、検索ユーザーの意図を満たす構成にする
-- 内容は具体的で、独自の視点・根拠・事例を交えて説明且つ信頼感があり、客観的
-- 家電販売店にふさわしいフォーマルな文体
-- 数値・比較・用途別の提案など、検索ユーザーの満足度を意識
-- 製品名・価格は直接記載しない
-- 出力は厳密にJSONのみ
-
-# 参考記事
-${competitorTexts} 
-`;
-
-let heading_h3_thirdData;
-try {
-  console.log('🧠 Generating H3-1 body with Gemini');
-  const model = await getGeminiModel();
-  const heading_h3_thirdResult = await model.generateContent({
-    contents: [{ role: 'user', parts: [{ text: heading_h3_thirdPrompt }] }],
-  });
-
-  const heading_h3_thirdRaw = heading_h3_thirdResult.response?.text?.() || '';
-  const heading_h3_thirdJsonText = heading_h3_thirdRaw
-    .replace(/```json|```/g, '')
-    .trim();
-
-  heading_h3_thirdData = JSON.parse(heading_h3_thirdJsonText);
-  console.log('🧾 H3-1 generated:', heading_h3_thirdData);
-} catch (err) {
-  console.error('❌ H3-1 generation failed', err.message);
-  return res.status(502).json({
-    error: 'H3-1本文の生成に失敗しました。',
-    warnings,
-  });
-}
-
-// ログ（任意）
-const heading_h3_thirdJSON = JSON.stringify(heading_h3_thirdData, null, 2);
-console.log('heading_h3_thirdJSON', heading_h3_thirdJSON);
+//ここのプロンプト作成から
 
 
 /*---記事本文生成---*/
@@ -959,23 +813,11 @@ ${outlineJSON}
     //warnings,
   //});
   res.json({
-    // 記事のタイトル
-    title: introductionData.h1 || '',
-    // 導入文
-    introduction: introductionData.introduction || '',
-    // フロント側で扱いやすいよう、article の中にまとめて入れる
-    article: {
-      h1: introductionData.h1 || '',
-      introduction: introductionData.introduction || '',
-      h2: heading_h2_first,
-      h3_first: heading_h3_firstData?.h3 || heading_h3_first,
-      h3_first_content: heading_h3_firstData?.content || '',
-      h3_second: heading_h3_secondData?.h3 || heading_h3_second,
-      h3_second_content: heading_h3_secondData?.content || '',
-      h3_third: heading_h3_third?.h3 || heading_h3_third,
-      h3_third_content: heading_h3_thirdData?.content || '',
-    },
-
+    //記事のタイトル
+    title: outlineData.h1 || '',
+    //導入文
+    introduction: outlineData.introduction || '',
+    article: outlineData,
   });
 
 });
