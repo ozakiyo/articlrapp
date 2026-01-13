@@ -14,17 +14,6 @@ app.js バックエンド処理
 Playwright + HTTPの二重スクレイピング
 JSON厳格指定
 
-gemini API無料枠制限：
-1.リクエスト回数・速度の制限
-  15RPM (Requests Per Minute)
-  1分間に15回までしかリクエストできない。
-  これを超えると429Too Many Requestsエラーが返る。
-  短時間に連続してテストを行うと、すぐにこの上限に達する。
-  1,500 RPD (Requests Per Day)
-  1日に1,500回までリクエスト可能。
-2. トークン量の制限
-  1,000,000 TPM (Tokens Per Minute)
-  1分間に処理できるトークン（文字数換算で約50万〜100万文字程度）の上限です。
 */
 
 /*---①サーバーの基本設定と認証---*/
@@ -36,13 +25,13 @@ const path = require('path');
 const { chromium } = require('playwright'); //ブラウザを自動操作してスクレイピング
 const cheerio = require('cheerio'); //HTMLをパース(jQuery的)
 const iconv = require('iconv-lite'); //文字コード変換(Shift_JIS対策)
-//const basicAuth = require('express-basic-auth'); //ベーシック認証
+const basicAuth = require('express-basic-auth'); //ベーシック認証
 
 // Load .env file from the server directory
 //.envの読み込み　本番運用では必須のセキュリティ対策
 dotenv.config({ path: path.join(__dirname, '.env') });
 
-//----------------------------------Express基本設定------------------------------------
+//----Express基本設定----
 /*
 このブロックは、「Expressでサーバーの土台を作り、待ち受けるポート番号を決め、フロントエンドからのJSONデータを正しく受け取れるように準備する」という、
 サーバー起動に必須の初期設定を行っている部分
@@ -57,16 +46,15 @@ const PORT = process.env.PORT || 3001;
 このアプリケーションでは、フロントエンドのReactから「キーワード」や「URL」がJSON形式で送られてくるため、この設定が不可欠です。これがないと、サーバーは送られてきたJSONデータを正しく受け取ることができません。
 */
 app.use(express.json());
-//----------------------------------Express基本設定------------------------------------
+//----Express基本設定----
 
-//----------------------------------フロント基本設定------------------------------------
 //フロントエンドのファイルが格納されているpublicフォルダへの絶対パスを作成
 const clientDistPath = path.join(__dirname, 'public');
 //publicフォルダの中にある、Webページの本体であるindex.htmlファイルへの絶対パスを作成
 const clientIndexPath = path.join(clientDistPath, 'index.html');
 
 //---ベーシック認証---
-/*const basicAuthUser = process.env.BASIC_AUTH_USER || 'admin';
+const basicAuthUser = process.env.BASIC_AUTH_USER || 'admin';
 const basicAuthPass = process.env.BASIC_AUTH_PASSWORD || 'password';
 
 const basicAuthMiddleware = basicAuth({
@@ -79,7 +67,7 @@ const basicAuthMiddleware = basicAuth({
     return { error: '認証が必要です。' };
   }
 });
-app.use(basicAuthMiddleware);*/
+app.use(basicAuthMiddleware);
 //---ベーシック認証---
 
 //---React(フロントエンド)の配信---
@@ -96,10 +84,8 @@ if (fs.existsSync(clientDistPath)) {
 //もしなければ、エラーメッセージを表示
   console.log('⚠️ React build not found at:', clientDistPath);
 }
-//----------------------------------フロント基本設定------------------------------------
 
 
-//----------------------------------gemini　AI設定------------------------------------
 /*
 「AIモデルのインスタンスを効率的に取得すること」
 AIモデルの初期化（準備）は少し時間がかかる処理なので、APIリクエストのたびに毎回準備していると、アプリケーションの応答が遅くなってしまう。
@@ -115,25 +101,23 @@ async function getGeminiModel() {
     if (!apiKey) {
       throw new Error('GEMINI_API_KEY is not set');
     }
-    console.log('⚙️ Initializing Gemini model: gemini-2.5-flash');
+    console.log('⚙️ Initializing Gemini model: gemini-2.0-flash');
     const { GoogleGenerativeAI } = await import('@google/generative-ai');
     const genAI = new GoogleGenerativeAI(apiKey);
     //gemini-2.0-flashモデルを使用 高速・低コスト向けのモデル
-    geminiModel = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
+    geminiModel = genAI.getGenerativeModel({ model: 'gemini-2.0-flash' });
   }
   /*2回目以降の呼び出し時: geminiModelには既に準備済みのモデルが入っているので、if文の中はスキップされ、すぐに最後のreturnに進む。*/
   return geminiModel;
 }
-//----------------------------------gemini　AI設定------------------------------------
 
-//----------------------------------スクレイピング２設定------------------------------------
 /*
 Playwrightでのスクレイピングが失敗した際の代替手段として
 使われる scrapeWithHttpClient 関数から呼び出されている。
 */
 /*
 クライアントを取得するための関数。
-asyncキーワードが付いているのは、内部で await を使って非同期処理（ライブラリの読み込み）を待つ必要があるため
+async キーワードが付いているのは、内部で await を使って非同期処理（ライブラリの読み込み）を待つ必要があるため
 */
 let gotScrapingClient;
 async function getGotScraping() {
@@ -154,15 +138,13 @@ async function getGotScraping() {
   2回目以降の呼び出しでは、if 文がスキップされ、すぐにこの行に到達して既存のクライアントが返される*/
   return gotScrapingClient;
 }
-//----------------------------------スクレイピング２設定------------------------------------
 
-//------------------------------スクレイピングしたデータの補正--------------------------------
 /*
 この関数は、HTTPリクエストで取得した生のデータ（buffer）を、
 正しい文字コードで文字列に変換（デコード）するためのもの。
 特に、日本語の古いウェブサイトで使われがちなShift_JISなど、UTF-8以外の文字コードに対応するために重要な役割
 */
-/*
+/**
 HTTPレスポンスのバッファとヘッダーから文字コードを判別し、HTMLをデコードする関数
 {Buffer} buffer - HTTPレスポンスのボディ部分のバッファ
 {object} headers - HTTPレスポンスヘッダー
@@ -231,9 +213,8 @@ function decodeHtml(buffer, headers) {
   //iconv-liteライブラリを使って、特定した文字コードでバッファを文字列に変換
   return iconv.decode(buffer, encoding);
 }
-//------------------------------スクレイピングしたデータの補正--------------------------------
 
-//------------------------------⑵got-scrapingスクレイピング---------------------------------
+//---②Playwrightスクレイピング---
 /*
 Playwright（本命）
 失敗したら HTTPクライアント（保険） got-scraping
@@ -285,9 +266,7 @@ async function scrapeWithHttpClient(url) {
   }
   return text;
 }
-//------------------------------⑵got-scrapingスクレイピング---------------------------------
 
-//-------------------------------⑴Playwrightスクレイピング----------------------------------
 /*Playwrightスクレイピング*/
 /*この関数は、指定されたウェブサイト（URL）から
 本文テキストを抽出（スクレイピング）するためのもの。
@@ -365,10 +344,7 @@ async function scrape(url) {
     console.log('🧹 Closed browser instance for', url);
   }
 }
-//-------------------------------⑴Playwrightスクレイピング----------------------------------
 
-
-//-------------------------------トップページへのアクセス時の処理----------------------------------
 /*このコードは「サイトのトップページにアクセスが来たら、準備済みのReactアプリをユーザーに渡す。
 もし準備できていなければ、開発者にエラーを教える」という、
 Webサーバーの基本的ながら非常に重要な処理を行う*/
@@ -392,10 +368,9 @@ app.get('/', (_req, res) => {
     'React build not found. Run "npm run build" in the client project to generate static assets.'
   );
 });
-//-------------------------------トップページへのアクセス時の処理----------------------------------
 
 //この関数は、サーバーに溜まった古いスクリーンショットファイルを自動で掃除するためのもの
-/*function cleanupOldScreenshots() {
+function cleanupOldScreenshots() {
   const publicDir = path.join(__dirname, 'public');
   const oneHourAgo = Date.now() - 60 * 60 * 1000; // 1 hour in milliseconds
 
@@ -422,10 +397,10 @@ app.get('/', (_req, res) => {
   } catch (err) {
     console.error('⚠️ Screenshot cleanup failed:', err.message);
   }
-}*/
+}
 
 /*---③PIXTA画像検索API---*/
-/*app.get('/api/searchPIXTAimage', async (req, res) => {
+app.get('/api/searchPIXTAimage', async (req, res) => {
   const { keyword } = req.query;
 
   console.log('🔍 GET /api/searchPIXTAimage called with keyword:', keyword);
@@ -490,10 +465,9 @@ app.get('/', (_req, res) => {
       console.log('🧹 Closed browser instance');
     }
   }
-});*/
+});
 
 
-//------------------⑴フロントからの受け取り→⑵スクレイピング処理→⑶データの編集→⑷AIへの記事構成案プロンプト→⑸AIへの記事本文プロンプト---------------------
 //---④記事生成API（メイン機能）---
 /*このコードは、このWebアプリケーションの**最も中心的な機能である「記事自動生成API」**を実装した部分。
 フロントエンドから「キーワード」と「参考URL」を受け取り、最終的な記事を生成して返すまでの一連の複雑な処理を担う。
@@ -509,19 +483,12 @@ app.get('/', (_req, res) => {
 GET: 「このページを見せてください」とお願いするだけ。ブラウザのアドレスバーにURLを入れてエンターキーを押すような、通常のページ閲覧がこれにあたる。
 POST: 「このデータを渡すので、何か作業をしてください（例: 記事を作る、ユーザー登録をするなど）」と、データと一緒に処理をお願いするのがPOST。
 */
-
-/*-----⑴フロントからの受け取り------*/
 app.post('/api/generate', async (req, res) => {
   const requestStartedAt = Date.now();
   //ステップ1：依頼内容の確認（入力チェック）
   //フロントエンドから送られてきた「キーワード」と「参考URL」を受け取る
   const {
     keyword,
-    title,
-    heading_h2_first,
-    heading_h3_first,
-    heading_h3_second,
-    heading_h3_third,
     urls = [],
     competitorUrl1,
     competitorUrl2,
@@ -530,11 +497,6 @@ app.post('/api/generate', async (req, res) => {
 
   console.log('🛎️ POST /api/generate called with:', {
     keyword,
-    title,
-    heading_h2_first,
-    heading_h3_first,
-    heading_h3_second,
-    heading_h3_third,
     urls,
     competitorUrl1,
     competitorUrl2,
@@ -566,8 +528,8 @@ app.post('/api/generate', async (req, res) => {
       .json({ error: 'URLを少なくとも1つ入力してください。' });
   }
 
-/*------⑵競合記事のスクレイピング------*/
-/*入力された複数の競合URLを順番にスクレイピングし、記事のテキストデータを集める。*/
+/*---競合記事のスクレイピング---*/
+/*入力された複数の競合URLを順番にスクレイピングし、記事のテキストデータを集めます。*/
   const warnings = [];
   const scrapedArticles = [];
 
@@ -595,17 +557,14 @@ app.post('/api/generate', async (req, res) => {
   }
 
   console.log('📚 Successfully scraped', scrapedArticles.length, 'sources');
-  /*------⑵競合記事のスクレイピング------*/
 
-  /*------⑶スクレイピングデータの整理------*/
   //AIが読みやすいように、集めた情報を一つのテキストにまとめる
-  const competitorTexts = scrapedArticles //スクレイピングデータは、competitorTextsに入る
+  const competitorTexts = scrapedArticles
     .map(
       ({ url, text }) => `【Source】${url}
 ${text}`
     )
     .join('\n---\n');
-  /*------⑶スクレイピングデータの整理------*/
 
 /*---記事構成案(アウトライン)生成---*/
 /*集めたテキストとキーワードを基に、**「あなたはSEOに強いライターです。これらの情報を参考に、
@@ -617,19 +576,26 @@ SEO重視
 JSONで出力
 */
 
-/*-----⑷AIへ導入文のプロンプト作成-------*/
-const introductionPrompt = `
+//AIへの「構成案作成」の依頼書（プロンプト）を作成
+  const outlinePrompt = `
 あなたはSEOに強い家電専門ライターです。
-以下の競合記事を分析し、キーワード「${keyword}」、タイトル「${title}」の導入文を200文字程度で作成してください。
+以下の競合記事を分析し、キーワード「${keyword}」の記事構成案を作成してください。
 
 # 出力条件
 - JSON形式で出力
 - 形式:
 {
-  "h1": "${title}",
-  "introduction": "導入文(200文字程度)",
+  "h1": "タイトル案",
+  "sections": [
+    {
+      "h2": "見出し2",
+      "subsections": ["見出し3-1", "見出し3-2", "見出し3-3"]
+    }
+  ]
 }
+- H2は3つ、各H2に対してH3を3つ作成
 - キーワードとの関連性が高く、検索ユーザーの意図を満たす構成にする
+- 各見出しに対応する本文を生成（最低でも300文字以上）
 - 内容は具体的で、独自の視点・根拠・事例を交えて説明且つ信頼感があり、客観的
 - 家電販売店にふさわしいフォーマルな文体
 - 数値・比較・用途別の提案など、検索ユーザーの満足度を意識
@@ -637,26 +603,24 @@ const introductionPrompt = `
 - 出力は厳密にJSONのみ
 
 # 参考記事
-${competitorTexts} 
+${competitorTexts}
   `;
-//competitorTextsは、スクレイピングしたデータ
 
-/*------------geminiにプロンプトを送信-----------------*/
-  let introductionData;
+  let outlineData;
   try {
     //Geminiモデルに構成案の生成を依頼
     console.log('🧠 Generating outline with Gemini');
     const model = await getGeminiModel();
-    const introductionResult = await model.generateContent({
-      contents: [{ role: 'user', parts: [{ text: introductionPrompt }] }],
+    const outlineResult = await model.generateContent({
+      contents: [{ role: 'user', parts: [{ text: outlinePrompt }] }],
     });
     //AIからの返事を整形して、プログラムで扱えるオブジェクト形式に変換
-    const introductionRaw = introductionResult.response?.text?.() || '';
-    const introductionJsonText = introductionRaw.replace(/```json|```/g, '').trim();
-    introductionData = JSON.parse(introductionJsonText);
+    const outlineRaw = outlineResult.response?.text?.() || '';
+    const outlineJsonText = outlineRaw.replace(/```json|```/g, '').trim();
+    outlineData = JSON.parse(outlineJsonText);
     console.log(
       '🧾 Outline generated. H2 count:',
-      Array.isArray(introductionData.sections) ? introductionData.sections.length : 0
+      Array.isArray(outlineData.sections) ? outlineData.sections.length : 0
     );
   } catch (err) {
     //AIが構成案を作れなかったらエラー
@@ -667,160 +631,7 @@ ${competitorTexts}
     });
   }
 
-  const introductionJSON = JSON.stringify(introductionData, null, 2);
-  console.log("introductionJSON",introductionJSON);
-  //------------------⑴フロントからの受け取り→⑵スクレイピング処理→⑶データの編集→⑷記事構成案処理→⑸記事本文---------------------
-
-//---⑸ H3-1 用プロンプト---
-const heading_h3_firstPrompt = `
-あなたはSEOに強い家電専門ライターです。
-以下の競合記事を分析し、キーワード「${keyword}」、タイトル「${title}」、H2見出し「${heading_h2_first}」の子見出し「${heading_h3_first}」の本文を200文字程度で作成してください。
-
-# 出力条件
-- JSON形式で出力
-- 形式:
-{
-  "h3": "${heading_h3_first}",
-  "content": "本文(200文字程度)"
-}
-- キーワードとの関連性が高く、検索ユーザーの意図を満たす構成にする
-- 内容は具体的で、独自の視点・根拠・事例を交えて説明且つ信頼感があり、客観的
-- 家電販売店にふさわしいフォーマルな文体
-- 数値・比較・用途別の提案など、検索ユーザーの満足度を意識
-- 製品名・価格は直接記載しない
-- 出力は厳密にJSONのみ
-
-# 参考記事
-${competitorTexts} 
-`;
-
-let heading_h3_firstData;
-try {
-  console.log('🧠 Generating H3-1 body with Gemini');
-  const model = await getGeminiModel();
-  const heading_h3_firstResult = await model.generateContent({
-    contents: [{ role: 'user', parts: [{ text: heading_h3_firstPrompt }] }],
-  });
-
-  const heading_h3_firstRaw = heading_h3_firstResult.response?.text?.() || '';
-  const heading_h3_firstJsonText = heading_h3_firstRaw
-    .replace(/```json|```/g, '')
-    .trim();
-
-  heading_h3_firstData = JSON.parse(heading_h3_firstJsonText);
-  console.log('🧾 H3-1 generated:', heading_h3_firstData);
-} catch (err) {
-  console.error('❌ H3-1 generation failed', err.message);
-  return res.status(502).json({
-    error: 'H3-1本文の生成に失敗しました。',
-    warnings,
-  });
-}
-
-// ログ（任意）
-const heading_h3_firstJSON = JSON.stringify(heading_h3_firstData, null, 2);
-console.log('heading_h3_firstJSON', heading_h3_firstJSON);
-
-//---⑸ H3-2用プロンプト---
-const heading_h3_secondPrompt = `
-あなたはSEOに強い家電専門ライターです。
-以下の競合記事を分析し、キーワード「${keyword}」、タイトル「${title}」、H2見出し「${heading_h2_first}」の子見出し「${heading_h3_second}」の本文を200文字程度で作成してください。
-
-# 出力条件
-- JSON形式で出力
-- 形式:
-{
-  "h3": "${heading_h3_second}",
-  "content": "本文(200文字程度)"
-}
-- キーワードとの関連性が高く、検索ユーザーの意図を満たす構成にする
-- 内容は具体的で、独自の視点・根拠・事例を交えて説明且つ信頼感があり、客観的
-- 家電販売店にふさわしいフォーマルな文体
-- 数値・比較・用途別の提案など、検索ユーザーの満足度を意識
-- 製品名・価格は直接記載しない
-- 出力は厳密にJSONのみ
-
-# 参考記事
-${competitorTexts} 
-`;
-
-let heading_h3_secondData;
-try {
-  console.log('🧠 Generating H3-1 body with Gemini');
-  const model = await getGeminiModel();
-  const heading_h3_secondResult = await model.generateContent({
-    contents: [{ role: 'user', parts: [{ text: heading_h3_secondPrompt }] }],
-  });
-
-  const heading_h3_secondRaw = heading_h3_secondResult.response?.text?.() || '';
-  const heading_h3_secondJsonText = heading_h3_secondRaw
-    .replace(/```json|```/g, '')
-    .trim();
-
-  heading_h3_secondData = JSON.parse(heading_h3_secondJsonText);
-  console.log('🧾 H3-1 generated:', heading_h3_secondData);
-} catch (err) {
-  console.error('❌ H3-1 generation failed', err.message);
-  return res.status(502).json({
-    error: 'H3-1本文の生成に失敗しました。',
-    warnings,
-  });
-}
-
-// ログ（任意）
-const heading_h3_secondJSON = JSON.stringify(heading_h3_secondData, null, 2);
-console.log('heading_h3_secondJSON', heading_h3_secondJSON);
-
-//---⑸ H3-3用プロンプト---
-const heading_h3_thirdPrompt = `
-あなたはSEOに強い家電専門ライターです。
-以下の競合記事を分析し、キーワード「${keyword}」、タイトル「${title}」、H2見出し「${heading_h2_first}」の子見出し「${heading_h3_third}}」の本文を200文字程度で作成してください。
-
-# 出力条件
-- JSON形式で出力
-- 形式:
-{
-  "h3": "${heading_h3_third}",
-  "content": "本文(200文字程度)"
-}
-- キーワードとの関連性が高く、検索ユーザーの意図を満たす構成にする
-- 内容は具体的で、独自の視点・根拠・事例を交えて説明且つ信頼感があり、客観的
-- 家電販売店にふさわしいフォーマルな文体
-- 数値・比較・用途別の提案など、検索ユーザーの満足度を意識
-- 製品名・価格は直接記載しない
-- 出力は厳密にJSONのみ
-
-# 参考記事
-${competitorTexts} 
-`;
-
-let heading_h3_thirdData;
-try {
-  console.log('🧠 Generating H3-1 body with Gemini');
-  const model = await getGeminiModel();
-  const heading_h3_thirdResult = await model.generateContent({
-    contents: [{ role: 'user', parts: [{ text: heading_h3_thirdPrompt }] }],
-  });
-
-  const heading_h3_thirdRaw = heading_h3_thirdResult.response?.text?.() || '';
-  const heading_h3_thirdJsonText = heading_h3_thirdRaw
-    .replace(/```json|```/g, '')
-    .trim();
-
-  heading_h3_thirdData = JSON.parse(heading_h3_thirdJsonText);
-  console.log('🧾 H3-1 generated:', heading_h3_thirdData);
-} catch (err) {
-  console.error('❌ H3-1 generation failed', err.message);
-  return res.status(502).json({
-    error: 'H3-1本文の生成に失敗しました。',
-    warnings,
-  });
-}
-
-// ログ（任意）
-const heading_h3_thirdJSON = JSON.stringify(heading_h3_thirdData, null, 2);
-console.log('heading_h3_thirdJSON', heading_h3_thirdJSON);
-
+  const outlineJSON = JSON.stringify(outlineData, null, 2);
 
 /*---記事本文生成---*/
 /*
@@ -829,7 +640,7 @@ console.log('heading_h3_thirdJSON', heading_h3_thirdJSON);
 JSONで出力
 */
   //AIへの「本文執筆」の依頼書（プロンプト）を作成
-/*const articlePrompt = `
+  const articlePrompt = `
 あなたはSEOに強い家電専門ライターです。  
 以下の構成をもとに、完全オリジナルの日本語記事を作成してください。
 
@@ -867,7 +678,6 @@ ${outlineJSON}
   "summary": "まとめ文（150〜200文字）"
 }
   `;
-  
 
   let articleData;
   try {
@@ -893,14 +703,12 @@ ${outlineJSON}
       outline: outlineData,
       warnings,
     });
-  }*/
+  }
 
-
-  //-----------------AIが作成した記事を配列に整理する(headings配列作成)---------------------
   //ステップ5： クライアントへのレスポンス
   //抽出した見出し情報を配列にまとめる
   //フロントエンドで使いやすいように、見出し情報を別途まとめる
-  /*const headings = [];
+  const headings = [];
   //見出し情報をheadings配列に詰める処理
   if (Array.isArray(articleData.sections)) {
     articleData.sections.forEach((section) => {
@@ -923,61 +731,37 @@ ${outlineJSON}
         });
       }
     });
-  }*/
-  //-----------------AIが作成した記事を配列に整理する(headings配列作成)---------------------
-
+  }
   //処理にかかった時間を記録
   console.log(
     '✅ Completed /api/generate in',
     `${Date.now() - requestStartedAt}ms`
   );
-
-  //-----------------AIが作成した記事を配列に整理した内容をJSONにして、フロントに送信---------------------
   //完成した記事データなどをJSON形式でクライアントに送信
   /*res.json()は、Express.jsの機能で、
   JavaScriptのオブジェクトをJSON（ジェイソン）というデータ形式に
   変換して、HTTPレスポンスとして送信。
   フロントエンドのReactアプリケーションは、
   このJSONデータを受け取って画面に表示*/
-  //res.json({
+  res.json({
     //記事のタイトル
-    //title: articleData.h1 || '',
+    title: articleData.h1 || '',
     //導入文
-    //introduction: articleData.introduction || '',
+    introduction: articleData.introduction || '',
     //まとめ文
-    //summary: articleData.summary || '',
+    summary: articleData.summary || '',
     //構成案（アウトライン）
-    //outline: outlineData,
+    outline: outlineData,
     /*記事全体のデータ
     タイトル、導入文、各見出しとそれに対応する本文、まとめ文などが
     階層構造で含まれている。
     フロントエンドは主にこのデータを使って記事全体を画面に描画*/
-    //article: articleData,
+    article: articleData,
     /*記事の中から見出し（H2, H3）だけを抜き出して整形した配列*/
-    //headings,
+    headings,
     /*スクレイピング中に発生した警告メッセージのリスト*/
-    //warnings,
-  //});
-  res.json({
-    // 記事のタイトル
-    title: introductionData.h1 || '',
-    // 導入文
-    introduction: introductionData.introduction || '',
-    // フロント側で扱いやすいよう、article の中にまとめて入れる
-    article: {
-      h1: introductionData.h1 || '',
-      introduction: introductionData.introduction || '',
-      h2: heading_h2_first,
-      h3_first: heading_h3_firstData?.h3 || heading_h3_first,
-      h3_first_content: heading_h3_firstData?.content || '',
-      h3_second: heading_h3_secondData?.h3 || heading_h3_second,
-      h3_second_content: heading_h3_secondData?.content || '',
-      h3_third: heading_h3_third?.h3 || heading_h3_third,
-      h3_third_content: heading_h3_thirdData?.content || '',
-    },
-
+    warnings,
   });
-
 });
 
 app.listen(PORT, () =>

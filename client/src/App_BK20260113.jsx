@@ -41,9 +41,11 @@ keywordの中身が更新され、入力欄に文字が表示される仕組み
   const [heading_h3_first, setHeading_h3_first] = useState('');
   const [heading_h3_second, setHeading_h3_second] = useState('');
   const [heading_h3_third, setHeading_h3_third] = useState('');
-  const initialHeadings = ['', '', ''];
   const [competitorUrls, setCompetitorUrls] = useState(initialUrls);
+  
+  /*---⑴app.jsからの戻り値保存変数作成---*/
   const [article, setArticle] = useState(null);
+  console.log("article",article);
   //const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
   //const [loadingDots, setLoadingDots] = useState(0);
@@ -139,6 +141,8 @@ keywordの中身が更新され、入力欄に文字が表示される仕組み
         throw new Error(data.error || '記事の生成に失敗しました。');
       }
       //5.成功時: 返ってきた記事データをsetArticleで保存し、画面に表示。
+/*---------------app.js　サーバーからの戻り値保存からフロント表示まで------------------*/
+      //setArticle(data)で article ステートに保存
       const data = await response.json();
       setArticle(data);
 
@@ -210,30 +214,38 @@ keywordの中身が更新され、入力欄に文字が表示される仕組み
   //article.headings（見出しリスト）が存在し、かつ中身があるかどうかを判定している。
   //これがtrueなら、単純な見出しリスト形式で表示するためのフラグとして使われる。
 
-  const outlineData = article?.article;
+  /*------(3-1)setArticle(data);で保存した、articleから取り出し(アウトライン)-------*/
+  //const outlineData = article?.article;
+  //console.log("outlineData",outlineData);
   //記事のアウトライン（目次のような構成案）データをarticleから取り出す。
   //後でrenderOutline()関数に渡して表示するために使われる。
   
+  /*------(3-2)setArticle(data);で保存した、articleから取り出し（本文）-------*/
   const structuredArticle = article?.article;
+  console.log("structuredArticle",structuredArticle);
   //記事の本文データ（セクションごとの構成など）が入っているarticle.articleオブジェクトを取り出す。
   
-  const hasStructuredArticle =
+  const hasStructuredArticle = !!structuredArticle;
+  /*const hasStructuredArticle =
     structuredArticle &&
     ((Array.isArray(structuredArticle.sections) &&
       structuredArticle.sections.length > 0) ||
-      !!structuredArticle.introduction); // ← 変更1：導入文があればOKとする条件を追加
+      !!structuredArticle.introduction);*/ // ← 変更1：導入文があればOKとする条件を追加
   //構造化された記事本文（structuredArticle）が存在し、
   //かつセクション（sections）が含まれているかを判定。
   //これがtrueなら、導入文・本文・まとめといった「完成形の記事」として表示するモードになる。
 
+  /*------(3-3)setArticle(data);で保存した、articleから取り出し（タイトル）-------*/
   const displayTitle = structuredArticle?.h1 || article?.title || '';
   //画面に表示する「タイトル」を決定する。
   //優先順位：structuredArticle.h1（生成されたH1） > article.title（元データのタイトル） > ''（空文字）
   //どちらかのデータがあればそれをタイトルとして使う。
 
+  /*------(3-4)setArticle(data);で保存した、articleから取り出し（導入文）-------*/
   const introduction = structuredArticle?.introduction;
   //記事の「導入文」をstructuredArticleから取り出す
 
+  /*------(3-5)setArticle(data);で保存した、articleから取り出し（まとめ）-------*/
   const summary = structuredArticle?.summary;
   //記事の「まとめ」部分をstructuredArticleから取り出す
 
@@ -277,56 +289,36 @@ keywordの中身が更新され、入力欄に文字が表示される仕組み
   const renderOutline = () => {
     /*データのチェック:*/
     /*アウトラインのデータ（outlineData）や、その中のセクション情報（sections）が正しく存在するか確認*/
-    if (!outlineData || !Array.isArray(outlineData.sections)) return null;
+    /*変更①if (!outlineData || !Array.isArray(outlineData.sections)) return null; structuredArticle*/
+    //if (!structuredArticle || !Array.isArray(structuredArticle.sections)) return null;
+    if (!structuredArticle?.h2) return null;
 
     return (
-    /*データがある場合*/
-    /*「記事がどのような章立て（H2）と小見出し（H3）で構成されているか」を、入れ子状のリスト形式でユーザーに見せる役割*/
       <div className="generated-block">
         <h3>アウトライン</h3>
         <div className="outline">
-          {/*階層構造の描画:*/}
           <ul>
-            {/*<ul>（箇条書きリスト）を使って記事の構造を表示*/}
-            {outlineData.sections.map((section, index) => (
-              <li key={`outline-h2-${index}`}>
-                <strong>{section?.h2}</strong>
-                {/*大見出し(H2):sections配列をループし、各セクションのタイトル（h2）を太字で表示*/}
-                {Array.isArray(section?.subsections) && (
-                  <ul>
-                    {section.subsections.map((sub, subIndex) => (
-                      <li key={`outline-h3-${index}-${subIndex}`}>{sub}</li>
-                      /*小見出し(H3):各セクションの中にsubsections（小見出しの配列）がある場合、さらに内側にリスト（<ul>）を作り、小見出しを表示*/
-                    ))}
-                  </ul>
-                )}
-              </li>
-            ))}
+            <li>
+              <strong>{structuredArticle.h2}</strong>
+              <ul>
+                {structuredArticle.h3_first && <li>{structuredArticle.h3_first}</li>}
+                {structuredArticle.h3_second && <li>{structuredArticle.h3_second}</li>}
+                {structuredArticle.h3_third && <li>{structuredArticle.h3_third}</li>}
+              </ul>
+            </li>
           </ul>
         </div>
       </div>
     );
   };
-
-  {/*-----------記事画面フロント部分(client画面表示処理)------------*/}
+  /*-----------記事画面フロント部分(client画面表示処理)------------*/
   return (
     <div className="app">
-      {/*isLoading && (
-        <div className="loading-overlay" role="status" aria-live="polite">
-          <div className="loading-message">{`考え中${'.'.repeat(
-            loadingDots + 1
-          )}`}</div>
-        </div>
-      )*/}
-      {/*　ヘッダー*/}
       <header>
         <h1>AI記事生成アプリ</h1>
         <p>キーワードと競合記事URLを入力して、記事の叩き台を作成します。</p>
       </header>
-
-      {/*入力フォームエリア*/}
       <section className="panel">
-        {/*送信ボタンを押すとhandleSubmit関数が実行*/}
         <form className="form" onSubmit={handleSubmit}>
           <label className="field">
             {/*キーワード入力欄:*/}
@@ -343,95 +335,59 @@ keywordの中身が更新され、入力欄に文字が表示される仕組み
           </label>
 
           <label className="field">
-          {/*タイトル入力欄:*/}
             <span>タイトル *</span>
             <input
               type="text"
               value={title}
               placeholder="例: AIによる記事コンテンツ作成"
-              /*必須項目（required）のテキスト入力*/
               required
-              /*titleという変数（ステート）が更新*/
               onChange={(event) => setTitle(event.target.value)}
             />
           </label>
 
           <label className="field">
-          {/*H2:見出し１入力欄:*/}
             <span>H2:見出し１ *</span>
             <input
               type="text"
-              value={heading_h2}
+              value={heading_h2_first}
               placeholder="例: AIで記事を作成してみよう"
-              /*必須項目（required）のテキスト入力*/
               required
-              /*heading_h2という変数（ステート）が更新*/
-              onChange={(event) => setHeading_h2(event.target.value)}
+              onChange={(event) => setHeading_h2_first(event.target.value)}
             />
           </label>
 
           <label className="field">
-          {/*H3:見出し１入力欄:*/}
             <span>H3:見出し１ *</span>
             <input
               type="text"
-              value={heading_h2}
+              value={heading_h3_first}
               placeholder="例: AIで記事を作成してみよう"
-              /*必須項目（required）のテキスト入力*/
               required
-              /*heading_h2という変数（ステート）が更新*/
-              onChange={(event) => setHeading_h2(event.target.value)}
+              onChange={(event) => setHeading_h3_first(event.target.value)}
             />
           </label>
 
           <label className="field">
-          {/*H3:見出し2入力欄:*/}
             <span>H3:見出し2 *</span>
             <input
               type="text"
-              value={heading_h2}
+              value={heading_h3_second}
               placeholder="例: AIで記事を作成してみよう"
-              /*必須項目（required）のテキスト入力*/
               required
-              /*heading_h2という変数（ステート）が更新*/
-              onChange={(event) => setHeading_h2(event.target.value)}
+              onChange={(event) => setHeading_h3_second(event.target.value)}
             />
           </label>
 
           <label className="field">
-          {/*H3:見出し3入力欄:*/}
             <span>H3:見出し3 *</span>
             <input
               type="text"
-              value={heading_h2}
+              value={heading_h3_third}
               placeholder="例: AIで記事を作成してみよう"
-              /*必須項目（required）のテキスト入力*/
               required
-              /*heading_h2という変数（ステート）が更新*/
-              onChange={(event) => setHeading_h2(event.target.value)}
+              onChange={(event) => setHeading_h3_third(event.target.value)}
             />
           </label>
-
-          {/*<div className="pixta-search-section">
-            <button
-              type="button"
-              onClick={handlePixtaSearch}
-              disabled={pixtaLoading || !keyword}
-              className="pixta-search-button"
-            >
-              {pixtaLoading ? '検索中...' : '🖼️ PIXTA画像を検索'}
-            </button>
-          </div>
-
-          <label className="field checkbox-field">
-            <input
-              type="checkbox"
-              checked={searchPIXTA}
-              onChange={(event) => setSearchPIXTA(event.target.checked)}
-            />
-            <span>PIXTA画像も検索する（記事生成時）</span>
-          </label>*/}
-          {/*競合記事URL入力欄*/}
           {competitorUrls.map((value, index) => (
             <label className="field" key={`competitor-${index}`}>
               <span>{`競合記事URL ${index + 1}`}</span>
@@ -445,77 +401,20 @@ keywordの中身が更新され、入力欄に文字が表示される仕組み
             </label>
           ))}
 
-
-
           <div className="actions">
-            {/*ォームの送信処理（記事生成APIへのリクエスト）を実行*/}
-            <button type="submit" /*disabled={isLoading}*/>
-              {/*isLoading ? '生成中...' : */'記事を生成'}
+            <button type="submit">
             </button>
-            {/*「リセット」ボタン:handleReset関数を呼び出し、入力内容や表示結果を初期状態に戻し。*/}
             <button
               type="button"
               className="secondary"
               onClick={handleReset}
-              /*disabled={isLoading}*/
             >
               リセット
             </button>
           </div>
         </form>
-        {/*エラー表示 ({error && ...})*/}
         {error && <p className="error">{error}</p>}
-      </section>
-
-      {/*{pixtaError && (
-        <section className="panel">
-          <p className="error">{pixtaError}</p>
-        </section>
-      )}
-
-      {pixtaResults && (
-        <section className="panel">
-          <h2>PIXTA検索結果</h2>
-          <div className="generated-block pixta-results-highlight">
-            <h3>🖼️ PIXTA検索結果</h3>
-            <p className="note">検索結果: {pixtaResults.PIXTAimages?.length || 0}件</p>
-
-            <div className="pixta-actions">
-              {pixtaResults.PIXTAimages && pixtaResults.PIXTAimages.length > 0 && (
-                <button
-                  type="button"
-                  onClick={() => {
-                    setModalTab('images');
-                    setShowImageModal(true);
-                  }}
-                  className="pixta-button-primary"
-                >
-                  📸 画像一覧を表示 ({pixtaResults.PIXTAimages.length}件)
-                </button>
-              )}
-
-              {pixtaResults.screenshot && (
-                <button
-                  type="button"
-                  onClick={() => {
-                    setModalTab('screenshot');
-                    setShowImageModal(true);
-                  }}
-                  className="secondary"
-                >
-                  🔍 スクリーンショットを見る
-                </button>
-              )}
-            </div>
-          </div>
-        </section>
-      )}
-      */}
-      {/*-----------記事画面フロント部分------------*/}
-
-      {/*-------------生成記事表示箇所(serverからの戻り後処理)------------*/}
-      {/*AIによって生成された記事データを画面に表示するためのUI部分*/}
-      {/*articleというデータが存在する場合にのみ表示されるセクション（<section>）の中身を定義*/}
+      </section>      
       {article && (
         <section className="panel">
           <h2>記事生成結果</h2>
@@ -524,18 +423,11 @@ keywordの中身が更新され、入力欄に文字が表示される仕組み
               type="button"
               className="secondary"
               onClick={handleClearOutput}
-              /*disabled={isLoading}*/
             >
               クリア
             </button>
-            {/*クリアボタン:「クリア」ボタンを配置。クリックするとhandleClearOutput関数が実行され、表示結果をリセット（消去）*/}
           </div>
 
-          {/*エラー・警告の表示*/}
-          {/*スクレイピング失敗の通知:
-            もし article.warnings（警告リスト）にデータが含まれていれば、
-            警告エリアを表示。
-            「一部のURLでスクレイピングに失敗しました」というメッセージと共に、取得できなかったURLとエラー詳細をリスト表示。*/}
           {article.warnings?.length > 0 && (
             <div className="warning">
               <strong>一部のURLでスクレイピングに失敗しました。</strong>
@@ -555,16 +447,9 @@ keywordの中身が更新され、入力欄に文字が表示される仕組み
             </div>
           )}
 
-          {/*アウトラインの表示*/}
-          {renderOutline()}
-          {/*{renderOutline()} を呼び出して、記事の構成案（目次のような階層構造）を表示*/}
-
-          {hasStructuredArticle ? (
-          /*パターンA：構成が整った記事がある場合 (hasStructuredArticle)*/
-          /*導入・本文・まとめが揃っている場合に表示*/
+          {hasStructuredArticle && (
             <div className="generated-article">
               {displayTitle && (
-              /*タイトル: 記事タイトルを表示*/
                 <div className="generated-block">
                   <h3>タイトル</h3>
                   <p className="generated-title">{displayTitle}</p>
@@ -572,7 +457,6 @@ keywordの中身が更新され、入力欄に文字が表示される仕組み
               )}
 
               {introduction && (
-              /*導入文:introductionがあれば、renderParagraphs関数を使って段落ごとに整形して表示*/
                 <div className="generated-block">
                   <h3>導入文</h3>
                   <div className="generated-text">
@@ -581,137 +465,40 @@ keywordの中身が更新され、入力欄に文字が表示される仕組み
                 </div>
               )}
 
-              {structuredArticle.sections?.map((section, index) => ( //変更２：?.をつけることで、sectionsがundefinedの場合は何もしない（エラーにならない）ようになる
-              /*本文セクション:sections配列をループし、章ごとに表示*/
-                <div className="generated-block section-block" key={`section-${index}`}>
-                  <h3>{section?.h2}</h3>
-                  {/*大見出し (H2) とその本文*/}
-                  <div className="generated-text">
-                    {renderParagraphs(section?.content || '', `section-${index}`)}
-                  </div>
-                  {Array.isArray(section?.subsections) &&
-                    section.subsections.map((sub, subIndex) => (
-                      <div className="generated-subsection" key={`sub-${index}-${subIndex}`}>
-                        <h4>{sub?.h3}</h4>
-                        {/*小見出し(H3)がある場合は、さらにその下に小見出しと本文を表示。*/}
-                        <div className="generated-text">
-                          {renderParagraphs(sub?.content || '', `sub-${index}-${subIndex}`)}
-                        </div>
-                      </div>
-                    ))}
-                </div>
-              ))}
+              <div className="generated-block section-block">
+                <h3>{structuredArticle.h2}</h3>
 
-              {summary && (
-                /*まとめ: summary があれば、最後に表示*/
-                <div className="generated-block">
-                  <h3>まとめ</h3>
-                  <div className="generated-text">
-                    {renderParagraphs(summary, 'summary')}
+                {structuredArticle.h3_first && (
+                  <div className="generated-subsection">
+                    <h4>{structuredArticle.h3_first}</h4>
+                    <div className="generated-text">
+                      {renderParagraphs(structuredArticle.h3_first_content, 'h3-1')}
+                    </div>
                   </div>
-                </div>
-              )}
-            </div>
-          ) : hasStructuredHeadings ? (
-          /*パターンB：見出しリストのみの場合 (hasStructuredHeadings)*/
-          /*本文がなく、見出しのリストだけがある場合の簡易表示モード*/
-            <article className="article">
-              <h3>{displayTitle}</h3>
-              <div className="article-content">
-                {article.headings?.map((heading, index) => (
-                /*article.headings 配列をループし、見出しレベル（H2かそれ以外か）に応じてタグを使い分けてリスト表示*/
-                  <div className={`section ${heading.level}`} key={`${heading.text}-${index}`}>
-                    {heading.level === 'h2' ? (
-                      <h4>{heading.text}</h4>
-                    ) : (
-                      <h5>{heading.text}</h5>
-                    )}
-                    {heading.body && <p>{heading.body}</p>}
+                )}
+
+                {structuredArticle.h3_second && (
+                  <div className="generated-subsection">
+                    <h4>{structuredArticle.h3_second}</h4>
+                    <div className="generated-text">
+                      {renderParagraphs(structuredArticle.h3_second_content, 'h3-2')}
+                    </div>
                   </div>
-                ))}
+                )}
+
+                {structuredArticle.h3_third && (
+                  <div className="generated-subsection">
+                    <h4>{structuredArticle.h3_third}</h4>
+                    <div className="generated-text">
+                      {renderParagraphs(structuredArticle.h3_third_content, 'h3-3')}
+                    </div>
+                  </div>
+                )}
               </div>
-            </article>
-          ) : displayTitle ? (
-            /*パターンC：それ以外*/
-            /*タイトルだけがある場合はタイトルのみ表示。*/
-            <div className="generated-block">
-              <h3>タイトル</h3>
-              <p className="generated-title">{displayTitle}</p>
             </div>
-          ) : (
-            /*タイトルすらない場合は「記事タイトルを取得できませんでした。」というメッセージを表示*/
-            <p className="note">記事タイトルを取得できませんでした。</p>
           )}
         </section>
       )}
-      {/*-------------生成記事表示箇所------------*/}
-
-      {/*{showImageModal && pixtaResults && (
-        <div className="modal-overlay" onClick={() => setShowImageModal(false)}>
-          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
-            <div className="modal-header">
-              <h3>PIXTA検索結果</h3>
-              <button
-                className="modal-close"
-                onClick={() => setShowImageModal(false)}
-              >
-                ✕
-              </button>
-            </div>
-
-            <div className="modal-tabs">
-              <button
-                className={`modal-tab ${modalTab === 'images' ? 'active' : ''}`}
-                onClick={() => setModalTab('images')}
-              >
-                📸 画像一覧 ({pixtaResults.PIXTAimages?.length || 0})
-              </button>
-              {pixtaResults.screenshot && (
-                <button
-                  className={`modal-tab ${modalTab === 'screenshot' ? 'active' : ''}`}
-                  onClick={() => setModalTab('screenshot')}
-                >
-                  🔍 スクリーンショット
-                </button>
-              )}
-            </div>
-
-            <div className="modal-body">
-              {modalTab === 'images' ? (
-                <div className="image-grid">
-                  {pixtaResults.PIXTAimages.map((image, index) => (
-                    <div key={`${image.materialNo}-${index}`} className="image-card">
-                      <img
-                        src={image.srcUrl}
-                        alt={`素材番号: ${image.materialNo}`}
-                        loading="lazy"
-                      />
-                      <div className="image-info">
-                        <p><strong>素材番号:</strong> {image.materialNo}</p>
-                        <a
-                          href={`https://pixta.jp/photo/${image.materialNo}`}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                        >
-                          PIXTAで見る
-                        </a>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <div className="screenshot-viewer">
-                  <img
-                    src={`/${pixtaResults.screenshot}`}
-                    alt="PIXTA検索結果のスクリーンショット"
-                    style={{ width: '100%', display: 'block' }}
-                  />
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-      )}*/}
     </div>
   );
 }
