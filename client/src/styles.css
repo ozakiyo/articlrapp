@@ -76,6 +76,27 @@ header p {
   color: #1f2933;
 }
 
+.field-hint {
+  margin: 0 0 0.25rem;
+  font-size: 0.875rem;
+  color: #6b7280;
+  line-height: 1.55;
+}
+
+.field-hint + .nested-field {
+  margin-top: 0.35rem;
+}
+
+.field .nested-field + .nested-field {
+  margin-top: 0.75rem;
+}
+
+.field-sub {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: #374151;
+}
+
 input[type='text'],
 input[type='url'] {
   border: 1px solid #d2d6dc;

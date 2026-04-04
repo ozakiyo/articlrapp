@@ -6,8 +6,10 @@ export default defineConfig({
   server: {
     proxy: {
       '/api': {
-        target: 'http://localhost:3001',
+        target: 'http://127.0.0.1:3050',
         changeOrigin: true,
+        // Playwright フォールバックなど長時間の API 用（ミリ秒）
+        timeout: 180000,
       },
     },
   },

@@ -1,4 +1,35 @@
 /*
+Notion 最終
+バックエンド→AI or 作成アプリ　→HTTP->HTTPS
+https://www.notion.so/HTTP-HTTPS-2e256effa6dc8073853bf62d5673997b
+
+Notion 初期
+https://www.notion.so/AI-2a956effa6dc805080a7ea2c1f55e698
+
+サーバー　Conoha
+https://manage.conoha.jp/Dashboard
+
+本番URL 動作確認OK
+https://articleapp.duckdns.org/
+
+【ローカル開発】
+Macintosh HD/kiyoshiozawa/articleapp/
+[サーバー]
+kiyoshiozawa@MacBook-Air-5 articleapp % cd server
+kiyoshiozawa@MacBook-Air-5 server % npm run dev
+Server ready on http://localhost:3001
+ozakiyo
+kiyo0276
+
+[クライアント]
+kiyoshiozawa@MacBook-Air-5 client % npm run dev
+http://localhost:5173/
+
+エラーは出るが、スクレイピングは成功しているので、一旦OKとする。
+
+ローカルでOKならば、本番への移行はまだ。
+
+
 app.js バックエンド処理
 [Express＋スクレイピング＋生成AIを組み合わせた構成]
 ①認証付きでAPIを提供
@@ -14,6 +45,17 @@ app.js バックエンド処理
 Playwright + HTTPの二重スクレイピング
 JSON厳格指定
 
+gemini API無料枠制限：
+1.リクエスト回数・速度の制限
+  15RPM (Requests Per Minute)
+  1分間に15回までしかリクエストできない。
+  これを超えると429Too Many Requestsエラーが返る。
+  短時間に連続してテストを行うと、すぐにこの上限に達する。
+  1,500 RPD (Requests Per Day)
+  1日に1,500回までリクエスト可能。
+2. トークン量の制限
+  1,000,000 TPM (Tokens Per Minute)
+  1分間に処理できるトークン（文字数換算で約50万〜100万文字程度）の上限です。
 */
 
 /*---①サーバーの基本設定と認証---*/
@@ -25,7 +67,7 @@ const path = require('path');
 const { chromium } = require('playwright'); //ブラウザを自動操作してスクレイピング
 const cheerio = require('cheerio'); //HTMLをパース(jQuery的)
 const iconv = require('iconv-lite'); //文字コード変換(Shift_JIS対策)
-const basicAuth = require('express-basic-auth'); //ベーシック認証
+const basicAuth = require('express-basic-auth');
 
 // Load .env file from the server directory
 //.envの読み込み　本番運用では必須のセキュリティ対策
@@ -39,13 +81,52 @@ dotenv.config({ path: path.join(__dirname, '.env') });
 //Webサーバー本体となり、これに対して「このURLにアクセスが来たらこう動いて」といった様々な命令を追加していくことになる。
 const app = express(); 
 //サーバーがどの「窓口」でリクエストを待ち受けるかを決めています。この窓口をポート番号と呼びます。
-const PORT = process.env.PORT || 3001;
+const PORT = Number(process.env.PORT) || 3050;
+/** ランキングAPIで返す最大件数（キーワード絞り込み後）。環境変数 RANKING_RESULT_LIMIT で 1〜200 の範囲で変更可 */
+const RANKING_RESULT_LIMIT = Math.min(
+  Math.max(Number(process.env.RANKING_RESULT_LIMIT) || 50, 1),
+  200
+);
+/** ヨドバシ mcol 追加読み込みの最大回数（1回あたり最大20件程度） */
+const YODOBASHI_MCOL_MAX_ROUNDS = 15;
+/** ビックカメラランキング: Playwright での下スクロール回数（遅延読み込み対策） */
+const BICCAMERA_RANKING_SCROLL_ROUNDS = 14;
+/** コジマ ranking.html の取得ページ数（rPage=1…N、重複 href は除外） */
+const KOJIMA_RANKING_PAGE_COUNT = 3;
 //ミドルウェアと呼ばれる「中間処理」を設定
 /*
 フロントエンド（ブラウザ）から送られてくるデータがJSON形式だった場合に、それを正しく解釈してプログラムで扱える形に変換してくれる機能です。
 このアプリケーションでは、フロントエンドのReactから「キーワード」や「URL」がJSON形式で送られてくるため、この設定が不可欠です。これがないと、サーバーは送られてきたJSONデータを正しく受け取ることができません。
 */
 app.use(express.json());
+// ローカル開発: Vite から Express へ直接 fetch（VITE_API_BASE_URL）する場合の CORS
+function isAllowedBrowserDevOrigin(origin) {
+  if (!origin || typeof origin !== 'string') return false;
+  const o = origin.trim();
+  return (
+    /^https?:\/\/localhost(:\d+)?$/i.test(o) ||
+    /^https?:\/\/127\.0\.0\.1(:\d+)?$/i.test(o) ||
+    /^https?:\/\/\[::1\](:\d+)?$/i.test(o) ||
+    /^https?:\/\/192\.168\.\d{1,3}\.\d{1,3}(:\d+)?$/i.test(o) ||
+    /^https?:\/\/10\.\d{1,3}\.\d{1,3}\.\d{1,3}(:\d+)?$/i.test(o)
+  );
+}
+app.use((req, res, next) => {
+  const origin = req.headers.origin;
+  if (origin && isAllowedBrowserDevOrigin(origin)) {
+    res.setHeader('Access-Control-Allow-Origin', origin);
+    res.setHeader('Vary', 'Origin');
+    res.setHeader('Access-Control-Allow-Methods', 'GET,POST,PUT,DELETE,OPTIONS');
+    res.setHeader(
+      'Access-Control-Allow-Headers',
+      'Content-Type, Authorization'
+    );
+  }
+  if (req.method === 'OPTIONS') {
+    return res.sendStatus(204);
+  }
+  next();
+});
 //----Express基本設定----
 
 //フロントエンドのファイルが格納されているpublicフォルダへの絶対パスを作成
@@ -53,21 +134,23 @@ const clientDistPath = path.join(__dirname, 'public');
 //publicフォルダの中にある、Webページの本体であるindex.htmlファイルへの絶対パスを作成
 const clientIndexPath = path.join(clientDistPath, 'index.html');
 
-//---ベーシック認証---
-const basicAuthUser = process.env.BASIC_AUTH_USER || 'admin';
-const basicAuthPass = process.env.BASIC_AUTH_PASSWORD || 'password';
-
-const basicAuthMiddleware = basicAuth({
-  users: {
-    [basicAuthUser]: basicAuthPass
-  },
-  challenge: true,
-  realm: 'ArticlrApp',
-  unauthorizedResponse: () => {
-    return { error: '認証が必要です。' };
-  }
-});
-app.use(basicAuthMiddleware);
+//---ベーシック認証（本番: server/.env に BASIC_AUTH_PASSWORD を設定すると有効）---
+const basicAuthUser = String(process.env.BASIC_AUTH_USER || 'admin').trim();
+const basicAuthPass = String(process.env.BASIC_AUTH_PASSWORD || '').trim();
+if (basicAuthPass) {
+  const basicAuthMiddleware = basicAuth({
+    users: {
+      [basicAuthUser]: basicAuthPass,
+    },
+    challenge: true,
+    realm: 'ArticleApp',
+    unauthorizedResponse: () => ({ error: '認証が必要です。' }),
+  });
+  app.use(basicAuthMiddleware);
+  console.log('🔐 Basic authentication enabled for user:', basicAuthUser);
+} else {
+  console.log('ℹ️ Basic authentication disabled (set BASIC_AUTH_PASSWORD in .env to enable)');
+}
 //---ベーシック認証---
 
 //---React(フロントエンド)の配信---
@@ -109,6 +192,352 @@ async function getGeminiModel() {
   }
   /*2回目以降の呼び出し時: geminiModelには既に準備済みのモデルが入っているので、if文の中はスキップされ、すぐに最後のreturnに進む。*/
   return geminiModel;
+}
+
+function parseJsonFromModelOutput(raw) {
+  if (!raw || typeof raw !== 'string') {
+    throw new Error('モデル出力が空です。');
+  }
+  const cleaned = raw.replace(/```json|```/gi, '').trim();
+  try {
+    return JSON.parse(cleaned);
+  } catch (_) {
+    const start = cleaned.indexOf('{');
+    const end = cleaned.lastIndexOf('}');
+    if (start !== -1 && end !== -1 && end > start) {
+      const sliced = cleaned.slice(start, end + 1);
+      return JSON.parse(sliced);
+    }
+    throw new Error('JSONの抽出に失敗しました。');
+  }
+}
+
+function parseRetryAfterSecondsFromMessage(message = '') {
+  const match = String(message).match(/retry in\s+(\d+(?:\.\d+)?)s/i);
+  if (!match) return null;
+  const value = Number(match[1]);
+  return Number.isFinite(value) ? Math.max(1, Math.ceil(value)) : null;
+}
+
+function isGeminiQuotaExceededError(err) {
+  const message = String(err?.message || '');
+  return (
+    message.includes('[429 Too Many Requests]') ||
+    message.toLowerCase().includes('quota exceeded')
+  );
+}
+
+const ENABLE_AI_RANKING_EXTRACTION =
+  String(process.env.ENABLE_AI_RANKING_EXTRACTION || '').toLowerCase() === 'true';
+
+function normalizeForKeywordMatch(text) {
+  return String(text || '')
+    .toLowerCase()
+    .replace(/×/g, 'x')
+    .replace(/\s+/g, '')
+    .trim();
+}
+
+function parseInchThresholdFromKeyword(keyword) {
+  const normalized = normalizeForKeywordMatch(keyword);
+  const match = normalized.match(/(\d+(?:\.\d+)?)インチ以上/);
+  if (!match) return null;
+  const value = Number(match[1]);
+  return Number.isFinite(value) ? value : null;
+}
+
+function includes4kSignal(text) {
+  const normalized = normalizeForKeywordMatch(text);
+  return (
+    normalized.includes('4k') ||
+    normalized.includes('3840x2160') ||
+    normalized.includes('uhd')
+  );
+}
+
+function extractMaxInchFromText(text) {
+  const normalized = normalizeForKeywordMatch(text).replace(/ｃ/g, 'c');
+  const regex = /(\d+(?:\.\d+)?)c?インチ/g;
+  let max = null;
+  let m;
+  while ((m = regex.exec(normalized)) !== null) {
+    const value = Number(m[1]);
+    if (!Number.isFinite(value)) continue;
+    if (max === null || value > max) {
+      max = value;
+    }
+  }
+  return max;
+}
+
+function keywordMatchesBlock(keyword, blockText) {
+  const normalizedKeyword = normalizeForKeywordMatch(keyword);
+  const normalizedBlock = normalizeForKeywordMatch(blockText);
+
+  if (!normalizedKeyword) return true;
+  if (normalizedKeyword === '4k') {
+    return includes4kSignal(normalizedBlock);
+  }
+
+  const inchThreshold = parseInchThresholdFromKeyword(normalizedKeyword);
+  if (inchThreshold !== null) {
+    const maxInch = extractMaxInchFromText(normalizedBlock);
+    return maxInch !== null && maxInch >= inchThreshold;
+  }
+
+  return normalizedBlock.includes(normalizedKeyword);
+}
+
+function isResolutionLikeToken(token) {
+  const t = String(token || '').replace(/\s/g, '');
+  return /^\d{3,5}[x×]\d{3,5}$/i.test(t);
+}
+
+/**
+ * 価格.com 商品一覧では innerText が「商品名・型番 … N位 …」の順になりやすい。
+ * メーカー名の直後〜 [ や （ や ¥ までを型式候補とする。
+ */
+function extractLikelyModelFromBlock(block, manufacturer) {
+  // 価格.comの一覧は「¥999」等がメーカーより前に出ることがあり、
+  // 先に「¥」で split するとメーカー/型式が落ちるため、ここでは切り捨てない。
+  const head = String(block || '').trim();
+  if (!manufacturer) return null;
+  const brandIndices = [];
+  let idx = head.indexOf(manufacturer);
+  while (idx >= 0) {
+    brandIndices.push(idx);
+    idx = head.indexOf(manufacturer, idx + manufacturer.length);
+  }
+  if (brandIndices.length === 0) return null;
+
+  // 型番コード（英数字＋記号の塊）はメーカー名の近傍に出やすい。
+  // メーカー名が複数回出る可能性があるため、全出現位置を試す。
+  for (let bi = brandIndices.length - 1; bi >= 0; bi--) {
+    const brandIdx = brandIndices[bi];
+    const near = head.slice(
+      Math.max(0, brandIdx - 600),
+      Math.min(head.length, brandIdx + 2500)
+    );
+    const nearTokens =
+      near.match(/[A-Za-z0-9][A-Za-z0-9\-_/+.]{2,}/g) || [];
+    for (const token of nearTokens) {
+      if (token.length < 2) continue;
+      if (!/[A-Za-z]/.test(token) || !/\d/.test(token)) continue;
+      if (isResolutionLikeToken(token)) continue;
+      if (token.toLowerCase().includes(String(manufacturer).toLowerCase()))
+        continue;
+      if (/(gpt|itemlist|728x90|div-)/i.test(token)) continue;
+      if (/(IPS|VA|TN|OLED|HDR|HDCP|Hz|kHz|cd\/m2|WQHD|4K|UHD)/i.test(token))
+        continue;
+      if (!/^[A-Za-z0-9][A-Za-z0-9\-_/+.]{1,60}$/.test(token)) continue;
+      return token;
+    }
+  }
+
+  // 以降の処理（メーカー直後からの切り出し）では、先頭の出現を起点にする
+  const brandIdx = brandIndices[0];
+
+  // メーカー名の右隣（表示名）をなるべくそのまま抜く
+  // 例: "GigaCrysta S KH-GDU271JLAQD [27インチ ブラック]"
+  let rest = head.slice(brandIdx + manufacturer.length);
+  rest = rest.replace(/^[\s　:：\-–—・|｜]+/, '').trim();
+  const stopMarkers = [
+    '¥',
+    '￥',
+    'Amazon',
+    '楽天',
+    'Yahoo',
+    'レビュー',
+    '口コミ',
+    '気に入り',
+    '登録',
+    '比較',
+    'スペック',
+  ];
+  let stopAt = rest.length;
+  for (const m of stopMarkers) {
+    const p = rest.indexOf(m);
+    if (p >= 0 && p < stopAt) stopAt = p;
+  }
+  const specStop = rest.search(
+    /モニタサイズ\s*:|解像度\s*\(|パネル種類\s*:|画面種類\s*:|リフレッシュレート/i
+  );
+  if (specStop >= 0 && specStop < stopAt) stopAt = specStop;
+
+  const segment = rest.slice(0, stopAt).trim();
+  if (!segment) return null;
+
+  // bracket まで含めた「商品名+型番」文字列を優先して返す（英字/数字が無い場合は除外）
+  if (segment.length >= 2 && segment.length <= 180 && (/[A-Za-z]/.test(segment) || /\d/.test(segment))) {
+    return segment;
+  }
+
+  const words = segment.split(/\s+/).filter(Boolean);
+  const filtered = words.filter(
+    (w) =>
+      !isResolutionLikeToken(w) &&
+      !/^\d+(\.\d+)?$/.test(w) &&
+      !/^\d+(\.\d+)?(hz|インチ)$/i.test(w)
+  );
+  if (filtered.length === 0) return null;
+
+  // "3840x2160" のような解像度トークンを除外した上で、
+  // まずは型式っぽい「1トークン」を優先して返す（途中で解像度が混ざっても落ちにくくする）。
+  for (const token of filtered) {
+    if (token.length < 2) continue;
+    if (!/[A-Za-z]/.test(token) || !/\d/.test(token)) continue;
+    if (!/^[A-Za-z0-9][A-Za-z0-9\-_/+.]{1,90}$/.test(token)) continue;
+    return token;
+  }
+
+  // トークン単位で見つからない場合だけ、残った語を連結して候補にする
+  let candidate = filtered.join(' ').trim();
+  if (!candidate || isResolutionLikeToken(candidate)) return null;
+  // 仕様文（モニタサイズ/解像度など）だけで構成されているケースを弾く
+  // （型式コードは英数字を含むことが多いので、英字/数字が無い候補は返さない）
+  if (!/[A-Za-z]/.test(candidate) || !/\d/.test(candidate)) return null;
+  if (/モニタサイズ|解像度|パネル種類|HDR|IPS|VA|TN|OLED/.test(candidate)) return null;
+  if (candidate.length > 120) candidate = candidate.slice(0, 120).trim();
+  return candidate.length >= 2 ? candidate : null;
+}
+
+function findManufacturerInBlock(headBlock, knownManufacturers) {
+  const sorted = [...knownManufacturers].sort((a, b) => b.length - a.length);
+  let best = null;
+  let bestIdx = Infinity;
+  for (const name of sorted) {
+    const idx = headBlock.indexOf(name);
+    if (idx >= 0 && idx < bestIdx) {
+      bestIdx = idx;
+      best = name;
+    }
+  }
+  return best;
+}
+
+/** ルールベース／ヨドバシHTML解析で共通のメーカー名候補 */
+const KNOWN_MANUFACTURERS_RANKING = [
+  'IODATA',
+  'IO DATA',
+  'DELL',
+  'Dell',
+  'ASUS',
+  'LG',
+  'LGエレクトロニクス',
+  'Acer',
+  'Lenovo',
+  'BenQ',
+  'EIZO',
+  'MSI',
+  'Philips',
+  'PHILIPS',
+  'フィリップス',
+  'JAPANNEXT',
+  'iiyama',
+  'HP',
+  'TVS REGZA',
+  'REGZA',
+  'Titan Army',
+  'Corsair',
+  'MAXZEN',
+  'Pixio',
+  'ViewSonic',
+  'SONY',
+  'Apple',
+  'GIGABYTE',
+  'AOC',
+  'Thermalright',
+  'INNOCN',
+  '富士通',
+  'FUJITSU',
+  'NEC',
+  '日本電気',
+];
+
+function extractRankingByKeywordsRuleBased(pageText, keywords) {
+  const normalizedKeywords = keywords.map((k) => String(k || '').trim()).filter(Boolean);
+  const compactText = String(pageText || '').replace(/\s+/g, ' ').trim();
+
+  const knownManufacturers = KNOWN_MANUFACTURERS_RANKING;
+
+  // N位の出現位置を基準に、順位ごとの周辺テキストを切り出す
+  const rankMarker = /(\d{1,3})\s*位/g;
+  const rankHits = [];
+  let hm;
+  while ((hm = rankMarker.exec(compactText)) !== null) {
+    const r = Number(hm[1]);
+    if (Number.isInteger(r) && r >= 1 && r <= 999) {
+      rankHits.push({ rank: r, start: hm.index, end: hm.index + hm[0].length });
+    }
+  }
+
+  const items = [];
+  const seen = new Set();
+  const seenRanks = new Set();
+
+  for (let i = 0; i < rankHits.length; i++) {
+    const { rank, start } = rankHits[i];
+    const nextStart = i + 1 < rankHits.length ? rankHits[i + 1].start : compactText.length;
+    const rawBlock = compactText.slice(start, nextStart).trim();
+    if (rawBlock.length < 12) continue;
+
+    const keywordMatched =
+      normalizedKeywords.length === 0
+        ? true
+        : normalizedKeywords.every((kw) => keywordMatchesBlock(kw, rawBlock));
+    if (!keywordMatched) continue;
+    if (seenRanks.has(rank)) continue;
+
+    const manufacturer = findManufacturerInBlock(rawBlock, knownManufacturers) || '不明';
+    const model =
+      manufacturer === '不明' ? null : extractLikelyModelFromBlock(rawBlock, manufacturer);
+    const modelSafe = model || '不明';
+    if (keywords.length === 0 && rank <= 2 && modelSafe === '不明') {
+      const mi = manufacturer === '不明' ? -1 : rawBlock.indexOf(manufacturer);
+      console.log('🔎 model-debug', {
+        rank,
+        manufacturer,
+        manufacturerIndex: mi,
+        blockSnippet: rawBlock.slice(Math.max(0, mi - 80), Math.min(rawBlock.length, mi + 420)),
+      });
+    }
+
+    const dedupeKey = `${rank}:${modelSafe}`;
+    if (seen.has(dedupeKey)) continue;
+    seen.add(dedupeKey);
+    seenRanks.add(rank);
+
+    items.push({
+      rank,
+      manufacturer,
+      model: modelSafe,
+      feature:
+        normalizedKeywords.length > 0
+          ? `キーワード一致: ${normalizedKeywords.join(' / ')}`
+          : '順位抽出',
+    });
+  }
+
+  const sorted = items.sort((a, b) => a.rank - b.rank);
+  if (sorted.length === 0 && normalizedKeywords.length === 0) {
+    // キーワードなしで何も返らない場合は、順位だけ返す
+    const ranksUnique = [];
+    const seenRank = new Set();
+    for (const h of rankHits) {
+      if (seenRank.has(h.rank)) continue;
+      seenRank.add(h.rank);
+      ranksUnique.push(h.rank);
+      if (ranksUnique.length >= RANKING_RESULT_LIMIT) break;
+    }
+    return ranksUnique.map((r) => ({
+      rank: r,
+      manufacturer: '不明',
+      model: '不明',
+      feature: '順位抽出',
+    }));
+  }
+
+  return sorted.slice(0, RANKING_RESULT_LIMIT);
 }
 
 /*
@@ -240,9 +669,12 @@ async function scrapeWithHttpClient(url) {
       statusCodes: [403, 408, 425, 429, 500, 502, 503, 504],
       errorCodes: ['ETIMEDOUT', 'ECONNRESET', 'EAI_AGAIN'],
     },
-    http2: true,
+    http2: false,
+    throwHttpErrors: false,
     headers: {
       'user-agent': undefined,
+      'accept-language': 'ja,en-US;q=0.9,en;q=0.8',
+      referer: 'https://www.google.com/',
     },
     headerGeneratorOptions: {
       browsers: [{ name: 'chrome', minVersion: 110 }],
@@ -257,6 +689,10 @@ async function scrapeWithHttpClient(url) {
       : '❌ [Fallback] Fetch failed',
     url
   );
+  if (res.statusCode >= 400) {
+    throw new Error(`HTTP fallback failed with status ${res.statusCode}`);
+  }
+
   const html = decodeHtml(res.body, res.headers);
   const $ = cheerio.load(html);
   const text = $('body').text().replace(/\s+/g, ' ').trim();
@@ -265,6 +701,783 @@ async function scrapeWithHttpClient(url) {
     throw new Error('本文を取得できませんでした。');
   }
   return text;
+}
+
+async function fetchHtmlWithHttpClient(url) {
+  console.log('🌐 [HTML] Fetching via HTTP client:', url);
+  const gotScraping = await getGotScraping();
+  const res = await gotScraping({
+    url,
+    timeout: { request: 10000 },
+    retry: {
+      limit: 2,
+      statusCodes: [403, 408, 425, 429, 500, 502, 503, 504],
+      errorCodes: ['ETIMEDOUT', 'ECONNRESET', 'EAI_AGAIN'],
+    },
+    http2: false,
+    throwHttpErrors: false,
+    headers: {
+      'user-agent': undefined,
+      'accept-language': 'ja,en-US;q=0.9,en;q=0.8',
+      referer: 'https://www.google.com/',
+    },
+    headerGeneratorOptions: {
+      browsers: [{ name: 'chrome', minVersion: 110 }],
+      devices: ['desktop'],
+      operatingSystems: ['windows', 'linux', 'macos'],
+    },
+    responseType: 'buffer',
+  });
+  if (res.statusCode >= 400) {
+    throw new Error(`HTTP html fetch failed with status ${res.statusCode}`);
+  }
+  return decodeHtml(res.body, res.headers);
+}
+
+/**
+ * 価格.com itemlist の pdf_pg を除いたベースURL（他クエリは維持）
+ */
+function kakakuItemlistPagesBaseUrl(urlStr) {
+  const u = new URL(urlStr);
+  u.searchParams.delete('pdf_pg');
+  return u.href;
+}
+
+/**
+ * 1-based ページ番号。1ページ目は pdf_pg なし（サイト既定）
+ */
+function kakakuItemlistPageUrl(baseUrlStr, pageNum) {
+  const u = new URL(baseUrlStr);
+  if (pageNum <= 1) {
+    u.searchParams.delete('pdf_pg');
+  } else {
+    u.searchParams.set('pdf_pg', String(pageNum));
+  }
+  return u.href;
+}
+
+/**
+ * 価格.com 商品一覧（itemlist.aspx）: 1商品は tr.tr-border が複数行にまたがる。
+ * 解像度などは「商品名行」の次の tr（一覧表のセル）に載るため、a タグ順で tr を取ると行がずれ blockText に入らないことがある。
+ * 商品名は a.ckitanker、順位は td.swrank2（人気売れ筋）の「N位」を使う。
+ * @param {Set<string>} [seenHref] 複数ページマージ時は同一 href を跨いで除外
+ */
+function extractKakakuItemlistRowsFromHtml(html, seenHref) {
+  const hrefSeen = seenHref || new Set();
+  const $ = cheerio.load(String(html || ''));
+
+  function collectKakakuTrBorderBlockText(titleRow) {
+    const parts = [];
+    let cur = titleRow;
+    let isFirst = true;
+    while (cur && cur.length) {
+      parts.push(cur.text());
+      const next = cur.next('tr');
+      if (!next.length) break;
+      // 次の商品ブロック先頭（チェックボックス列つき）は同一商品に含めない
+      if (!isFirst && next.find('input[name="ChkProductID"]').length) break;
+      isFirst = false;
+      cur = $(next);
+    }
+    return parts.join(' ').replace(/\s+/g, ' ').trim();
+  }
+
+  function kakakuListRankFromDetailRow($detailRow) {
+    let t = $detailRow.find('td.swrank2').first().text();
+    if (!String(t).replace(/\s/g, '')) {
+      t = $detailRow.find('td.swrank1').first().text();
+    }
+    const m = String(t).replace(/\s+/g, '').match(/(\d+)位/);
+    return m ? parseInt(m[1], 10) : null;
+  }
+
+  const knownManufacturers = [
+    'IODATA',
+    'IO DATA',
+    'Dell',
+    'DELL',
+    'ASUS',
+    'LG',
+    'LGエレクトロニクス',
+    'フィリップス',
+    'Philips',
+    'JAPANNEXT',
+    'Titan Army',
+    'EIZO',
+    'MSI',
+    'BenQ',
+    'Acer',
+    'Lenovo',
+    'HP',
+  ];
+
+  const productTexts = [];
+
+  $('tr.tr-border').each((_, tr) => {
+    const $tr = $(tr);
+    if ($tr.hasClass('theadItemRow')) return;
+    const link = $tr.find('a.ckitanker[href*="kakaku.com/item/K"]').first();
+    if (!link.length) return;
+    const href = link.attr('href') || '';
+    const titleText = link.text().replace(/\s+/g, ' ').trim();
+    if (!href || !titleText) return;
+    if (hrefSeen.has(href)) return;
+    hrefSeen.add(href);
+
+    const blockText = collectKakakuTrBorderBlockText($tr);
+    const detailRow = $tr.next('tr');
+    let listRank = null;
+    if (detailRow.length && detailRow.hasClass('tr-border')) {
+      listRank = kakakuListRankFromDetailRow(detailRow);
+    }
+    productTexts.push({ href, titleText, blockText, listRank });
+  });
+
+  // フォールバック: ckitanker が無いレイアウトのみ従来の item リンク走査
+  if (productTexts.length === 0) {
+    $('a[href*="kakaku.com/item/K"]').each((_, a) => {
+      const href = $(a).attr('href') || '';
+      const text = $(a).text().replace(/\s+/g, ' ').trim();
+      if (!href || !text) return;
+      if (text.startsWith('¥') || text.startsWith('￥')) return;
+      if (hrefSeen.has(href)) return;
+      hrefSeen.add(href);
+      const tr = $(a).closest('tr');
+      const blockText = collectKakakuTrBorderBlockText(tr);
+      productTexts.push({ href, titleText: text, blockText, listRank: null });
+    });
+  }
+
+  return productTexts.map(({ href, titleText, blockText, listRank }, idx) => {
+    const manufacturer = findManufacturerInBlock(titleText, knownManufacturers) || '不明';
+    const model =
+      manufacturer === '不明'
+        ? titleText
+        : titleText.replace(manufacturer, '').replace(/^[\s　]+/, '').trim();
+    return {
+      rank: listRank != null ? listRank : idx + 1,
+      manufacturer,
+      model: model || '不明',
+      href,
+      _text: blockText || titleText,
+    };
+  });
+}
+
+function finalizeKakakuItemlistRows(allRanked, keywords) {
+  const normalizedKeywords = keywords.map((k) => String(k || '').trim()).filter(Boolean);
+  const filtered =
+    normalizedKeywords.length === 0
+      ? allRanked
+      : allRanked.filter((row) =>
+          normalizedKeywords.every((kw) => keywordMatchesBlock(kw, row._text))
+        );
+
+  return filtered
+    .sort((a, b) => a.rank - b.rank || String(a.href).localeCompare(String(b.href)))
+    .slice(0, RANKING_RESULT_LIMIT)
+    .map(({ rank, manufacturer, model }) => ({
+      rank,
+      manufacturer,
+      model,
+      feature:
+        normalizedKeywords.length > 0
+          ? `キーワード一致: ${normalizedKeywords.join(' / ')}`
+          : '順位抽出',
+    }));
+}
+
+function extractKakakuItemlistFromHtml(html, keywords) {
+  const rows = extractKakakuItemlistRowsFromHtml(html, new Set());
+  return finalizeKakakuItemlistRows(rows, keywords);
+}
+
+/**
+ * ヨドバシ一覧の商品画像 alt は「スペック/…/色 型番」のように型番が末尾に付くことが多い。
+ */
+function extractYodobashiModelFromImgAlt(imgAlt) {
+  if (!imgAlt) return null;
+  const s = String(imgAlt).trim();
+  const lastSpace = s.lastIndexOf(' ');
+  const tail = lastSpace >= 0 ? s.slice(lastSpace + 1).trim() : '';
+  if (
+    tail.length >= 4 &&
+    tail.length <= 120 &&
+    /[A-Za-z]/.test(tail) &&
+    /\d/.test(tail) &&
+    !isResolutionLikeToken(tail)
+  ) {
+    const cleaned = tail.replace(/[／]+$/, '').trim();
+    if (!/^(\d{1,2}(\.\d)?)(型|インチ)$/i.test(cleaned)) return cleaned;
+  }
+  const segs = s.split('/').map((x) => x.trim()).filter(Boolean);
+  for (let i = segs.length - 1; i >= 0; i--) {
+    const seg = segs[i];
+    if (seg.length < 4 || seg.length > 120) continue;
+    if (!/[A-Za-z]/.test(seg) || !/\d/.test(seg)) continue;
+    if (isResolutionLikeToken(seg)) continue;
+    if (/^[0-9]+(\.[0-9]+)?(型|インチ|Hz)$/i.test(seg)) continue;
+    return seg;
+  }
+  return null;
+}
+
+/**
+ * ヨドバシ.com カテゴリ人気ランキング（…/ranking/）の HTML から行を抽出する。
+ * .listContentsLine.rnkngBrdrT.js_productBlock 内の順位・商品リンク・一覧テキストを使う。
+ */
+function extractYodobashiRankingRowsFromHtml(html, seenHref) {
+  const hrefSeen = seenHref || new Set();
+  const $ = cheerio.load(String(html || ''));
+  const knownManufacturers = KNOWN_MANUFACTURERS_RANKING;
+
+  const rows = [];
+  $('.listContentsLine.rnkngBrdrT.js_productBlock').each((_, block) => {
+    const $b = $(block);
+    let $box = $b.find('.sectionListRow.itemListLine.js_productBox').first();
+    if (!$box.length) {
+      $box = $b.find('.sectionListRow.itemListLine').first();
+    }
+    if (!$box.length) return;
+
+    const rankText = $b.find('span.rankNum.js_ranking').first().text().trim();
+    const rank = parseInt(rankText, 10);
+    if (!Number.isFinite(rank) || rank < 1) return;
+
+    const $prodLink = $b.find('a[href^="/product/"]').first();
+    const href = $prodLink.attr('href') || '';
+    if (!href || hrefSeen.has(href)) return;
+    hrefSeen.add(href);
+
+    const imgAlt = $b.find('img[alt]').first().attr('alt') || '';
+    let titleText = '';
+    let maxLen = 0;
+    $b.find('a').each((_, a) => {
+      const t = $(a).text().replace(/\s+/g, ' ').trim();
+      if (!t || t === '在庫のある店舗' || t.length < 12) return;
+      if (t.length > maxLen) {
+        maxLen = t.length;
+        titleText = t;
+      }
+    });
+    if (!titleText) titleText = imgAlt;
+
+    const blockText = $box.text().replace(/\s+/g, ' ').trim();
+    const _text = [blockText, imgAlt].filter(Boolean).join(' ');
+
+    const manufacturer =
+      findManufacturerInBlock(`${titleText} ${blockText}`, knownManufacturers) || '不明';
+
+    let model;
+    if (manufacturer === '不明') {
+      model =
+        extractYodobashiModelFromImgAlt(imgAlt) || titleText || imgAlt || '不明';
+    } else {
+      model =
+        extractYodobashiModelFromImgAlt(imgAlt) ||
+        extractLikelyModelFromBlock(_text, manufacturer);
+      if (!model) {
+        model = titleText.replace(manufacturer, '').replace(/^[\s　]+/, '').trim();
+      }
+      if (!model) model = imgAlt;
+      if (!model) model = '不明';
+    }
+
+    rows.push({
+      rank,
+      manufacturer,
+      model: String(model).replace(/\s+/g, ' ').trim().slice(0, 200),
+      href,
+      _text,
+    });
+  });
+
+  return rows;
+}
+
+/**
+ * 1ページ目 HTML から mcol 用パラメータを取る（サイトの無限スクロールと同じ）
+ */
+function parseYodobashiMcolParamsFromFirstHtml(html) {
+  const $ = cheerio.load(String(html || ''));
+  const scroll = $('.js_rankingScrollLoad').first();
+  if (!scroll.length) return null;
+  const cateCd = scroll.attr('data-uniquecategorycode');
+  const limit = parseInt(scroll.attr('data-limit') || '20', 10) || 20;
+  const lastBlock = $('.js_mainCateRankContainer .js_productBlock').last();
+  if (!lastBlock.length) return null;
+  const offset = lastBlock.attr('data-order');
+  const lastShowOrder = lastBlock.find('.js_ranking').first().text().trim();
+  if (!cateCd || offset == null || String(offset).trim() === '' || !lastShowOrder) {
+    return null;
+  }
+  return { cateCd, limit, offset: String(offset), lastShowOrder };
+}
+
+async function fetchYodobashiMcolJson(cateCd, limit, offset, lastShowOrder, refererUrl) {
+  const gotScraping = await getGotScraping();
+  const qs = new URLSearchParams({
+    cateCd,
+    limit: String(limit),
+    offset: String(offset),
+    lastShowOrder: String(lastShowOrder),
+  });
+  const url = `https://www.yodobashi.com/ws/api/ec/ranking/pc/mcol?${qs.toString()}`;
+  const res = await gotScraping({
+    url,
+    method: 'GET',
+    timeout: { request: 15000 },
+    retry: {
+      limit: 2,
+      statusCodes: [403, 408, 425, 429, 500, 502, 503, 504],
+      errorCodes: ['ETIMEDOUT', 'ECONNRESET', 'EAI_AGAIN'],
+    },
+    http2: false,
+    throwHttpErrors: false,
+    headers: {
+      'user-agent': undefined,
+      'accept-language': 'ja,en-US;q=0.9,en;q=0.8',
+      referer: refererUrl || 'https://www.yodobashi.com/',
+      'x-requested-with': 'XMLHttpRequest',
+      accept: 'application/json, text/javascript, */*; q=0.01',
+    },
+    headerGeneratorOptions: {
+      browsers: [{ name: 'chrome', minVersion: 110 }],
+      devices: ['desktop'],
+      operatingSystems: ['windows', 'linux', 'macos'],
+    },
+    responseType: 'text',
+  });
+  if (res.statusCode >= 400) {
+    throw new Error(`yodobashi mcol failed with status ${res.statusCode}`);
+  }
+  return JSON.parse(String(res.body || '{}'));
+}
+
+/**
+ * 1ページ目に加え、スクロール読み込み API（mcol）で後続ブロックを取得して行をマージする
+ */
+async function extractYodobashiRankingRowsMergedWithMcol(firstHtml, pageUrl, seenHref) {
+  const rows = extractYodobashiRankingRowsFromHtml(firstHtml, seenHref);
+  const params = parseYodobashiMcolParamsFromFirstHtml(firstHtml);
+  const fetchedApiUrls = [];
+  if (!params) {
+    return { rows, fetchedApiUrls };
+  }
+
+  let { cateCd, limit, offset: curOffset, lastShowOrder: curLastShow } = params;
+  let isTerminus = false;
+  let rounds = 0;
+
+  while (!isTerminus && rounds < YODOBASHI_MCOL_MAX_ROUNDS) {
+    const qs = new URLSearchParams({
+      cateCd,
+      limit: String(limit),
+      offset: String(curOffset),
+      lastShowOrder: String(curLastShow),
+    });
+    const apiUrl = `https://www.yodobashi.com/ws/api/ec/ranking/pc/mcol?${qs.toString()}`;
+    fetchedApiUrls.push(apiUrl);
+
+    let data;
+    try {
+      data = await fetchYodobashiMcolJson(
+        cateCd,
+        limit,
+        curOffset,
+        curLastShow,
+        pageUrl
+      );
+    } catch (err) {
+      console.warn('⚠️ yodobashi mcol fetch failed', err.message);
+      break;
+    }
+
+    isTerminus = data.isTerminus === true;
+    const products = Array.isArray(data.products) ? data.products : [];
+    for (const frag of products) {
+      const partRows = extractYodobashiRankingRowsFromHtml(frag, seenHref);
+      rows.push(...partRows);
+    }
+
+    if (products.length === 0) break;
+
+    curOffset = data.lastOrder;
+    curLastShow = String(data.lastShowOrder);
+    rounds++;
+  }
+
+  return { rows, fetchedApiUrls };
+}
+
+/**
+ * 同一クエリで rPage のみ 1..pageCount に変えた URL 一覧
+ */
+function kojimaRankingPageUrls(originalUrlStr, pageCount) {
+  const urls = [];
+  try {
+    for (let p = 1; p <= pageCount; p++) {
+      const u = new URL(originalUrlStr);
+      u.searchParams.set('rPage', String(p));
+      urls.push(u.href);
+    }
+  } catch {
+    urls.push(originalUrlStr);
+  }
+  return urls;
+}
+
+/**
+ * コジマネット ec/ranking.html: div.ranking-box / p.rank「N位」/ prod_detail リンク
+ */
+function extractKojimaRankingRowsFromHtml(html, seenHref) {
+  const hrefSeen = seenHref || new Set();
+  const $ = cheerio.load(String(html || ''));
+  const knownManufacturers = KNOWN_MANUFACTURERS_RANKING;
+  const rows = [];
+
+  $('div.ranking-box').each((_, box) => {
+    const $box = $(box);
+    const rankText = $box.find('p.rank').first().text().replace(/\s+/g, '').trim();
+    const rm = /^(\d+)位$/.exec(rankText) || /(\d+)位/.exec(rankText);
+    const rank = rm ? parseInt(rm[1], 10) : 0;
+    if (!Number.isFinite(rank) || rank < 1) return;
+
+    const $a = $box.find('a.mk2TagClick[href*="prod_detail.html"]').first();
+    let href = String($a.attr('href') || '').trim();
+    if (!href) return;
+    if (href.startsWith('//')) href = `https:${href}`;
+    else if (href.startsWith('/')) href = `https://www.kojima.net${href}`;
+    else if (!/^https?:\/\//i.test(href)) href = `https://www.kojima.net/${href.replace(/^\//, '')}`;
+
+    if (hrefSeen.has(href)) return;
+    hrefSeen.add(href);
+
+    let titleText = $box.find('p.name a span').first().text().replace(/\s+/g, ' ').trim();
+    if (!titleText) {
+      titleText = String($box.find('.inner').attr('mk2pname') || '').trim();
+    }
+    if (!titleText) {
+      titleText = String($box.find('.image img[title]').first().attr('title') || '').trim();
+    }
+    const catchText = $box.find('p.catch').first().text().replace(/\s+/g, ' ').trim();
+    const blockText = $box.text().replace(/\s+/g, ' ').trim();
+    const _text = [catchText, titleText, blockText].filter(Boolean).join(' ');
+
+    const manufacturer =
+      findManufacturerInBlock(`${titleText} ${catchText} ${blockText}`, knownManufacturers) ||
+      '不明';
+
+    let model;
+    if (manufacturer === '不明') {
+      model = titleText || '不明';
+    } else {
+      model = extractLikelyModelFromBlock(_text, manufacturer);
+      if (!model) {
+        model = titleText.replace(manufacturer, '').replace(/^[\s　]+/, '').trim();
+      }
+      if (!model) model = titleText;
+      if (!model) model = '不明';
+    }
+
+    rows.push({
+      rank,
+      manufacturer,
+      model: String(model).replace(/\s+/g, ' ').trim().slice(0, 200),
+      href,
+      _text,
+    });
+  });
+
+  return rows;
+}
+
+/**
+ * ビックカメラ商品ブロックから 1 行分を組み立てる（.prod_box / .cssopa / .bcs_maker）
+ */
+function extractOneBiccameraProdBox($, $box, rank, knownManufacturers, hrefSeen) {
+  const hrefSeenSet = hrefSeen || new Set();
+  const $link = $box.find('a.cssopa').first();
+  let rawHref = $link.attr('href') || '';
+  if (!rawHref) {
+    rawHref =
+      $box.find('a[href*="/bc/item/"]').first().attr('href') ||
+      $box.find('a[href*="/bc/products/"]').first().attr('href') ||
+      '';
+  }
+  let href = String(rawHref || '').trim();
+  if (href.startsWith('//')) href = `https:${href}`;
+  else if (href.startsWith('/')) href = `https://www.biccamera.com${href}`;
+  else if (href && !/^https?:\/\//i.test(href)) {
+    href = `https://www.biccamera.com/${href.replace(/^\//, '')}`;
+  }
+  if (!href || hrefSeenSet.has(href)) return null;
+  hrefSeenSet.add(href);
+
+  const imgAlt = ($link.find('img').first().attr('alt') || '').replace(/\s+/g, ' ').trim();
+  let titleText = imgAlt;
+  let maxLen = 0;
+  $box.find('a').each((_, a) => {
+    const t = $(a).text().replace(/\s+/g, ' ').trim();
+    if (!t || t.length < 8) return;
+    if (t.length > maxLen) {
+      maxLen = t.length;
+      titleText = t;
+    }
+  });
+  if (!titleText) titleText = imgAlt;
+
+  const makerFromDom = ($box.find('.bcs_maker').first().text() || '')
+    .replace(/\s+/g, ' ')
+    .trim();
+  const makerShort = makerFromDom ? makerFromDom.split(/[／｜|]/)[0].trim() : '';
+
+  const blockText = $box.text().replace(/\s+/g, ' ').trim();
+  const _text = [blockText, imgAlt, makerFromDom].filter(Boolean).join(' ');
+
+  const manufacturer =
+    findManufacturerInBlock(`${titleText} ${blockText}`, knownManufacturers) ||
+    makerShort ||
+    '不明';
+
+  let model;
+  if (manufacturer === '不明') {
+    model = titleText || imgAlt || '不明';
+  } else {
+    model = extractLikelyModelFromBlock(_text, manufacturer);
+    if (!model) {
+      model = titleText.replace(manufacturer, '').replace(/^[\s　]+/, '').trim();
+    }
+    if (!model) model = imgAlt;
+    if (!model) model = '不明';
+  }
+
+  return {
+    rank,
+    manufacturer,
+    model: String(model).replace(/\s+/g, ' ').trim().slice(0, 200),
+    href,
+    _text,
+  };
+}
+
+/**
+ * ビックカメラ bc/ranking/ の HTML から順位・商品を抽出する。
+ * id="rankli_N" がある場合はそれを順位に使い、無ければ prod_box の出現順。
+ */
+function extractBiccameraRankingRowsFromHtml(html, seenHref) {
+  const hrefSeen = seenHref || new Set();
+  const $ = cheerio.load(String(html || ''));
+  const knownManufacturers = KNOWN_MANUFACTURERS_RANKING;
+  const rows = [];
+
+  const rankLis = $('[id^="rankli_"]');
+  if (rankLis.length > 0) {
+    rankLis.each((_, li) => {
+      const $li = $(li);
+      const id = $li.attr('id') || '';
+      const m = /^rankli_(\d+)$/i.exec(id);
+      const rank = m ? parseInt(m[1], 10) : 0;
+      if (!Number.isFinite(rank) || rank < 1) return;
+
+      const $box = $li.find('[class*="prod_box"]').first();
+      if (!$box.length) return;
+
+      const row = extractOneBiccameraProdBox($, $box, rank, knownManufacturers, hrefSeen);
+      if (row) rows.push(row);
+    });
+    if (rows.length > 0) return rows;
+  }
+
+  const seenBoxes = new Set();
+  $('[class*="prod_box"]').each((_, el) => {
+    const cls = $(el).attr('class') || '';
+    if (!/\bprod_box\b/.test(cls)) return;
+    if (seenBoxes.has(el)) return;
+    seenBoxes.add(el);
+
+    const row = extractOneBiccameraProdBox(
+      $,
+      $(el),
+      rows.length + 1,
+      knownManufacturers,
+      hrefSeen
+    );
+    if (row) rows.push(row);
+  });
+
+  return rows;
+}
+
+function biccameraHtmlLooksLikeAkamaiChallenge(html) {
+  const s = String(html || '');
+  if (s.length < 3500) return true;
+  if (
+    /sec-if-cpt-container|scf-akamai-logo|Powered and protected by/i.test(s) &&
+    !/\bprod_box\b/.test(s)
+  ) {
+    return true;
+  }
+  return false;
+}
+
+function isPlaywrightChromiumMissingError(err) {
+  return String(err?.message || '').includes("Executable doesn't exist");
+}
+
+/**
+ * Playwright のみでビックランキング HTML を取得（失敗時は呼び出し側で HTTP フォールバック可）
+ */
+async function fetchBiccameraRankingHtmlPlaywrightOnly(targetUrl) {
+  // ビックカメラ等で net::ERR_HTTP2_PROTOCOL_ERROR になる環境があるため HTTP/2 を切る
+  const launchOpts = {
+    headless: true,
+    args: ['--disable-http2', '--disable-blink-features=AutomationControlled'],
+  };
+  if (process.env.PLAYWRIGHT_CHROMIUM_NO_SANDBOX === '1') {
+    launchOpts.args.push('--no-sandbox', '--disable-setuid-sandbox');
+  }
+  const pwChannel = String(process.env.BICCAMERA_PLAYWRIGHT_CHANNEL || '').trim();
+  if (pwChannel) {
+    launchOpts.channel = pwChannel;
+  }
+
+  console.log('📥 [Playwright] BicCamera ranking HTML:', targetUrl);
+  const browser = await chromium.launch(launchOpts);
+  try {
+    const context = await browser.newContext({
+      locale: 'ja-JP',
+      timezoneId: 'Asia/Tokyo',
+      viewport: { width: 1365, height: 900 },
+      userAgent:
+        'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36',
+    });
+    await context.addInitScript(() => {
+      try {
+        Object.defineProperty(navigator, 'webdriver', {
+          get: () => undefined,
+        });
+      } catch {
+        /* ignore */
+      }
+    });
+    const page = await context.newPage();
+    await page.setExtraHTTPHeaders({
+      'accept-language': 'ja,en-US;q=0.9,en;q=0.8',
+    });
+    // domcontentloaded だけ待つと Akamai 等で 60s 超えることがある。commit で先に確定し、あとから DCL／商品要素を待つ。
+    await page.goto(targetUrl, { waitUntil: 'commit', timeout: 90000 });
+    await page
+      .waitForLoadState('domcontentloaded', { timeout: 90000 })
+      .catch(() => {
+        console.warn('⚠️ BicCamera: domcontentloaded 待ちをスキップ（タイムアウト）');
+      });
+    await page.waitForSelector('body', { state: 'attached', timeout: 20000 });
+    await new Promise((r) => setTimeout(r, 5000));
+    await Promise.race([
+      page.waitForSelector('[id^="rankli_"]', { timeout: 45000 }),
+      page.waitForSelector('[class*="prod_box"]', { timeout: 45000 }),
+    ]).catch(() => {
+      console.warn('⚠️ BicCamera: rankli / prod_box の出現待ちがタイムアウト（続行して HTML を取得）');
+    });
+
+    for (let i = 0; i < BICCAMERA_RANKING_SCROLL_ROUNDS; i++) {
+      await page.evaluate(() => {
+        window.scrollBy(0, Math.max(500, window.innerHeight));
+      });
+      await new Promise((r) => setTimeout(r, 450));
+    }
+
+    const html = await page.content();
+    await page.close().catch(() => {});
+    await context.close().catch(() => {});
+    return { html, fetchedUrl: targetUrl, fetchVia: 'playwright' };
+  } finally {
+    await browser.close().catch(() => {});
+    console.log('🧹 [Playwright] BicCamera browser closed');
+  }
+}
+
+/**
+ * ビックカメラは Akamai 等で素の HTTP がチャレンジになりやすいが、環境によっては HTTP で取れる。
+ * まず Playwright、失敗またはチャレンジページっぽい HTML のときは got-scraping を試す。
+ * Chromium 未インストール時は分かりやすいメッセージを投げる。
+ */
+async function fetchBiccameraRankingHtmlWithPlaywright(urlStr) {
+  const targetUrl = (() => {
+    try {
+      const u = new URL(urlStr);
+      u.hash = '';
+      return u.href;
+    } catch {
+      return urlStr;
+    }
+  })();
+
+  let playErr = null;
+  try {
+    const out = await fetchBiccameraRankingHtmlPlaywrightOnly(targetUrl);
+    if (!biccameraHtmlLooksLikeAkamaiChallenge(out.html)) {
+      return out;
+    }
+    console.warn(
+      '⚠️ BicCamera Playwright HTML looks like challenge or empty; trying HTTP fallback'
+    );
+  } catch (e) {
+    playErr = e;
+    console.warn('⚠️ BicCamera Playwright failed:', e.message);
+  }
+
+  let httpFallbackHtmlLen = 0;
+  try {
+    const html = await fetchHtmlWithHttpClient(targetUrl);
+    httpFallbackHtmlLen = String(html || '').length;
+    if (!biccameraHtmlLooksLikeAkamaiChallenge(html) && /\bprod_box\b/.test(html)) {
+      console.log('✅ BicCamera ranking HTML via HTTP fallback');
+      return { html, fetchedUrl: targetUrl, fetchVia: 'http' };
+    }
+    console.warn(
+      '⚠️ BicCamera HTTP fallback: チャレンジページ相当、または prod_box なし（バイト数:',
+      httpFallbackHtmlLen,
+      '）'
+    );
+  } catch (e) {
+    console.warn('⚠️ BicCamera HTTP fallback failed:', e.message);
+  }
+
+  if (playErr && isPlaywrightChromiumMissingError(playErr)) {
+    const err = new Error(
+      'Playwright 用の Chromium が未インストールです。server フォルダで次を実行してください: npx playwright install chromium'
+    );
+    err.code = 'PLAYWRIGHT_BROWSER_MISSING';
+    throw err;
+  }
+
+  if (playErr) {
+    if (String(playErr.message || '').includes('ERR_HTTP2_PROTOCOL_ERROR')) {
+      const err = new Error(
+        'ビックカメラへの接続で HTTP/2 エラーが発生しました。app.js では Chromium に --disable-http2 を付与済みです。サーバーを再起動して再試行するか、VPN／別回線、またはしばらく時間をおいて試してください。'
+      );
+      err.code = 'BICCAMERA_HTTP2_ERROR';
+      err.cause = playErr;
+      throw err;
+    }
+    if (/Timeout \d+ms exceeded/i.test(String(playErr.message || ''))) {
+      const err = new Error(
+        'ビックカメラのページ表示がタイムアウトしました。時間をおいて再試行するか、Mac に Google Chrome を入れたうえで環境変数 BICCAMERA_PLAYWRIGHT_CHANNEL=chrome を設定してサーバーを再起動し、システムの Chrome 経由で取得を試してください。'
+      );
+      err.code = 'BICCAMERA_GOTO_TIMEOUT';
+      err.cause = playErr;
+      throw err;
+    }
+    throw playErr;
+  }
+
+  const err = new Error(
+    'ビックカメラのランキング本文を取得できませんでした（Bot 対策でヘッドレスのみでは本文が返らない可能性があります）。環境変数 BICCAMERA_PLAYWRIGHT_CHANNEL=chrome で再試行するか、時間をおいて試してください。'
+  );
+  err.code = 'BICCAMERA_FETCH_EMPTY';
+  throw err;
 }
 
 /*Playwrightスクレイピング*/
@@ -282,22 +1495,32 @@ PlaywrightはJavaScriptで動的に生成されるコンテンツも取得でき
 
 scrape関数は、記事生成API（/api/generate）の中核的なデータ収集部分を担っている。
 */
-async function scrape(url) {
+async function scrape(url, maxChars = 8000) {
   console.log('📥 [Playwright] Start scrape:', url);
   //chromium（Chromeのオープンソース版）をヘッドレスモード（画面表示なし）で起動
   const browser = await chromium.launch({ headless: true });
   let page; //ページ（タブ）を操作するための変数を準備
   try {
     // --- ここから本命のPlaywrightによる処理 ---
-    page = await browser.newPage();//新しいタブを開く
+    const context = await browser.newContext({
+      locale: 'ja-JP',
+      timezoneId: 'Asia/Tokyo',
+      userAgent:
+        'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36',
+    });
+    page = await context.newPage();//新しいタブを開く
+    await page.setExtraHTTPHeaders({
+      'accept-language': 'ja,en-US;q=0.9,en;q=0.8',
+    });
     console.log('🌐 Navigating to:', url);
 
     //2.ページへのアクセスと待機
     //指定されたURLに移動し、ページの読み込みが落ち着くまで待つ（最大30秒）
-    await page.goto(url, { waitUntil: 'networkidle', timeout: 30000 });
+    await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 45000 });
     console.log('⏳ Waiting for body content');
     //念のため、bodyタグが表示されるまで待つ（最大10秒）
     await page.waitForSelector('body', { timeout: 10000 });
+    await page.waitForLoadState('networkidle', { timeout: 5000 }).catch(() => {});
     
     //3.テキストの抽出
     //ページ内のbodyタグ全体の表示テキスト（innerText）を取得
@@ -309,11 +1532,14 @@ async function scrape(url) {
     削除する処理（replace(/\s+/g, ' ').trim()）が含まれており、
     後続のAI処理がしやすいように、綺麗なテキストデータに整形している。*/
     const normalized = text.replace(/\s+/g, ' ').trim();
+    if (normalized.length < 200) {
+      throw new Error('抽出テキストが短すぎるため、HTTPフォールバックを試行します。');
+    }
     console.log(`📝 Scraped ${normalized.length} characters from`, url);
     
     //5.成功：結果を返す
-    //抽出したテキストの先頭8000文字を返す（AIへの入力文字数制限のため）
-    return normalized.slice(0, 8000);
+    //抽出したテキストの先頭 maxChars 文字を返す
+    return normalized.slice(0, maxChars);
   } catch (err) {
     // --- Playwrightが失敗した場合の保険処理 ---
     console.error('❌ Playwright scraping failed', url, err.message);
@@ -322,8 +1548,8 @@ async function scrape(url) {
       //別の関数 `scrapeWithHttpClient` を呼び出して再挑戦
       const fallbackText = await scrapeWithHttpClient(url);
       console.log('✅ Fallback succeeded for', url);
-      //こちらも同様に先頭8000文字を返す
-      return fallbackText.slice(0, 8000);
+      //こちらも同様に先頭 maxChars 文字を返す
+      return fallbackText.slice(0, maxChars);
     } catch (fallbackErr) {
       //保険の手段も失敗した場合
       console.error(
@@ -400,7 +1626,7 @@ function cleanupOldScreenshots() {
 }
 
 /*---③PIXTA画像検索API---*/
-app.get('/api/searchPIXTAimage', async (req, res) => {
+/*app.get('/api/searchPIXTAimage', async (req, res) => {
   const { keyword } = req.query;
 
   console.log('🔍 GET /api/searchPIXTAimage called with keyword:', keyword);
@@ -464,6 +1690,370 @@ app.get('/api/searchPIXTAimage', async (req, res) => {
       await browser.close();
       console.log('🧹 Closed browser instance');
     }
+  }
+});*/
+
+
+function normalizeRankingKeywordsFromBody(body) {
+  const fromArr = Array.isArray(body?.keywords)
+    ? body.keywords.map((k) => String(k || '').trim()).filter(Boolean)
+    : [];
+  const fromFields = [body?.keyword1, body?.keyword2]
+    .map((k) => String(k ?? '').trim())
+    .filter(Boolean);
+  // 配列だけ1件のときは、keyword1/keyword2 の両方が埋まっている方を優先（2つ目が落ちる不整合を防ぐ）
+  if (fromFields.length > fromArr.length) return fromFields.slice(0, 2);
+  return fromArr.slice(0, 2);
+}
+
+app.post('/api/extract-ranking-by-keywords', async (req, res) => {
+  const requestStartedAt = Date.now();
+  const { rankingUrl } = req.body;
+
+  const keywords = normalizeRankingKeywordsFromBody(req.body);
+
+  console.log('🛎️ POST /api/extract-ranking-by-keywords called with:', {
+    rankingUrl,
+    keywords,
+  });
+
+  if (!rankingUrl || typeof rankingUrl !== 'string' || !rankingUrl.trim()) {
+    return res.status(400).json({ error: 'ランキングページのURLを入力してください。' });
+  }
+  if (keywords.length > 2) {
+    return res.status(400).json({ error: 'キーワードは2つまでです。' });
+  }
+
+  let pageText = '';
+  try {
+    const ruleBasedMaxChars = 25000;
+    const aiMaxChars = 8000;
+    const trimmedUrl = rankingUrl.trim();
+    const maxChars =
+      !ENABLE_AI_RANKING_EXTRACTION || keywords.length === 0
+        ? ruleBasedMaxChars
+        : aiMaxChars;
+
+    // 価格.com itemlist は HTML 解析で商品名を取る（順位/型式が安定）
+    // pdf_pg=2 が 2ページ目 — 1〜3ページをマージしてからキーワード絞り込み（最大 RANKING_RESULT_LIMIT 件）
+    if (/^https?:\/\/kakaku\.com\/.+\/itemlist\.aspx/i.test(trimmedUrl)) {
+      const KAKAKU_ITEMLIST_PAGE_COUNT = 3;
+      const baseItemlistUrl = kakakuItemlistPagesBaseUrl(trimmedUrl);
+      const fetchedPageUrls = [];
+      const seenHref = new Set();
+      const mergedRows = [];
+      let firstPageHtml = '';
+      for (let p = 1; p <= KAKAKU_ITEMLIST_PAGE_COUNT; p++) {
+        const pageUrl = kakakuItemlistPageUrl(baseItemlistUrl, p);
+        fetchedPageUrls.push(pageUrl);
+        try {
+          const html = await fetchHtmlWithHttpClient(pageUrl);
+          if (p === 1) firstPageHtml = html;
+          const rows = extractKakakuItemlistRowsFromHtml(html, seenHref);
+          mergedRows.push(...rows);
+        } catch (err) {
+          console.warn(`⚠️ kakaku itemlist page ${p} fetch failed`, pageUrl, err.message);
+          if (p === 1) throw err;
+        }
+      }
+      pageText = cheerio
+        .load(firstPageHtml || '')('body')
+        .text()
+        .replace(/\s+/g, ' ')
+        .trim()
+        .slice(0, maxChars);
+      const items = finalizeKakakuItemlistRows(mergedRows, keywords);
+      if (items.length === 0) {
+        return res.json({
+          rankingUrl: trimmedUrl,
+          keywords,
+          count: 0,
+          extractionMode: 'rule-based',
+          fetchedPageUrls,
+          items: [],
+        });
+      }
+      return res.json({
+        rankingUrl: trimmedUrl,
+        keywords,
+        count: items.length,
+        extractionMode: 'rule-based',
+        fetchedPageUrls,
+        items,
+      });
+    }
+
+    // ヨドバシ.com カテゴリ人気ランキング（…/ranking/）は HTML で順位・商品名が取れる
+    if (/^https?:\/\/(www\.)?yodobashi\.com\/[^?#]+\/ranking\/?/i.test(trimmedUrl)) {
+      let html;
+      try {
+        html = await fetchHtmlWithHttpClient(trimmedUrl);
+      } catch (err) {
+        console.warn('⚠️ yodobashi ranking fetch failed', trimmedUrl, err.message);
+        throw err;
+      }
+      pageText = cheerio
+        .load(html || '')('body')
+        .text()
+        .replace(/\s+/g, ' ')
+        .trim()
+        .slice(0, maxChars);
+      const seenHref = new Set();
+      const { rows: mergedRows, fetchedApiUrls } =
+        await extractYodobashiRankingRowsMergedWithMcol(html, trimmedUrl, seenHref);
+      const fetchedPageUrls = [trimmedUrl, ...fetchedApiUrls];
+      const items = finalizeKakakuItemlistRows(mergedRows, keywords);
+      if (items.length === 0) {
+        return res.json({
+          rankingUrl: trimmedUrl,
+          keywords,
+          count: 0,
+          extractionMode: 'rule-based',
+          fetchedPageUrls,
+          items: [],
+        });
+      }
+      return res.json({
+        rankingUrl: trimmedUrl,
+        keywords,
+        count: items.length,
+        extractionMode: 'rule-based',
+        fetchedPageUrls,
+        items,
+      });
+    }
+
+    // コジマネット ec/ranking.html（HTTP で取得、rPage 1〜KOJIMA_RANKING_PAGE_COUNT をマージ）
+    if (/^https?:\/\/(www\.)?kojima\.net\/ec\/ranking\.html/i.test(trimmedUrl)) {
+      const pageUrls = kojimaRankingPageUrls(trimmedUrl, KOJIMA_RANKING_PAGE_COUNT);
+      const fetchedPageUrls = [];
+      const seenHref = new Set();
+      const mergedRows = [];
+      let firstPageHtml = '';
+      for (const pageUrl of pageUrls) {
+        let html;
+        try {
+          html = await fetchHtmlWithHttpClient(pageUrl);
+        } catch (err) {
+          console.warn('⚠️ kojima ranking page fetch failed', pageUrl, err.message);
+          if (!firstPageHtml) throw err;
+          break;
+        }
+        fetchedPageUrls.push(pageUrl);
+        if (!firstPageHtml) firstPageHtml = html;
+        const rows = extractKojimaRankingRowsFromHtml(html, seenHref);
+        mergedRows.push(...rows);
+        if (rows.length === 0) break;
+      }
+      pageText = cheerio
+        .load(firstPageHtml || '')('body')
+        .text()
+        .replace(/\s+/g, ' ')
+        .trim()
+        .slice(0, maxChars);
+      const items = finalizeKakakuItemlistRows(mergedRows, keywords);
+      if (items.length === 0) {
+        return res.json({
+          rankingUrl: trimmedUrl,
+          keywords,
+          count: 0,
+          extractionMode: 'rule-based',
+          fetchedPageUrls,
+          items: [],
+        });
+      }
+      return res.json({
+        rankingUrl: trimmedUrl,
+        keywords,
+        count: items.length,
+        extractionMode: 'rule-based',
+        fetchedPageUrls,
+        items,
+      });
+    }
+
+    // ビックカメラ.com カテゴリランキング（/bc/ranking/…）— Akamai 回避のため Playwright で HTML 取得
+    if (/^https?:\/\/(www\.)?biccamera\.com\/bc\/ranking\//i.test(trimmedUrl)) {
+      let html;
+      let fetchedUrlForLog;
+      try {
+        const out = await fetchBiccameraRankingHtmlWithPlaywright(trimmedUrl);
+        html = out.html;
+        fetchedUrlForLog = out.fetchedUrl;
+      } catch (err) {
+        console.warn('⚠️ biccamera ranking Playwright fetch failed', trimmedUrl, err.message);
+        throw err;
+      }
+      pageText = cheerio
+        .load(html || '')('body')
+        .text()
+        .replace(/\s+/g, ' ')
+        .trim()
+        .slice(0, maxChars);
+      const seenHref = new Set();
+      const mergedRows = extractBiccameraRankingRowsFromHtml(html, seenHref);
+      const fetchedPageUrls = [fetchedUrlForLog || trimmedUrl];
+      const items = finalizeKakakuItemlistRows(mergedRows, keywords);
+      if (items.length === 0) {
+        return res.json({
+          rankingUrl: trimmedUrl,
+          keywords,
+          count: 0,
+          extractionMode: 'rule-based',
+          fetchedPageUrls,
+          items: [],
+        });
+      }
+      return res.json({
+        rankingUrl: trimmedUrl,
+        keywords,
+        count: items.length,
+        extractionMode: 'rule-based',
+        fetchedPageUrls,
+        items,
+      });
+    }
+
+    pageText = await scrape(trimmedUrl, maxChars);
+  } catch (err) {
+    console.error('❌ Ranking page scrape failed', err.message);
+    return res.status(502).json({
+      error: 'ランキングページの取得に失敗しました。',
+      details: err.message,
+    });
+  }
+
+  // キーワードが無い場合は、AIに渡さずルールベースで「順位一覧」を返す
+  if (!ENABLE_AI_RANKING_EXTRACTION || keywords.length === 0) {
+    const items = extractRankingByKeywordsRuleBased(pageText, keywords);
+    if (items.length === 0) {
+      console.log('⚠️ rule-based extraction returned 0 items', {
+        rankingUrl: rankingUrl.trim(),
+        keywords,
+        pageTextLen: String(pageText || '').length,
+      });
+      // キーワードなしのときは「順位一覧」が目的のため 200 で空配列を返す
+      if (keywords.length === 0) {
+        return res.json({
+          rankingUrl: rankingUrl.trim(),
+          keywords,
+          count: 0,
+          extractionMode: 'rule-based',
+          items: [],
+        });
+      }
+      return res.status(404).json({
+        error:
+          'キーワードに一致するランキング商品を抽出できませんでした。キーワードを変更して再実行してください。',
+      });
+    }
+    console.log(
+      '✅ Completed /api/extract-ranking-by-keywords in',
+      `${Date.now() - requestStartedAt}ms`,
+      '(rule-based)'
+    );
+    return res.json({
+      rankingUrl: rankingUrl.trim(),
+      keywords,
+      count: items.length,
+      extractionMode: 'rule-based',
+      items,
+    });
+  }
+
+  const keywordList = keywords.join('、');
+  const prompt = `
+あなたは情報抽出アシスタントです。
+以下のテキストは家電などのランキングページから取得した本文です。
+
+# キーワード（すべてに関連する商品のみ抽出）
+${keywordList}
+
+# ルール
+- ページに明示された「順位・人気順・売れ筋順」などのランキングに載っている商品だけを対象にする
+- キーワードに合致する商品のみを抽出する（メーカー名・型番・説明文のいずれかに部分一致すればよい）
+- 抽出した商品を、順位が高い順（数値が小さい順）に並べる
+- 最大${RANKING_RESULT_LIMIT}件まで
+- 出力は厳密にJSONのみ（説明文・コメント禁止）
+
+# 出力形式
+{
+  "items": [
+    {
+      "rank": 1,
+      "manufacturer": "メーカー名",
+      "model": "型式",
+      "feature": "キーワードとの一致理由（短く）"
+    }
+  ]
+}
+
+# 対象テキスト
+${pageText}
+  `;
+
+  try {
+    console.log('🧠 Extracting ranking by keywords with Gemini');
+    const model = await getGeminiModel();
+    const result = await model.generateContent({
+      contents: [{ role: 'user', parts: [{ text: prompt }] }],
+    });
+    const raw = result.response?.text?.() || '';
+    const data = parseJsonFromModelOutput(raw);
+
+    if (!Array.isArray(data.items)) {
+      throw new Error('items 配列が存在しません。');
+    }
+
+    const normalized = data.items
+      .map((x) => ({
+        rank: Number(x?.rank),
+        manufacturer: String(x?.manufacturer ?? '不明').trim() || '不明',
+        model: String(x?.model ?? '不明').trim() || '不明',
+        feature: String(x?.feature ?? '').trim(),
+      }))
+      .filter(
+        (x) =>
+          Number.isInteger(x.rank) &&
+          x.rank >= 1 &&
+          x.rank <= 999
+      )
+      .sort((a, b) => a.rank - b.rank)
+      .slice(0, RANKING_RESULT_LIMIT);
+
+    if (normalized.length === 0) {
+      throw new Error('条件に合う商品を抽出できませんでした。');
+    }
+
+    console.log(
+      '✅ Completed /api/extract-ranking-by-keywords in',
+      `${Date.now() - requestStartedAt}ms`
+    );
+    return res.json({
+      rankingUrl: rankingUrl.trim(),
+      keywords,
+      count: normalized.length,
+      extractionMode: 'ai',
+      items: normalized,
+    });
+  } catch (err) {
+    console.error('❌ Ranking extraction failed', err.message);
+    if (isGeminiQuotaExceededError(err)) {
+      const retryAfterSec = parseRetryAfterSecondsFromMessage(err.message);
+      const payload = {
+        error:
+          'Gemini API の利用上限に達しました。しばらく待って再実行するか、APIキーの利用枠/課金設定を確認してください。',
+        details: err.message,
+      };
+      if (retryAfterSec) {
+        payload.retryAfterSeconds = retryAfterSec;
+      }
+      return res.status(429).json(payload);
+    }
+    return res.status(502).json({
+      error: 'ランキング情報の抽出に失敗しました。',
+      details: err.message,
+    });
   }
 });
 
@@ -764,6 +2354,19 @@ ${outlineJSON}
   });
 });
 
-app.listen(PORT, () =>
+const server = app.listen(PORT, () =>
   console.log(`✅ Server ready on http://localhost:${PORT}`)
 );
+
+server.on('error', (err) => {
+  if (err.code === 'EADDRINUSE') {
+    console.error(
+      `❌ ポート ${PORT} は既に使用中です（EADDRINUSE）。\n` +
+        `   別ターミナルで動いている node / nodemon を停止するか、次で占有プロセスを終了してください:\n` +
+        `   kill $(lsof -ti :${PORT})\n` +
+        `   別ポートで起動する場合: PORT=3051 npm run dev（client/vite.config.js の proxy target も同じ番号に合わせる）`
+    );
+    process.exit(1);
+  }
+  throw err;
+});

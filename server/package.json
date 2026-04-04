@@ -4,7 +4,8 @@
   "main": "app.js",
   "scripts": {
     "start": "node app.js",
-    "dev": "nodemon app.js"
+    "dev": "nodemon app.js",
+    "playwright-install": "playwright install chromium"
   },
   "dependencies": {
     "@google/generative-ai": "^0.17.0",

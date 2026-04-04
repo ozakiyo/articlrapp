@@ -73,9 +73,9 @@ PORT=3001
 # Gemini API キー（必須）
 GEMINI_API_KEY=your_gemini_api_key_here
 
-# Basic 認証（推奨）
+# Basic 認証（本番では BASIC_AUTH_PASSWORD を必ず設定。未設定のときは認証なし）
 BASIC_AUTH_USER=admin
-BASIC_AUTH_PASSWORD=password123
+BASIC_AUTH_PASSWORD=your_secure_password
 ```
 
 **Gemini API キーの取得方法**:
@@ -193,27 +193,26 @@ docker compose down -v
 
 ### デフォルト認証情報
 
-```
-ユーザー名: admin
-パスワード: password123
-```
+`BASIC_AUTH_PASSWORD` を設定した場合のみ Basic 認証が有効になります。ユーザー名の既定値は `admin` です。
 
-これらの認証情報は `server/.env` ファイルで変更できます:
+認証情報は `server/.env` で次のように設定します:
 
 ```bash
 BASIC_AUTH_USER=your_username
 BASIC_AUTH_PASSWORD=your_secure_password
 ```
 
-### 認証の流れ
+### 認証の流れ（`BASIC_AUTH_PASSWORD` 設定時）
 
-1. ブラウザで `http://localhost:3001` または `http://localhost:5173` にアクセス
+1. ブラウザで本番 URL（または認証有効なサーバー）にアクセス
 2. Basic 認証のダイアログが表示される
-3. ユーザー名とパスワードを入力
-4. 認証成功後、アプリケーションが利用可能になる
+3. `.env` で設定したユーザー名・パスワードを入力
+4. 認証成功後、画面と API が利用可能になる
+
+ローカルで `BASIC_AUTH_PASSWORD` を空のままにすると認証はかかりません（Vite プロキシでの開発が楽になります）。
 
 **セキュリティ上の注意**: 本番環境では必ず以下を実施してください:
-- デフォルトのパスワードを変更する
+- 推測されにくい `BASIC_AUTH_PASSWORD` を設定する
 - HTTPS を使用する
 - より強固な認証方式（JWT など）への移行を検討する
 
@@ -481,8 +480,8 @@ docker compose up --build
 | ------ | ---- | ---- | ------------ |
 | `PORT` | サーバーのポート番号 | いいえ | 3001 |
 | `GEMINI_API_KEY` | Google Gemini API キー | **はい** | なし |
-| `BASIC_AUTH_USER` | Basic 認証のユーザー名 | いいえ | admin |
-| `BASIC_AUTH_PASSWORD` | Basic 認証のパスワード | いいえ | password123 |
+| `BASIC_AUTH_USER` | Basic 認証のユーザー名（`BASIC_AUTH_PASSWORD` 設定時のみ有効） | いいえ | admin |
+| `BASIC_AUTH_PASSWORD` | Basic 認証のパスワード。**未設定または空なら認証なし** | いいえ | なし（認証オフ） |
 
 ## データベース設定（MySQL）
 
