@@ -1,4 +1,12 @@
 import { useEffect, useState } from 'react';
+
+/** 開発時は client/.env.development の VITE_API_BASE_URL で API 直指定（プロキシ不要） */
+function apiUrl(path) {
+  const base = String(import.meta.env.VITE_API_BASE_URL || '').replace(/\/$/, '');
+  const p = path.startsWith('/') ? path : `/${path}`;
+  return base ? `${base}${p}` : p;
+}
+
 /*
 ①入力情報を管理する
 ②記事生成AIへPOSTする
@@ -13,7 +21,7 @@ import { useEffect, useState } from 'react';
 
 const initialUrls = ['', '', ''];
 
-export default function App() {
+export default function ArticleApp() {
 //役割:アプリケーション全体のメインコンポーネント
 //useStateを使って、
 //変数：キーワード、
@@ -79,7 +87,9 @@ keywordの中身が更新され、入力欄に文字が表示される仕組み
     setPixtaError('');
 
     try {
-      const response = await fetch(`/api/searchPIXTAimage?keyword=${encodeURIComponent(keyword)}`);
+      const response = await fetch(
+        apiUrl(`/api/article/searchPIXTAimage?keyword=${encodeURIComponent(keyword)}`)
+      );
 
       if (!response.ok) {
         const data = await response.json().catch(() => ({}));
@@ -130,7 +140,7 @@ keywordの中身が更新され、入力欄に文字が表示される仕組み
     //記事生成AIへPOST処理
     //4. /api/generate というAPIエンドポイントに対して、そのデータをPOST送信。
     try {
-      const response = await fetch('/api/generate', {
+      const response = await fetch(apiUrl('/api/article/generate'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
@@ -313,7 +323,7 @@ keywordの中身が更新され、入力欄に文字が表示される仕組み
   };
   /*-----------記事画面フロント部分(client画面表示処理)------------*/
   return (
-    <div className="app">
+    <>
       <header>
         <h1>AI記事生成アプリ</h1>
         <p>キーワードと競合記事URLを入力して、記事の叩き台を作成します。</p>
@@ -499,6 +509,6 @@ keywordの中身が更新され、入力欄に文字が表示される仕組み
           )}
         </section>
       )}
-    </div>
+    </>
   );
 }

@@ -135,6 +135,8 @@ const clientDistPath = path.join(__dirname, 'public');
 const clientIndexPath = path.join(clientDistPath, 'index.html');
 
 //---ベーシック認証（本番: server/.env に BASIC_AUTH_PASSWORD を設定すると有効）---
+// /api は対象外。SPA の fetch は Authorization を付けられないため、API まで掛けると
+// 「認証が必要です。」だけ返ってランキング取得などが失敗する。
 const basicAuthUser = String(process.env.BASIC_AUTH_USER || 'admin').trim();
 const basicAuthPass = String(process.env.BASIC_AUTH_PASSWORD || '').trim();
 if (basicAuthPass) {
@@ -146,8 +148,15 @@ if (basicAuthPass) {
     realm: 'ArticleApp',
     unauthorizedResponse: () => ({ error: '認証が必要です。' }),
   });
-  app.use(basicAuthMiddleware);
-  console.log('🔐 Basic authentication enabled for user:', basicAuthUser);
+  app.use((req, res, next) => {
+    if (req.path.startsWith('/api')) return next();
+    return basicAuthMiddleware(req, res, next);
+  });
+  console.log(
+    '🔐 Basic authentication enabled for user:',
+    basicAuthUser,
+    '(HTML/static のみ。/api は対象外)'
+  );
 } else {
   console.log('ℹ️ Basic authentication disabled (set BASIC_AUTH_PASSWORD in .env to enable)');
 }
@@ -188,7 +197,8 @@ async function getGeminiModel() {
     const { GoogleGenerativeAI } = await import('@google/generative-ai');
     const genAI = new GoogleGenerativeAI(apiKey);
     //gemini-2.0-flashモデルを使用 高速・低コスト向けのモデル
-    geminiModel = genAI.getGenerativeModel({ model: 'gemini-2.0-flash' });
+    /*geminiModel = genAI.getGenerativeModel({ model: 'gemini-2.0-flash' });*/
+    geminiModel = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
   }
   /*2回目以降の呼び出し時: geminiModelには既に準備済みのモデルが入っているので、if文の中はスキップされ、すぐに最後のreturnに進む。*/
   return geminiModel;
@@ -2353,6 +2363,9 @@ ${outlineJSON}
     warnings,
   });
 });
+
+const registerArticleAppRoutes = require('./articleAppGenerate');
+registerArticleAppRoutes(app, { scrape, getGeminiModel });
 
 const server = app.listen(PORT, () =>
   console.log(`✅ Server ready on http://localhost:${PORT}`)

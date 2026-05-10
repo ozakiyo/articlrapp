@@ -532,6 +532,29 @@ button.secondary {
   text-decoration: underline;
 }
 
+.app-main-nav {
+  margin-bottom: 1.75rem;
+  padding: 1rem 1.5rem;
+}
+
+.app-main-nav-inner {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.75rem 1rem;
+}
+
+.app-main-nav-label {
+  font-weight: 600;
+  color: #1f2933;
+}
+
+.app-main-nav-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
 @media (max-width: 640px) {
   .app {
     padding: 1.5rem 1rem 3rem;
