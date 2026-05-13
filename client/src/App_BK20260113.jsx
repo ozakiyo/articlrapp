@@ -56,6 +56,7 @@ keywordの中身が更新され、入力欄に文字が表示される仕組み
   console.log("article",article);
   //const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
   //const [loadingDots, setLoadingDots] = useState(0);
   //const [searchPIXTA, setSearchPIXTA] = useState(false);
   //const [pixtaResults, setPixtaResults] = useState(null);
@@ -123,6 +124,7 @@ keywordの中身が更新され、入力欄に文字が表示される仕組み
   //2.ローディング状態（isLoading）をONにし、エラー表示をリセット。
     //setIsLoading(true);
     setError('');
+    setIsLoading(true);
   //3.入力されたキーワードとタイトルと見出しH2と3つの競合URLをまとめたデータ（payload）を作成。
     const payload = {
       keyword,
@@ -137,8 +139,6 @@ keywordの中身が更新され、入力欄に文字が表示される仕組み
     };
     console.log("payload",payload);
 
-    //記事生成AIへPOST処理
-    //4. /api/generate というAPIエンドポイントに対して、そのデータをPOST送信。
     try {
       const response = await fetch(apiUrl('/api/article/generate'), {
         method: 'POST',
@@ -165,8 +165,7 @@ keywordの中身が更新され、入力欄に文字が表示される仕組み
       setError(err.message);
       setArticle(null);
     } finally {
-    //7.最後にローディング状態をOFFに戻す。
-      //setIsLoading(false);
+      setIsLoading(false);
     }
   };
   //-----------③記事生成（メイン処理）------------
@@ -230,34 +229,31 @@ keywordの中身が更新され、入力欄に文字が表示される仕組み
   //記事のアウトライン（目次のような構成案）データをarticleから取り出す。
   //後でrenderOutline()関数に渡して表示するために使われる。
   
-  /*------(3-2)setArticle(data);で保存した、articleから取り出し（本文）-------*/
-  const structuredArticle = article?.article;
-  console.log("structuredArticle",structuredArticle);
-  //記事の本文データ（セクションごとの構成など）が入っているarticle.articleオブジェクトを取り出す。
-  
-  const hasStructuredArticle = !!structuredArticle;
-  /*const hasStructuredArticle =
-    structuredArticle &&
-    ((Array.isArray(structuredArticle.sections) &&
-      structuredArticle.sections.length > 0) ||
-      !!structuredArticle.introduction);*/ // ← 変更1：導入文があればOKとする条件を追加
-  //構造化された記事本文（structuredArticle）が存在し、
-  //かつセクション（sections）が含まれているかを判定。
-  //これがtrueなら、導入文・本文・まとめといった「完成形の記事」として表示するモードになる。
+  const articleBody =
+    article?.article && typeof article.article === 'object' && !Array.isArray(article.article)
+      ? article.article
+      : null;
 
-  /*------(3-3)setArticle(data);で保存した、articleから取り出し（タイトル）-------*/
-  const displayTitle = structuredArticle?.h1 || article?.title || '';
-  //画面に表示する「タイトル」を決定する。
-  //優先順位：structuredArticle.h1（生成されたH1） > article.title（元データのタイトル） > ''（空文字）
-  //どちらかのデータがあればそれをタイトルとして使う。
+  const h3Articles = [
+    {
+      title: String(heading_h3_first || articleBody?.h3_first || '').trim(),
+      content: String(articleBody?.h3_first_content || '').trim(),
+    },
+    {
+      title: String(heading_h3_second || articleBody?.h3_second || '').trim(),
+      content: String(articleBody?.h3_second_content || '').trim(),
+    },
+    {
+      title: String(heading_h3_third || articleBody?.h3_third || '').trim(),
+      content: String(articleBody?.h3_third_content || '').trim(),
+    },
+  ].filter((block) => block.title || block.content);
 
-  /*------(3-4)setArticle(data);で保存した、articleから取り出し（導入文）-------*/
-  const introduction = structuredArticle?.introduction;
-  //記事の「導入文」をstructuredArticleから取り出す
+  const introduction = articleBody?.introduction ?? article?.introduction ?? '';
+  const summary = articleBody?.summary ?? article?.summary ?? '';
 
-  /*------(3-5)setArticle(data);で保存した、articleから取り出し（まとめ）-------*/
-  const summary = structuredArticle?.summary;
-  //記事の「まとめ」部分をstructuredArticleから取り出す
+  const hasStructuredArticle =
+    !!article && !!(introduction || summary || h3Articles.length > 0);
 
   //[splitIntoParagraphs関数]
   //役割:長いテキストを段落ごとの配列に分割する関数
@@ -265,7 +261,7 @@ keywordの中身が更新され、入力欄に文字が表示される仕組み
   //テキストを「2つ以上の連続する改行（\n{2,}）」で区切って分割。
   //前後の空白を取り除き、空の行を除外して配列として返す。
   const splitIntoParagraphs = (text) =>
-    text
+    String(text ?? '')
       .split(/\n{2,}/)
       .map((block) => block.trim())
       .filter(Boolean);
@@ -291,36 +287,6 @@ keywordの中身が更新され、入力欄に文字が表示される仕組み
     ));
   
 
-  //[renderOutline関数]
-  //役割:記事のアウトライン（目次構成）を表示する関数
-  //処理内容:
-  //生成された記事データにアウトライン情報（outlineData）が含まれているか確認。
-  //データがある場合、大見出し（h2）と小見出し（h3）の階層構造を持つリスト（<ul>, <li>）として整形し、画面に表示。
-  const renderOutline = () => {
-    /*データのチェック:*/
-    /*アウトラインのデータ（outlineData）や、その中のセクション情報（sections）が正しく存在するか確認*/
-    /*変更①if (!outlineData || !Array.isArray(outlineData.sections)) return null; structuredArticle*/
-    //if (!structuredArticle || !Array.isArray(structuredArticle.sections)) return null;
-    if (!structuredArticle?.h2) return null;
-
-    return (
-      <div className="generated-block">
-        <h3>アウトライン</h3>
-        <div className="outline">
-          <ul>
-            <li>
-              <strong>{structuredArticle.h2}</strong>
-              <ul>
-                {structuredArticle.h3_first && <li>{structuredArticle.h3_first}</li>}
-                {structuredArticle.h3_second && <li>{structuredArticle.h3_second}</li>}
-                {structuredArticle.h3_third && <li>{structuredArticle.h3_third}</li>}
-              </ul>
-            </li>
-          </ul>
-        </div>
-      </div>
-    );
-  };
   /*-----------記事画面フロント部分(client画面表示処理)------------*/
   return (
     <>
@@ -345,56 +311,51 @@ keywordの中身が更新され、入力欄に文字が表示される仕組み
           </label>
 
           <label className="field">
-            <span>タイトル *</span>
+            <span>タイトル（任意）</span>
             <input
               type="text"
               value={title}
               placeholder="例: AIによる記事コンテンツ作成"
-              required
               onChange={(event) => setTitle(event.target.value)}
             />
           </label>
 
           <label className="field">
-            <span>H2:見出し１ *</span>
+            <span>H2:見出し１（任意）</span>
             <input
               type="text"
               value={heading_h2_first}
               placeholder="例: AIで記事を作成してみよう"
-              required
               onChange={(event) => setHeading_h2_first(event.target.value)}
             />
           </label>
 
           <label className="field">
-            <span>H3:見出し１ *</span>
+            <span>H3:見出し１（任意）</span>
             <input
               type="text"
               value={heading_h3_first}
               placeholder="例: AIで記事を作成してみよう"
-              required
               onChange={(event) => setHeading_h3_first(event.target.value)}
             />
           </label>
 
           <label className="field">
-            <span>H3:見出し2 *</span>
+            <span>H3:見出し2（任意）</span>
             <input
               type="text"
               value={heading_h3_second}
               placeholder="例: AIで記事を作成してみよう"
-              required
               onChange={(event) => setHeading_h3_second(event.target.value)}
             />
           </label>
 
           <label className="field">
-            <span>H3:見出し3 *</span>
+            <span>H3:見出し3（任意）</span>
             <input
               type="text"
               value={heading_h3_third}
               placeholder="例: AIで記事を作成してみよう"
-              required
               onChange={(event) => setHeading_h3_third(event.target.value)}
             />
           </label>
@@ -412,12 +373,14 @@ keywordの中身が更新され、入力欄に文字が表示される仕組み
           ))}
 
           <div className="actions">
-            <button type="submit">
+            <button type="submit" disabled={isLoading}>
+              {isLoading ? '生成中...' : '記事を生成'}
             </button>
             <button
               type="button"
               className="secondary"
               onClick={handleReset}
+              disabled={isLoading}
             >
               リセット
             </button>
@@ -459,13 +422,6 @@ keywordの中身が更新され、入力欄に文字が表示される仕組み
 
           {hasStructuredArticle && (
             <div className="generated-article">
-              {displayTitle && (
-                <div className="generated-block">
-                  <h3>タイトル</h3>
-                  <p className="generated-title">{displayTitle}</p>
-                </div>
-              )}
-
               {introduction && (
                 <div className="generated-block">
                   <h3>導入文</h3>
@@ -475,36 +431,25 @@ keywordの中身が更新され、入力欄に文字が表示される仕組み
                 </div>
               )}
 
-              <div className="generated-block section-block">
-                <h3>{structuredArticle.h2}</h3>
-
-                {structuredArticle.h3_first && (
-                  <div className="generated-subsection">
-                    <h4>{structuredArticle.h3_first}</h4>
+              {h3Articles.map((block, idx) => (
+                <div key={`h3-article-${idx}`} className="generated-block section-block">
+                  {block.title && <h4>{block.title}</h4>}
+                  {block.content && (
                     <div className="generated-text">
-                      {renderParagraphs(structuredArticle.h3_first_content, 'h3-1')}
+                      {renderParagraphs(block.content, `h3-${idx}`)}
                     </div>
-                  </div>
-                )}
+                  )}
+                </div>
+              ))}
 
-                {structuredArticle.h3_second && (
-                  <div className="generated-subsection">
-                    <h4>{structuredArticle.h3_second}</h4>
-                    <div className="generated-text">
-                      {renderParagraphs(structuredArticle.h3_second_content, 'h3-2')}
-                    </div>
+              {summary && (
+                <div className="generated-block">
+                  <h3>まとめ</h3>
+                  <div className="generated-text">
+                    {renderParagraphs(summary, 'summary')}
                   </div>
-                )}
-
-                {structuredArticle.h3_third && (
-                  <div className="generated-subsection">
-                    <h4>{structuredArticle.h3_third}</h4>
-                    <div className="generated-text">
-                      {renderParagraphs(structuredArticle.h3_third_content, 'h3-3')}
-                    </div>
-                  </div>
-                )}
-              </div>
+                </div>
+              )}
             </div>
           )}
         </section>

@@ -178,6 +178,8 @@ if (fs.existsSync(clientDistPath)) {
 }
 
 
+const { parseJsonFromModelOutput } = require('./parseModelJson');
+
 /*
 「AIモデルのインスタンスを効率的に取得すること」
 AIモデルの初期化（準備）は少し時間がかかる処理なので、APIリクエストのたびに毎回準備していると、アプリケーションの応答が遅くなってしまう。
@@ -198,28 +200,12 @@ async function getGeminiModel() {
     const genAI = new GoogleGenerativeAI(apiKey);
     //gemini-2.0-flashモデルを使用 高速・低コスト向けのモデル
     /*geminiModel = genAI.getGenerativeModel({ model: 'gemini-2.0-flash' });*/
-    geminiModel = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
+    /*geminiModel = genAI.getGenerativeModel({ model: 'gemini-2.5-flash-lite' });*/
+    geminiModel = genAI.getGenerativeModel({ model: 'gemini-3.1-flash-lite' });
+    /*geminiModel = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });*/
   }
   /*2回目以降の呼び出し時: geminiModelには既に準備済みのモデルが入っているので、if文の中はスキップされ、すぐに最後のreturnに進む。*/
   return geminiModel;
-}
-
-function parseJsonFromModelOutput(raw) {
-  if (!raw || typeof raw !== 'string') {
-    throw new Error('モデル出力が空です。');
-  }
-  const cleaned = raw.replace(/```json|```/gi, '').trim();
-  try {
-    return JSON.parse(cleaned);
-  } catch (_) {
-    const start = cleaned.indexOf('{');
-    const end = cleaned.lastIndexOf('}');
-    if (start !== -1 && end !== -1 && end > start) {
-      const sliced = cleaned.slice(start, end + 1);
-      return JSON.parse(sliced);
-    }
-    throw new Error('JSONの抽出に失敗しました。');
-  }
 }
 
 function parseRetryAfterSecondsFromMessage(message = '') {
@@ -2216,8 +2202,7 @@ ${competitorTexts}
     });
     //AIからの返事を整形して、プログラムで扱えるオブジェクト形式に変換
     const outlineRaw = outlineResult.response?.text?.() || '';
-    const outlineJsonText = outlineRaw.replace(/```json|```/g, '').trim();
-    outlineData = JSON.parse(outlineJsonText);
+    outlineData = parseJsonFromModelOutput(outlineRaw);
     console.log(
       '🧾 Outline generated. H2 count:',
       Array.isArray(outlineData.sections) ? outlineData.sections.length : 0
@@ -2289,8 +2274,7 @@ ${outlineJSON}
     });
     //AIからの返事を整形して、最終的な記事データとして取得
     const articleRaw = articleResult.response?.text?.() || '';
-    const articleJsonText = articleRaw.replace(/```json|```/g, '').trim();
-    articleData = JSON.parse(articleJsonText);
+    articleData = parseJsonFromModelOutput(articleRaw);
     console.log(
       '📄 Article generated. Sections:',
       Array.isArray(articleData.sections) ? articleData.sections.length : 0
@@ -2344,18 +2328,11 @@ ${outlineJSON}
   フロントエンドのReactアプリケーションは、
   このJSONデータを受け取って画面に表示*/
   res.json({
-    //記事のタイトル
     title: articleData.h1 || '',
-    //導入文
     introduction: articleData.introduction || '',
-    //まとめ文
     summary: articleData.summary || '',
-    //構成案（アウトライン）
+    sections: Array.isArray(articleData.sections) ? articleData.sections : [],
     outline: outlineData,
-    /*記事全体のデータ
-    タイトル、導入文、各見出しとそれに対応する本文、まとめ文などが
-    階層構造で含まれている。
-    フロントエンドは主にこのデータを使って記事全体を画面に描画*/
     article: articleData,
     /*記事の中から見出し（H2, H3）だけを抜き出して整形した配列*/
     headings,

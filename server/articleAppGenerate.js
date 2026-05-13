@@ -1,5 +1,28 @@
 'use strict';
 
+const {
+  parseJsonFromModelOutput,
+  normalizeSectionsArray,
+} = require('./parseModelJson');
+
+/** introductionData から sections を配列で取得（キー名ゆれ・配列風オブジェクト対応） */
+function pickSectionsFromIntroduction(obj) {
+  if (!obj || typeof obj !== 'object') return null;
+  return (
+    normalizeSectionsArray(obj.sections) ||
+    normalizeSectionsArray(obj.Sections) ||
+    normalizeSectionsArray(obj.section) ||
+    normalizeSectionsArray(obj.article_sections)
+  );
+}
+
+function normalizeSubsectionsList(v) {
+  const a = normalizeSectionsArray(v);
+  if (a && a.length) return a;
+  if (Array.isArray(v) && v.length) return v;
+  return [];
+}
+
 /**
  * 記事生成 UI（client/src/App_BK20260113.jsx）向け API。
  * 旧 app_BK20260113.js の POST /api/generate と同等の処理を /api/article/generate に提供する。
@@ -115,11 +138,10 @@ ${competitorTexts}
         contents: [{ role: 'user', parts: [{ text: introductionPrompt }] }],
       });
       const introductionRaw = introductionResult.response?.text?.() || '';
-      const introductionJsonText = introductionRaw.replace(/```json|```/g, '').trim();
-      introductionData = JSON.parse(introductionJsonText);
+      introductionData = parseJsonFromModelOutput(introductionRaw);
       console.log(
         '🧾 Outline generated. H2 count:',
-        Array.isArray(introductionData.sections) ? introductionData.sections.length : 0
+        pickSectionsFromIntroduction(introductionData)?.length ?? 0
       );
     } catch (err) {
       console.error('❌ Outline generation failed', err.message);
@@ -163,11 +185,8 @@ ${competitorTexts}
       });
 
       const heading_h3_firstRaw = heading_h3_firstResult.response?.text?.() || '';
-      const heading_h3_firstJsonText = heading_h3_firstRaw
-        .replace(/```json|```/g, '')
-        .trim();
 
-      heading_h3_firstData = JSON.parse(heading_h3_firstJsonText);
+      heading_h3_firstData = parseJsonFromModelOutput(heading_h3_firstRaw);
       console.log('🧾 H3-1 generated:', heading_h3_firstData);
     } catch (err) {
       console.error('❌ H3-1 generation failed', err.message);
@@ -211,11 +230,8 @@ ${competitorTexts}
       });
 
       const heading_h3_secondRaw = heading_h3_secondResult.response?.text?.() || '';
-      const heading_h3_secondJsonText = heading_h3_secondRaw
-        .replace(/```json|```/g, '')
-        .trim();
 
-      heading_h3_secondData = JSON.parse(heading_h3_secondJsonText);
+      heading_h3_secondData = parseJsonFromModelOutput(heading_h3_secondRaw);
       console.log('🧾 H3-2 generated:', heading_h3_secondData);
     } catch (err) {
       console.error('❌ H3-2 generation failed', err.message);
@@ -259,11 +275,8 @@ ${competitorTexts}
       });
 
       const heading_h3_thirdRaw = heading_h3_thirdResult.response?.text?.() || '';
-      const heading_h3_thirdJsonText = heading_h3_thirdRaw
-        .replace(/```json|```/g, '')
-        .trim();
 
-      heading_h3_thirdData = JSON.parse(heading_h3_thirdJsonText);
+      heading_h3_thirdData = parseJsonFromModelOutput(heading_h3_thirdRaw);
       console.log('🧾 H3-3 generated:', heading_h3_thirdData);
     } catch (err) {
       console.error('❌ H3-3 generation failed', err.message);
@@ -276,17 +289,98 @@ ${competitorTexts}
     const heading_h3_thirdJSON = JSON.stringify(heading_h3_thirdData, null, 2);
     console.log('heading_h3_thirdJSON', heading_h3_thirdJSON);
 
+    const h3BodiesForSummary = [
+      heading_h3_firstData?.content,
+      heading_h3_secondData?.content,
+      heading_h3_thirdData?.content,
+    ]
+      .filter(Boolean)
+      .join('\n');
+
+    const summaryPrompt = `
+あなたはSEOに強い家電専門ライターです。
+キーワード「${keyword}」、タイトル「${title}」の記事について、導入文と各見出し本文を踏まえたまとめ文を150〜200文字で作成してください。
+
+# 導入文
+${introductionData.introduction || ''}
+
+# 見出し本文
+${h3BodiesForSummary}
+
+# 出力条件
+- JSON形式で出力
+- 形式: { "summary": "まとめ文(150〜200文字)" }
+- 家電販売店にふさわしいフォーマルな文体
+- 製品名・価格は直接記載しない
+- 出力は厳密にJSONのみ
+`;
+
+    let summaryData;
+    try {
+      console.log('📝 Generating summary with Gemini');
+      const model = await getGeminiModel();
+      const summaryResult = await model.generateContent({
+        contents: [{ role: 'user', parts: [{ text: summaryPrompt }] }],
+      });
+      const summaryRaw = summaryResult.response?.text?.() || '';
+      summaryData = parseJsonFromModelOutput(summaryRaw);
+    } catch (err) {
+      console.error('❌ Summary generation failed', err.message);
+      return res.status(502).json({
+        error: 'まとめ文の生成に失敗しました。',
+        warnings,
+      });
+    }
+
     console.log(
       '✅ Completed /api/article/generate in',
       `${Date.now() - requestStartedAt}ms`
     );
 
+    const sectionsRaw = pickSectionsFromIntroduction(introductionData);
+    let sectionsForClient = sectionsRaw;
+
+    if (!sectionsForClient?.length) {
+      sectionsForClient = [
+        {
+          h2: heading_h2_first || '',
+          content: '',
+          subsections: [
+            {
+              h3: heading_h3_firstData?.h3 || heading_h3_first,
+              content: heading_h3_firstData?.content || '',
+            },
+            {
+              h3: heading_h3_secondData?.h3 || heading_h3_second,
+              content: heading_h3_secondData?.content || '',
+            },
+            {
+              h3: heading_h3_thirdData?.h3 || heading_h3_third,
+              content: heading_h3_thirdData?.content || '',
+            },
+          ].filter((sub) => String(sub.h3 || sub.content || '').trim()),
+        },
+      ].filter(
+        (sec) =>
+          String(sec.h2 || '').trim() ||
+          (Array.isArray(sec.subsections) && sec.subsections.length > 0)
+      );
+    } else {
+      sectionsForClient = sectionsForClient.map((sec) => ({
+        ...sec,
+        subsections: normalizeSubsectionsList(sec.subsections),
+      }));
+    }
+
     res.json({
-      title: introductionData.h1 || '',
+      title: introductionData.h1 || title || '',
       introduction: introductionData.introduction || '',
+      summary: summaryData?.summary || '',
       article: {
-        h1: introductionData.h1 || '',
+        h1: introductionData.h1 || title || '',
         introduction: introductionData.introduction || '',
+        summary: summaryData?.summary || '',
+        sections: sectionsForClient,
         h2: heading_h2_first,
         h3_first: heading_h3_firstData?.h3 || heading_h3_first,
         h3_first_content: heading_h3_firstData?.content || '',
