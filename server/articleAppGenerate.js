@@ -27,9 +27,122 @@ function normalizeSubsectionsList(v) {
  * 記事生成 UI（client/src/App_BK20260113.jsx）向け API。
  * 旧 app_BK20260113.js の POST /api/generate と同等の処理を /api/article/generate に提供する。
  */
+async function scrapeCompetitorArticles(candidateUrls, scrape) {
+  const warnings = [];
+  const scrapedArticles = [];
+
+  for (const url of candidateUrls) {
+    try {
+      console.log('🔗 Scraping competitor article:', url);
+      const text = await scrape(url);
+      scrapedArticles.push({ url, text });
+    } catch (err) {
+      console.error('❌ Failed to scrape', url, err.message);
+      warnings.push({ url, message: err.message });
+    }
+  }
+
+  return { warnings, scrapedArticles };
+}
+
+function collectCandidateUrls(body) {
+  const {
+    urls = [],
+    competitorUrl1,
+    competitorUrl2,
+    competitorUrl3,
+  } = body;
+
+  return [...urls, competitorUrl1, competitorUrl2, competitorUrl3]
+    .map((u) => u?.trim())
+    .filter(Boolean);
+}
+
+function collectReferenceUrls(body) {
+  const {
+    referenceUrls = [],
+    referenceUrl,
+    referenceUrl1,
+    referenceUrl2,
+    referenceUrl3,
+  } = body;
+
+  return [
+    ...referenceUrls,
+    referenceUrl,
+    referenceUrl1,
+    referenceUrl2,
+    referenceUrl3,
+  ]
+    .map((u) => u?.trim())
+    .filter(Boolean);
+}
+
+function formatScrapedTexts(scrapedArticles, label) {
+  return scrapedArticles
+    .map(
+      ({ url, text }) => `【${label}】${url}
+${text}`
+    )
+    .join('\n---\n');
+}
+
+function buildReferenceOutputSection(keyword, referenceTexts) {
+  if (!referenceTexts) return '';
+
+  return `
+# 出力の参考について
+以下の参考記事は、見出し構成・文体・記事の書き方・情報の出し方など「出力の仕方」を参考にするためのものです。
+作成する記事のキーワードは「${keyword}」であり、参考記事のキーワード・テーマとは異なります。
+参考記事の文言や内容をそのまま流用せず、構成や文体のみを参考に、新しいキーワード向けのオリジナルな出力を作成してください。
+
+# 出力参考記事
+${referenceTexts}
+`;
+}
+
 function registerArticleAppRoutes(app, { scrape, getGeminiModel }) {
   app.post('/api/article/generate', async (req, res) => {
     const requestStartedAt = Date.now();
+    try {
+      await handleArticleGenerate(req, res, requestStartedAt, {
+        scrape,
+        getGeminiModel,
+      });
+    } catch (err) {
+      console.error('💥 /api/article/generate unhandled error:', err);
+      if (!res.headersSent) {
+        res.status(500).json({
+          error: err?.message || '記事の生成中にサーバーエラーが発生しました。',
+        });
+      }
+    }
+  });
+
+  app.post('/api/article/generate-headings', async (req, res) => {
+    const requestStartedAt = Date.now();
+    try {
+      await handleHeadingGenerate(req, res, requestStartedAt, {
+        scrape,
+        getGeminiModel,
+      });
+    } catch (err) {
+      console.error('💥 /api/article/generate-headings unhandled error:', err);
+      if (!res.headersSent) {
+        res.status(500).json({
+          error: err?.message || '見出しの生成中にサーバーエラーが発生しました。',
+        });
+      }
+    }
+  });
+}
+
+async function handleArticleGenerate(
+  req,
+  res,
+  requestStartedAt,
+  { scrape, getGeminiModel }
+) {
     const {
       keyword,
       title,
@@ -54,6 +167,7 @@ function registerArticleAppRoutes(app, { scrape, getGeminiModel }) {
       competitorUrl1,
       competitorUrl2,
       competitorUrl3,
+      referenceUrl: req.body.referenceUrl,
     });
 
     if (!keyword) {
@@ -61,52 +175,51 @@ function registerArticleAppRoutes(app, { scrape, getGeminiModel }) {
       return res.status(400).json({ error: 'キーワードを入力してください。' });
     }
 
-    const candidateUrls = [
-      ...urls,
-      competitorUrl1,
-      competitorUrl2,
-      competitorUrl3,
-    ]
-      .map((u) => u?.trim())
-      .filter(Boolean);
+    const candidateUrls = collectCandidateUrls(req.body);
+    const referenceUrls = collectReferenceUrls(req.body);
 
-    if (candidateUrls.length === 0) {
+    if (candidateUrls.length === 0 && referenceUrls.length === 0) {
       console.warn('⚠️ No URLs provided');
-      return res
-        .status(400)
-        .json({ error: 'URLを少なくとも1つ入力してください。' });
+      return res.status(400).json({
+        error: '他社URLまたは参考URLを少なくとも1つ入力してください。',
+      });
     }
 
     const warnings = [];
-    const scrapedArticles = [];
+    let scrapedArticles = [];
+    let scrapedReferenceArticles = [];
 
-    for (const url of candidateUrls) {
-      try {
-        console.log('🔗 Scraping competitor article:', url);
-        const text = await scrape(url);
-        scrapedArticles.push({ url, text });
-      } catch (err) {
-        console.error('❌ Failed to scrape', url, err.message);
-        warnings.push({ url, message: err.message });
-      }
+    if (candidateUrls.length > 0) {
+      const competitorResult = await scrapeCompetitorArticles(candidateUrls, scrape);
+      warnings.push(...competitorResult.warnings);
+      scrapedArticles = competitorResult.scrapedArticles;
     }
 
-    if (scrapedArticles.length === 0) {
+    if (referenceUrls.length > 0) {
+      const referenceResult = await scrapeCompetitorArticles(referenceUrls, scrape);
+      warnings.push(...referenceResult.warnings);
+      scrapedReferenceArticles = referenceResult.scrapedArticles;
+    }
+
+    if (scrapedArticles.length === 0 && scrapedReferenceArticles.length === 0) {
       console.error('🚨 Scraping failed for all URLs');
       return res.status(502).json({
-        error: '競合記事の取得に失敗しました。',
+        error: '記事の取得に失敗しました。',
         warnings,
       });
     }
 
-    console.log('📚 Successfully scraped', scrapedArticles.length, 'sources');
+    console.log(
+      '📚 Successfully scraped',
+      scrapedArticles.length,
+      'competitor sources and',
+      scrapedReferenceArticles.length,
+      'reference sources'
+    );
 
-    const competitorTexts = scrapedArticles
-      .map(
-        ({ url, text }) => `【Source】${url}
-${text}`
-      )
-      .join('\n---\n');
+    const competitorTexts = formatScrapedTexts(scrapedArticles, '他社記事');
+    const referenceTexts = formatScrapedTexts(scrapedReferenceArticles, '参考記事');
+    const referenceOutputSection = buildReferenceOutputSection(keyword, referenceTexts);
 
     const introductionPrompt = `
 あなたはSEOに強い家電専門ライターです。
@@ -125,9 +238,7 @@ ${text}`
 - 数値・比較・用途別の提案など、検索ユーザーの満足度を意識
 - 製品名・価格は直接記載しない
 - 出力は厳密にJSONのみ
-
-# 参考記事
-${competitorTexts} 
+${competitorTexts ? `\n# 他社記事\n${competitorTexts}` : ''}${referenceOutputSection}
   `;
 
     let introductionData;
@@ -171,9 +282,7 @@ ${competitorTexts}
 - 数値・比較・用途別の提案など、検索ユーザーの満足度を意識
 - 製品名・価格は直接記載しない
 - 出力は厳密にJSONのみ
-
-# 参考記事
-${competitorTexts} 
+${competitorTexts ? `\n# 他社記事\n${competitorTexts}` : ''}${referenceOutputSection}
 `;
 
     let heading_h3_firstData;
@@ -216,9 +325,7 @@ ${competitorTexts}
 - 数値・比較・用途別の提案など、検索ユーザーの満足度を意識
 - 製品名・価格は直接記載しない
 - 出力は厳密にJSONのみ
-
-# 参考記事
-${competitorTexts} 
+${competitorTexts ? `\n# 他社記事\n${competitorTexts}` : ''}${referenceOutputSection}
 `;
 
     let heading_h3_secondData;
@@ -261,9 +368,7 @@ ${competitorTexts}
 - 数値・比較・用途別の提案など、検索ユーザーの満足度を意識
 - 製品名・価格は直接記載しない
 - 出力は厳密にJSONのみ
-
-# 参考記事
-${competitorTexts} 
+${competitorTexts ? `\n# 他社記事\n${competitorTexts}` : ''}${referenceOutputSection}
 `;
 
     let heading_h3_thirdData;
@@ -313,6 +418,7 @@ ${h3BodiesForSummary}
 - 家電販売店にふさわしいフォーマルな文体
 - 製品名・価格は直接記載しない
 - 出力は厳密にJSONのみ
+${competitorTexts ? `\n# 他社記事\n${competitorTexts}` : ''}${referenceOutputSection}
 `;
 
     let summaryData;
@@ -390,6 +496,152 @@ ${h3BodiesForSummary}
         h3_third_content: heading_h3_thirdData?.content || '',
       },
     });
+}
+
+async function handleHeadingGenerate(
+  req,
+  res,
+  requestStartedAt,
+  { scrape, getGeminiModel }
+) {
+  const { keyword } = req.body;
+
+  console.log('🛎️ POST /api/article/generate-headings called with:', {
+    keyword,
+    competitorUrls: collectCandidateUrls(req.body),
+    referenceUrls: collectReferenceUrls(req.body),
+  });
+
+  if (!keyword) {
+    console.warn('⚠️ keyword is missing in request body');
+    return res.status(400).json({ error: 'キーワードを入力してください。' });
+  }
+
+  const candidateUrls = collectCandidateUrls(req.body);
+  const referenceUrls = collectReferenceUrls(req.body);
+
+  if (candidateUrls.length === 0 && referenceUrls.length === 0) {
+    console.warn('⚠️ No URLs provided');
+    return res.status(400).json({
+      error: '他社URLまたは参考URLを少なくとも1つ入力してください。',
+    });
+  }
+
+  const warnings = [];
+  let scrapedArticles = [];
+  let scrapedReferenceArticles = [];
+
+  if (candidateUrls.length > 0) {
+    const competitorResult = await scrapeCompetitorArticles(candidateUrls, scrape);
+    warnings.push(...competitorResult.warnings);
+    scrapedArticles = competitorResult.scrapedArticles;
+  }
+
+  if (referenceUrls.length > 0) {
+    const referenceResult = await scrapeCompetitorArticles(referenceUrls, scrape);
+    warnings.push(...referenceResult.warnings);
+    scrapedReferenceArticles = referenceResult.scrapedArticles;
+  }
+
+  if (scrapedArticles.length === 0 && scrapedReferenceArticles.length === 0) {
+    console.error('🚨 Scraping failed for all URLs');
+    return res.status(502).json({
+      error: '記事の取得に失敗しました。',
+      warnings,
+    });
+  }
+
+  console.log(
+    '📚 Successfully scraped',
+    scrapedArticles.length,
+    'competitor sources and',
+    scrapedReferenceArticles.length,
+    'reference sources'
+  );
+
+  const competitorTexts = formatScrapedTexts(scrapedArticles, '他社記事');
+  const referenceTexts = formatScrapedTexts(scrapedReferenceArticles, '参考記事');
+  const referenceOutputSection = buildReferenceOutputSection(keyword, referenceTexts);
+
+  const headingsPrompt = `
+あなたはSEOに強い家電専門ライターです。
+キーワード「${keyword}」の記事見出し案を作成してください。
+
+# 出力条件
+- JSON形式で出力
+- 形式:
+{
+  "h1": "タイトル案",
+  "sections": [
+    {
+      "h2": "大見出し1（H2）",
+      "subsections": ["小見出し1-1（H3）", "小見出し1-2（H3）", "小見出し1-3（H3）"]
+    },
+    {
+      "h2": "大見出し2（H2）",
+      "subsections": ["小見出し2-1（H3）", "小見出し2-2（H3）", "小見出し2-3（H3）"]
+    },
+    {
+      "h2": "大見出し3（H2）",
+      "subsections": ["小見出し3-1（H3）", "小見出し3-2（H3）", "小見出し3-3（H3）"]
+    }
+  ]
+}
+- H2は3つ、各H2に対してH3を3つ作成
+- 各見出しは本文を書かず、見出しテキストのみを出力する
+- キーワードとの関連性が高く、検索ユーザーの意図を満たす構成にする
+- 家電販売店にふさわしいフォーマルな文体
+- 製品名・価格は直接記載しない
+- 出力は厳密にJSONのみ
+${competitorTexts ? `\n# 他社記事\n${competitorTexts}` : ''}${referenceOutputSection}
+  `;
+
+  let headingData;
+  try {
+    console.log('🧠 Generating headings with Gemini');
+    const model = await getGeminiModel();
+    const headingsResult = await model.generateContent({
+      contents: [{ role: 'user', parts: [{ text: headingsPrompt }] }],
+    });
+    const headingsRaw = headingsResult.response?.text?.() || '';
+    headingData = parseJsonFromModelOutput(headingsRaw);
+    console.log('🧾 Headings generated:', headingData);
+  } catch (err) {
+    console.error('❌ Heading generation failed', err.message);
+    return res.status(502).json({
+      error: '見出しの生成に失敗しました。',
+      warnings,
+    });
+  }
+
+  console.log(
+    '✅ Completed /api/article/generate-headings in',
+    `${Date.now() - requestStartedAt}ms`
+  );
+
+  const sectionsRaw = normalizeSectionsArray(headingData.sections) || [];
+  const sectionsForClient = sectionsRaw.map((sec) => {
+    const subsectionsRaw = normalizeSubsectionsList(sec.subsections);
+    const subsections = subsectionsRaw
+      .map((sub) => {
+        if (typeof sub === 'string') return sub.trim();
+        if (sub && typeof sub === 'object') {
+          return String(sub.h3 || sub.title || '').trim();
+        }
+        return '';
+      })
+      .filter(Boolean);
+
+    return {
+      h2: String(sec.h2 || '').trim(),
+      subsections,
+    };
+  }).filter((sec) => sec.h2 || sec.subsections.length > 0);
+
+  res.json({
+    title: headingData.h1 || '',
+    sections: sectionsForClient,
+    warnings,
   });
 }
 
