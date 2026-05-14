@@ -50,6 +50,7 @@ keywordの中身が更新され、入力欄に文字が表示される仕組み
   const [heading_h3_second, setHeading_h3_second] = useState('');
   const [heading_h3_third, setHeading_h3_third] = useState('');
   const [competitorUrls, setCompetitorUrls] = useState(initialUrls);
+  const [referenceUrl, setReferenceUrl] = useState('');
   
   /*---⑴app.jsからの戻り値保存変数作成---*/
   const [article, setArticle] = useState(null);
@@ -136,6 +137,7 @@ keywordの中身が更新され、入力欄に文字が表示される仕組み
       competitorUrl1: competitorUrls[0],
       competitorUrl2: competitorUrls[1],
       competitorUrl3: competitorUrls[2],
+      referenceUrl,
     };
     console.log("payload",payload);
 
@@ -180,6 +182,7 @@ keywordの中身が更新され、入力欄に文字が表示される仕組み
   const handleReset = () => {
     setKeyword('');
     setCompetitorUrls(initialUrls);
+    setReferenceUrl('');
     setArticle(null);
     setError('');
   };
@@ -292,7 +295,7 @@ keywordの中身が更新され、入力欄に文字が表示される仕組み
     <>
       <header>
         <h1>AI記事生成アプリ</h1>
-        <p>キーワードと競合記事URLを入力して、記事の叩き台を作成します。</p>
+        <p>キーワードと他社URL・参考URLを入力して、記事の叩き台を作成します。参考URLは記事の書き方・構成の参考に使い、キーワードは別のものを指定します。</p>
       </header>
       <section className="panel">
         <form className="form" onSubmit={handleSubmit}>
@@ -361,7 +364,7 @@ keywordの中身が更新され、入力欄に文字が表示される仕組み
           </label>
           {competitorUrls.map((value, index) => (
             <label className="field" key={`competitor-${index}`}>
-              <span>{`競合記事URL ${index + 1}`}</span>
+              <span>{`他社URL ${index + 1}`}</span>
               <input
                 type="url"
                 value={value}
@@ -371,6 +374,19 @@ keywordの中身が更新され、入力欄に文字が表示される仕組み
               />
             </label>
           ))}
+
+          <label className="field">
+            <span>参考URL</span>
+            <input
+              type="url"
+              value={referenceUrl}
+              placeholder="https://example.com/reference-article"
+              onChange={(event) => setReferenceUrl(event.target.value)}
+            />
+            <p className="field-hint">
+              記事の書き方・構成の参考にする記事URLです。キーワードは上記で指定したものとは異なる記事でも構いません。
+            </p>
+          </label>
 
           <div className="actions">
             <button type="submit" disabled={isLoading}>

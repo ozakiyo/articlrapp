@@ -1,14 +1,16 @@
 import { useEffect, useState } from 'react';
 import KyosoApp from './KyosoApp.jsx';
 import ArticleApp from './App_BK20260113.jsx';
+import HeadingGenerateApp from './HeadingGenerateApp.jsx';
 
 const STORAGE_KEY = 'articleapp-selected-tab';
+const VALID_TABS = ['kyoso', 'headings', 'article'];
 
 export default function App() {
   const [tab, setTab] = useState(() => {
     try {
       const saved = localStorage.getItem(STORAGE_KEY);
-      if (saved === 'article' || saved === 'kyoso') return saved;
+      if (VALID_TABS.includes(saved)) return saved;
     } catch {
       /* ignore */
     }
@@ -38,6 +40,13 @@ export default function App() {
             </button>
             <button
               type="button"
+              className={tab === 'headings' ? undefined : 'secondary'}
+              onClick={() => setTab('headings')}
+            >
+              見出し生成
+            </button>
+            <button
+              type="button"
               className={tab === 'article' ? undefined : 'secondary'}
               onClick={() => setTab('article')}
             >
@@ -47,7 +56,9 @@ export default function App() {
         </div>
       </nav>
 
-      {tab === 'kyoso' ? <KyosoApp /> : <ArticleApp />}
+      {tab === 'kyoso' && <KyosoApp />}
+      {tab === 'headings' && <HeadingGenerateApp />}
+      {tab === 'article' && <ArticleApp />}
     </div>
   );
 }
