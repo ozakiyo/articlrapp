@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="ja">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>競合調査・記事生成</title>
+    <link rel="stylesheet" href="/css/style.css" />
+  </head>
+  <body>
+    <div class="app">
+      <nav class="app-main-nav panel" aria-label="アプリの切り替え">
+        <div class="app-main-nav-inner">
+          <span class="app-main-nav-label">利用するアプリ</span>
+          <div class="app-main-nav-buttons">
+            <button type="button" data-tab="kyoso" class="tab-btn">競合調査（ランキング抽出）</button>
+            <button type="button" data-tab="headings" class="tab-btn secondary">見出し生成</button>
+            <button type="button" data-tab="article" class="tab-btn secondary">記事生成</button>
+          </div>
+        </div>
+      </nav>
+
+      <!-- 競合調査 -->
+      <section id="panel-kyoso" class="tab-panel">
+        <header>
+          <h1>ランキング商品抽出</h1>
+          <p>
+            価格.com または別サイトのランキングURLのどちらか一方と、キーワード（最大2つ）を指定し、条件に合う商品を順位の高い順に表示します。
+          </p>
+        </header>
+        <section class="panel">
+          <form id="form-kyoso" class="form">
+            <div class="field">
+              <span>ランキングページURL（どちらか一方のみ）</span>
+              <p class="field-hint">価格.com と別サイトは排他です。</p>
+              <label class="field nested-field">
+                <span class="field-sub">価格.com（itemlist）</span>
+                <input type="url" id="kyoso-kakaku-url" placeholder="https://kakaku.com/..." />
+              </label>
+              <label class="field nested-field">
+                <span class="field-sub">別サイト（ヨドバシ / コジマ / ビック 等）</span>
+                <input type="url" id="kyoso-other-url" placeholder="https://www.yodobashi.com/.../ranking/" />
+              </label>
+            </div>
+            <div class="field">
+              <span>キーワード（最大2つ・両方指定時はAND）</span>
+              <label class="field nested-field">
+                <span class="field-sub">キーワード1</span>
+                <input type="text" id="kyoso-kw1" placeholder="例: SONY" />
+              </label>
+              <label class="field nested-field">
+                <span class="field-sub">キーワード2</span>
+                <input type="text" id="kyoso-kw2" placeholder="例: ノイキャン" />
+              </label>
+            </div>
+            <div class="actions">
+              <button type="submit" id="kyoso-submit">ランキングを取得</button>
+              <button type="button" class="secondary" id="kyoso-reset">リセット</button>
+            </div>
+          </form>
+          <p id="kyoso-error" class="error" hidden></p>
+        </section>
+        <section id="kyoso-result" class="panel" hidden>
+          <h2>取得結果</h2>
+          <div class="result-actions">
+            <button type="button" class="secondary" id="kyoso-clear">クリア</button>
+          </div>
+          <p class="note" id="kyoso-meta"></p>
+          <div class="generated-block">
+            <div class="ranking-table-wrap">
+              <table class="ranking-table">
+                <thead>
+                  <tr>
+                    <th>順位</th>
+                    <th>メーカー</th>
+                    <th>型式</th>
+                    <th>一致理由</th>
+                  </tr>
+                </thead>
+                <tbody id="kyoso-tbody"></tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+      </section>
+
+      <!-- 見出し生成 -->
+      <section id="panel-headings" class="tab-panel" hidden>
+        <header>
+          <h1>見出し生成</h1>
+          <p>キーワードと他社URL・参考URLから、H2×3・各H2にH3×3の案を作成します。</p>
+        </header>
+        <section class="panel">
+          <form id="form-headings" class="form">
+            <label class="field">
+              <span>キーワード *</span>
+              <input type="text" id="headings-keyword" required placeholder="例: 洗濯機 おすすめ" />
+            </label>
+            <label class="field">
+              <span>他社URL 1</span>
+              <input type="url" id="headings-url1" placeholder="https://example.com/article" />
+            </label>
+            <label class="field">
+              <span>他社URL 2</span>
+              <input type="url" id="headings-url2" placeholder="https://example.com/article" />
+            </label>
+            <label class="field">
+              <span>他社URL 3</span>
+              <input type="url" id="headings-url3" placeholder="https://example.com/article" />
+            </label>
+            <label class="field">
+              <span>参考URL</span>
+              <input type="url" id="headings-ref-url" placeholder="https://example.com/reference" />
+            </label>
+            <div class="actions">
+              <button type="submit" id="headings-submit">見出しを生成</button>
+              <button type="button" class="secondary" id="headings-reset">リセット</button>
+            </div>
+          </form>
+          <p id="headings-error" class="error" hidden></p>
+        </section>
+        <section id="headings-result" class="panel" hidden>
+          <h2>見出し生成結果</h2>
+          <div class="result-actions">
+            <button type="button" class="secondary" id="headings-copy">すべてコピー</button>
+            <button type="button" class="secondary" id="headings-clear">クリア</button>
+          </div>
+          <p id="headings-copy-msg" class="field-hint" hidden></p>
+          <div id="headings-warnings" class="warning" hidden></div>
+          <div id="headings-body" class="generated-article"></div>
+        </section>
+      </section>
+
+      <!-- 記事生成 -->
+      <section id="panel-article" class="tab-panel" hidden>
+        <header>
+          <h1>AI記事生成アプリ</h1>
+          <p>キーワードと他社URL・参考URLを入力して、記事の叩き台を作成します。</p>
+        </header>
+        <section class="panel">
+          <form id="form-article" class="form">
+            <label class="field">
+              <span>キーワード *</span>
+              <input type="text" id="article-keyword" required placeholder="例: AI ライティング" />
+            </label>
+            <label class="field">
+              <span>タイトル（任意）</span>
+              <input type="text" id="article-title" placeholder="例: AIによる記事コンテンツ作成" />
+            </label>
+            <label class="field">
+              <span>H2:見出し１（任意）</span>
+              <input type="text" id="article-h2" placeholder="例: AIで記事を作成してみよう" />
+            </label>
+            <label class="field">
+              <span>H3:見出し１（任意）</span>
+              <input type="text" id="article-h3-1" />
+            </label>
+            <label class="field">
+              <span>H3:見出し2（任意）</span>
+              <input type="text" id="article-h3-2" />
+            </label>
+            <label class="field">
+              <span>H3:見出し3（任意）</span>
+              <input type="text" id="article-h3-3" />
+            </label>
+            <label class="field">
+              <span>他社URL 1</span>
+              <input type="url" id="article-url1" />
+            </label>
+            <label class="field">
+              <span>他社URL 2</span>
+              <input type="url" id="article-url2" />
+            </label>
+            <label class="field">
+              <span>他社URL 3</span>
+              <input type="url" id="article-url3" />
+            </label>
+            <label class="field">
+              <span>参考URL</span>
+              <input type="url" id="article-ref-url" />
+            </label>
+            <div class="actions">
+              <button type="submit" id="article-submit">記事を生成</button>
+              <button type="button" class="secondary" id="article-reset">リセット</button>
+            </div>
+          </form>
+          <p id="article-error" class="error" hidden></p>
+        </section>
+        <section id="article-result" class="panel" hidden>
+          <h2>記事生成結果</h2>
+          <div class="result-actions">
+            <button type="button" class="secondary" id="article-clear">クリア</button>
+          </div>
+          <div id="article-warnings" class="warning" hidden></div>
+          <div id="article-body" class="generated-article"></div>
+        </section>
+      </section>
+    </div>
+    <script src="/js/main.js"></script>
+  </body>
+</html>
