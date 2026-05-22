@@ -168,6 +168,14 @@ console.log('📦 Serving static assets from:', publicPath);
 
 
 const { parseJsonFromModelOutput } = require('./parseModelJson');
+const {
+  fetchCategoryRankings,
+  applyCategoryThemedRankings,
+  resolveCategoryRankingUrls,
+  getRankingThemePresets,
+  getDefaultRankingThemeSelection,
+  CSV_EXPORT_DIR,
+} = require('./categoryRanking');
 
 /*
 「AIモデルのインスタンスを効率的に取得すること」
@@ -1668,6 +1676,154 @@ function cleanupOldScreenshots() {
   }
 });*/
 
+
+app.get('/api/category-ranking-theme-presets', (req, res) => {
+  const category = String(req.query?.category ?? '').trim();
+  if (!category) {
+    return res.status(400).json({ error: 'カテゴリを指定してください。' });
+  }
+  return res.json({
+    category,
+    presets: getRankingThemePresets(category),
+    defaultSelection: getDefaultRankingThemeSelection(category),
+  });
+});
+
+app.post('/api/resolve-category-ranking-urls', async (req, res) => {
+  const category = String(req.body?.category ?? '').trim();
+  console.log('🛎️ POST /api/resolve-category-ranking-urls called with:', { category });
+
+  if (!category) {
+    return res.status(400).json({ error: 'カテゴリを入力してください。' });
+  }
+
+  try {
+    const result = await resolveCategoryRankingUrls(category, {
+      fetchHtmlWithHttpClient,
+      getGeminiModel,
+      parseJsonFromModelOutput,
+    });
+    return res.json({
+      category,
+      rankingUrls: result.urls,
+      urlResolution: result.urlResolution,
+      notes: result.notes || [],
+      themePresets: getRankingThemePresets(category),
+      defaultThemeSelection: getDefaultRankingThemeSelection(category),
+    });
+  } catch (err) {
+    console.error('❌ Resolve category ranking URLs failed', err.message);
+    if (isGeminiQuotaExceededError(err)) {
+      const retryAfterSec = parseRetryAfterSecondsFromMessage(err.message);
+      const payload = {
+        error:
+          'Gemini API の利用上限に達しました。しばらく待って再実行するか、APIキーの利用枠/課金設定を確認してください。',
+        details: err.message,
+      };
+      if (retryAfterSec) payload.retryAfterSeconds = retryAfterSec;
+      return res.status(429).json(payload);
+    }
+    return res.status(502).json({
+      error: 'ランキング URL の自動取得に失敗しました。',
+      details: err.message,
+    });
+  }
+});
+
+app.post('/api/build-category-themed-rankings', async (req, res) => {
+  const requestStartedAt = Date.now();
+  const category = String(req.body?.category ?? '').trim();
+  const compositeItems = req.body?.compositeItems;
+  const rankingThemes = req.body?.rankingThemes;
+
+  console.log('🛎️ POST /api/build-category-themed-rankings called with:', {
+    category,
+    compositeCount: Array.isArray(compositeItems) ? compositeItems.length : 0,
+    themeCount: Array.isArray(rankingThemes) ? rankingThemes.length : 0,
+  });
+
+  if (!category) {
+    return res.status(400).json({ error: 'カテゴリを入力してください。' });
+  }
+
+  try {
+    const result = applyCategoryThemedRankings(category, compositeItems, rankingThemes);
+    console.log(
+      '✅ Completed /api/build-category-themed-rankings in',
+      `${Date.now() - requestStartedAt}ms`
+    );
+    return res.json(result);
+  } catch (err) {
+    console.error('❌ Themed rankings build failed', err.message);
+    return res.status(400).json({
+      error: err.message || '見出し別ランキングの作成に失敗しました。',
+    });
+  }
+});
+
+app.post('/api/extract-category-rankings', async (req, res) => {
+  const requestStartedAt = Date.now();
+  const category = String(req.body?.category ?? '').trim();
+  const rankingUrls = req.body?.rankingUrls;
+  const rankingThemes = req.body?.rankingThemes;
+
+  console.log('🛎️ POST /api/extract-category-rankings called with:', {
+    category,
+    hasManualUrls: Boolean(rankingUrls),
+    themeCount: Array.isArray(rankingThemes) ? rankingThemes.length : 0,
+  });
+
+  if (!category) {
+    return res.status(400).json({ error: 'カテゴリを入力してください。' });
+  }
+
+  try {
+    const result = await fetchCategoryRankings(
+      category,
+      {
+        fetchHtmlWithHttpClient,
+        getGeminiModel,
+        parseJsonFromModelOutput,
+      },
+      { rankingUrls, rankingThemes }
+    );
+
+    console.log(
+      '✅ Completed /api/extract-category-rankings in',
+      `${Date.now() - requestStartedAt}ms`
+    );
+
+    return res.json(result);
+  } catch (err) {
+    console.error('❌ Category ranking failed', err.message);
+    if (isGeminiQuotaExceededError(err)) {
+      const retryAfterSec = parseRetryAfterSecondsFromMessage(err.message);
+      const payload = {
+        error:
+          'Gemini API の利用上限に達しました。しばらく待って再実行するか、APIキーの利用枠/課金設定を確認してください。',
+        details: err.message,
+      };
+      if (retryAfterSec) payload.retryAfterSeconds = retryAfterSec;
+      return res.status(429).json(payload);
+    }
+    return res.status(502).json({
+      error: 'カテゴリ別ランキングの取得または CSV 出力に失敗しました。',
+      details: err.message,
+    });
+  }
+});
+
+app.get('/api/download-category-ranking-csv/:filename', (req, res) => {
+  const filename = path.basename(String(req.params.filename || ''));
+  if (!/^ranking-.+\.csv$/i.test(filename)) {
+    return res.status(400).json({ error: '無効なファイル名です。' });
+  }
+  const filePath = path.join(CSV_EXPORT_DIR, filename);
+  if (!fs.existsSync(filePath)) {
+    return res.status(404).json({ error: 'CSV ファイルが見つかりません。' });
+  }
+  return res.download(filePath, filename, { headers: { 'Content-Type': 'text/csv; charset=utf-8' } });
+});
 
 function normalizeRankingKeywordsFromBody(body) {
   const fromArr = Array.isArray(body?.keywords)

@@ -58,6 +58,31 @@ function collectCandidateUrls(body) {
     .filter(Boolean);
 }
 
+function collectHeadingCandidates(body) {
+  if (Array.isArray(body?.headingCandidates)) {
+    return body.headingCandidates
+      .map((s) => String(s || '').trim())
+      .filter(Boolean)
+      .slice(0, 5);
+  }
+  const out = [];
+  for (let i = 1; i <= 5; i++) {
+    const v = String(body?.[`headingCandidate${i}`] || '').trim();
+    if (v) out.push(v);
+  }
+  return out;
+}
+
+function buildHeadingCandidatesPromptSection(candidates) {
+  if (!candidates?.length) return '';
+  const lines = candidates.map((c, i) => `${i + 1}. ${c}`).join('\n');
+  return `
+# 見出し候補（ランキング分析で抽出した読者ニーズ・機能切り口）
+以下を H2 のテーマとして優先的に反映してください（3件ある場合は各 H2 に1つずつ割り当て）。
+${lines}
+`;
+}
+
 function collectReferenceUrls(body) {
   const {
     referenceUrls = [],
@@ -156,6 +181,11 @@ async function handleArticleGenerate(
       competitorUrl3,
     } = req.body;
 
+    const generateIntroduction =
+      req.body.generateIntroduction === true || req.body.generateIntroduction === 'true';
+    const generateSummary =
+      req.body.generateSummary === true || req.body.generateSummary === 'true';
+
     console.log('🛎️ POST /api/article/generate called with:', {
       keyword,
       title,
@@ -163,6 +193,8 @@ async function handleArticleGenerate(
       heading_h3_first,
       heading_h3_second,
       heading_h3_third,
+      generateIntroduction,
+      generateSummary,
       urls,
       competitorUrl1,
       competitorUrl2,
@@ -221,7 +253,13 @@ async function handleArticleGenerate(
     const referenceTexts = formatScrapedTexts(scrapedReferenceArticles, '参考記事');
     const referenceOutputSection = buildReferenceOutputSection(keyword, referenceTexts);
 
-    const introductionPrompt = `
+    let introductionData = {
+      h1: title || '',
+      introduction: '',
+    };
+
+    if (generateIntroduction) {
+      const introductionPrompt = `
 あなたはSEOに強い家電専門ライターです。
 以下の競合記事を分析し、キーワード「${keyword}」、タイトル「${title}」の導入文を200文字程度で作成してください。
 
@@ -241,29 +279,30 @@ async function handleArticleGenerate(
 ${competitorTexts ? `\n# 他社記事\n${competitorTexts}` : ''}${referenceOutputSection}
   `;
 
-    let introductionData;
-    try {
-      console.log('🧠 Generating outline with Gemini');
-      const model = await getGeminiModel();
-      const introductionResult = await model.generateContent({
-        contents: [{ role: 'user', parts: [{ text: introductionPrompt }] }],
-      });
-      const introductionRaw = introductionResult.response?.text?.() || '';
-      introductionData = parseJsonFromModelOutput(introductionRaw);
-      console.log(
-        '🧾 Outline generated. H2 count:',
-        pickSectionsFromIntroduction(introductionData)?.length ?? 0
-      );
-    } catch (err) {
-      console.error('❌ Outline generation failed', err.message);
-      return res.status(502).json({
-        error: '記事構成の生成に失敗しました。',
-        warnings,
-      });
-    }
+      try {
+        console.log('🧠 Generating introduction with Gemini');
+        const model = await getGeminiModel();
+        const introductionResult = await model.generateContent({
+          contents: [{ role: 'user', parts: [{ text: introductionPrompt }] }],
+        });
+        const introductionRaw = introductionResult.response?.text?.() || '';
+        introductionData = parseJsonFromModelOutput(introductionRaw) || introductionData;
+        console.log(
+          '🧾 Introduction generated. H2 count:',
+          pickSectionsFromIntroduction(introductionData)?.length ?? 0
+        );
+      } catch (err) {
+        console.error('❌ Introduction generation failed', err.message);
+        return res.status(502).json({
+          error: '導入文の生成に失敗しました。',
+          warnings,
+        });
+      }
 
-    const introductionJSON = JSON.stringify(introductionData, null, 2);
-    console.log('introductionJSON', introductionJSON);
+      console.log('introductionJSON', JSON.stringify(introductionData, null, 2));
+    } else {
+      console.log('⏭️ Skipping introduction generation (unchecked)');
+    }
 
     const heading_h3_firstPrompt = `
 あなたはSEOに強い家電専門ライターです。
@@ -402,14 +441,17 @@ ${competitorTexts ? `\n# 他社記事\n${competitorTexts}` : ''}${referenceOutpu
       .filter(Boolean)
       .join('\n');
 
-    const summaryPrompt = `
+    let summaryData = { summary: '' };
+
+    if (generateSummary) {
+      const introSection = introductionData.introduction
+        ? `# 導入文\n${introductionData.introduction}\n\n`
+        : '';
+      const summaryPrompt = `
 あなたはSEOに強い家電専門ライターです。
-キーワード「${keyword}」、タイトル「${title}」の記事について、導入文と各見出し本文を踏まえたまとめ文を150〜200文字で作成してください。
+キーワード「${keyword}」、タイトル「${title}」の記事について、${introSection ? '導入文と' : ''}各見出し本文を踏まえたまとめ文を150〜200文字で作成してください。
 
-# 導入文
-${introductionData.introduction || ''}
-
-# 見出し本文
+${introSection}# 見出し本文
 ${h3BodiesForSummary}
 
 # 出力条件
@@ -421,21 +463,23 @@ ${h3BodiesForSummary}
 ${competitorTexts ? `\n# 他社記事\n${competitorTexts}` : ''}${referenceOutputSection}
 `;
 
-    let summaryData;
-    try {
-      console.log('📝 Generating summary with Gemini');
-      const model = await getGeminiModel();
-      const summaryResult = await model.generateContent({
-        contents: [{ role: 'user', parts: [{ text: summaryPrompt }] }],
-      });
-      const summaryRaw = summaryResult.response?.text?.() || '';
-      summaryData = parseJsonFromModelOutput(summaryRaw);
-    } catch (err) {
-      console.error('❌ Summary generation failed', err.message);
-      return res.status(502).json({
-        error: 'まとめ文の生成に失敗しました。',
-        warnings,
-      });
+      try {
+        console.log('📝 Generating summary with Gemini');
+        const model = await getGeminiModel();
+        const summaryResult = await model.generateContent({
+          contents: [{ role: 'user', parts: [{ text: summaryPrompt }] }],
+        });
+        const summaryRaw = summaryResult.response?.text?.() || '';
+        summaryData = parseJsonFromModelOutput(summaryRaw) || summaryData;
+      } catch (err) {
+        console.error('❌ Summary generation failed', err.message);
+        return res.status(502).json({
+          error: 'まとめ文の生成に失敗しました。',
+          warnings,
+        });
+      }
+    } else {
+      console.log('⏭️ Skipping summary generation (unchecked)');
     }
 
     console.log(
@@ -479,6 +523,8 @@ ${competitorTexts ? `\n# 他社記事\n${competitorTexts}` : ''}${referenceOutpu
     }
 
     res.json({
+      generateIntroduction,
+      generateSummary,
       title: introductionData.h1 || title || '',
       introduction: introductionData.introduction || '',
       summary: summaryData?.summary || '',
@@ -505,9 +551,11 @@ async function handleHeadingGenerate(
   { scrape, getGeminiModel }
 ) {
   const { keyword } = req.body;
+  const headingCandidates = collectHeadingCandidates(req.body);
 
   console.log('🛎️ POST /api/article/generate-headings called with:', {
     keyword,
+    headingCandidates,
     competitorUrls: collectCandidateUrls(req.body),
     referenceUrls: collectReferenceUrls(req.body),
   });
@@ -593,7 +641,7 @@ async function handleHeadingGenerate(
 - 家電販売店にふさわしいフォーマルな文体
 - 製品名・価格は直接記載しない
 - 出力は厳密にJSONのみ
-${competitorTexts ? `\n# 他社記事\n${competitorTexts}` : ''}${referenceOutputSection}
+${buildHeadingCandidatesPromptSection(headingCandidates)}${competitorTexts ? `\n# 他社記事\n${competitorTexts}` : ''}${referenceOutputSection}
   `;
 
   let headingData;
@@ -641,6 +689,7 @@ ${competitorTexts ? `\n# 他社記事\n${competitorTexts}` : ''}${referenceOutpu
   res.json({
     title: headingData.h1 || '',
     sections: sectionsForClient,
+    headingCandidatesUsed: headingCandidates,
     warnings,
   });
 }
