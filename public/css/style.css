@@ -581,3 +581,13 @@ button.secondary {
     width: 100%;
   }
 }
+
+.feature-candidate-list {
+  margin: 0.5rem 0 1rem;
+  padding-left: 1.25rem;
+  line-height: 1.7;
+}
+
+.feature-candidate-list li {
+  margin-bottom: 0.35rem;
+}

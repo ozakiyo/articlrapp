@@ -1,5 +1,6 @@
 (function () {
   const TAB_KEY = 'articleappNode-tab';
+  const RANKING_CONTEXT_KEY = 'articleappNode.rankingContext';
   const panels = {
     kyoso: document.getElementById('panel-kyoso'),
     headings: document.getElementById('panel-headings'),
@@ -24,7 +25,10 @@
   }
 
   tabButtons.forEach((btn) => {
-    btn.addEventListener('click', () => showTab(btn.dataset.tab));
+    btn.addEventListener('click', () => {
+      showTab(btn.dataset.tab);
+      if (btn.dataset.tab === 'headings') loadHeadingCandidatesFromStorage();
+    });
   });
 
   let initialTab = 'kyoso';
@@ -35,6 +39,7 @@
     /* ignore */
   }
   showTab(initialTab);
+  if (initialTab === 'headings') loadHeadingCandidatesFromStorage();
 
   function showError(el, message) {
     if (!el) return;
@@ -61,7 +66,15 @@
     });
     const data = await res.json().catch(() => ({}));
     if (!res.ok) {
-      throw new Error(data.error || data.details || 'リクエストに失敗しました。');
+      let msg = data.error || data.details || 'リクエストに失敗しました。';
+      if (Array.isArray(data.warnings) && data.warnings.length) {
+        const detail = data.warnings
+          .map((w) => (w.url ? `${w.url}: ${w.message}` : w.message))
+          .filter(Boolean)
+          .join('\n');
+        if (detail) msg += `\n\n${detail}`;
+      }
+      throw new Error(msg);
     }
     return data;
   }
@@ -121,63 +134,546 @@
   const kyosoResult = document.getElementById('kyoso-result');
   const kyosoMeta = document.getElementById('kyoso-meta');
   const kyosoTbody = document.getElementById('kyoso-tbody');
+  const kyosoCompositeTbody = document.getElementById('kyoso-composite-tbody');
+  const kyosoCompositeMeta = document.getElementById('kyoso-composite-meta');
+  const kyosoThemedBlocks = document.getElementById('kyoso-themed-blocks');
+  const kyosoThemeSelectPanel = document.getElementById('kyoso-theme-select-panel');
+  const kyosoBuildThemed = document.getElementById('kyoso-build-themed');
+  const kyosoThemeSelects = [
+    document.getElementById('kyoso-theme-2'),
+    document.getElementById('kyoso-theme-3'),
+  ];
+  let kyosoThemePresets = [];
+  let kyosoPhase1Cache = null;
+
   const kyosoSubmit = document.getElementById('kyoso-submit');
+  const kyosoResolveUrls = document.getElementById('kyoso-resolve-urls');
+  const kyosoUrlPanel = document.getElementById('kyoso-url-panel');
+  const kyosoUrlNotes = document.getElementById('kyoso-url-notes');
+
+  function saveRankingContextToStorage(ctx) {
+    try {
+      sessionStorage.setItem(RANKING_CONTEXT_KEY, JSON.stringify(ctx));
+    } catch {
+      /* ignore */
+    }
+  }
+
+  function loadRankingContextFromStorage() {
+    try {
+      const raw = sessionStorage.getItem(RANKING_CONTEXT_KEY);
+      return raw ? JSON.parse(raw) : null;
+    } catch {
+      return null;
+    }
+  }
+
+  function setHeadingCandidatesToForm(features) {
+    for (let i = 1; i <= 5; i++) {
+      const el = document.getElementById(`headings-candidate-${i}`);
+      const f = features[i - 1];
+      if (el) {
+        el.value =
+          f?.headingCandidate || f?.label || (typeof f === 'string' ? f : '') || '';
+      }
+    }
+    const hint = document.getElementById('headings-candidates-hint');
+    if (hint && features?.length) {
+      hint.textContent = `ランキング分析より ${features.length} 件を入力済み（編集してから見出し生成してください）`;
+    }
+  }
+
+  function getHeadingCandidatesFromForm() {
+    const out = [];
+    for (let i = 1; i <= 5; i++) {
+      const v = document.getElementById(`headings-candidate-${i}`)?.value.trim();
+      if (v) out.push(v);
+    }
+    return out;
+  }
+
+  function loadHeadingCandidatesFromStorage() {
+    const ctx = loadRankingContextFromStorage();
+    if (ctx?.pickedFeatures?.length) {
+      setHeadingCandidatesToForm(ctx.pickedFeatures);
+    }
+    if (ctx?.category) {
+      const kw = document.getElementById('headings-keyword');
+      if (kw && !kw.value.trim()) kw.value = ctx.category;
+    }
+  }
+
+  function applyRankingContextToHeadingsTab(ctx) {
+    if (!ctx) return;
+    if (ctx.category) {
+      const kw = document.getElementById('headings-keyword');
+      if (kw) kw.value = ctx.category;
+    }
+    if (ctx.pickedFeatures?.length) {
+      setHeadingCandidatesToForm(ctx.pickedFeatures);
+    }
+  }
+
+  function renderKyosoPickedFeatures(pickedFeatures, category) {
+    const block = document.getElementById('kyoso-features-block');
+    const list = document.getElementById('kyoso-features-list');
+    const meta = document.getElementById('kyoso-features-meta');
+    if (!block || !list) return;
+    if (!pickedFeatures?.length) {
+      block.hidden = true;
+      return;
+    }
+    if (meta) {
+      meta.textContent = `カテゴリ: ${category || '—'} — 横断比較（総合ランキング）から需要の高い切り口を抽出`;
+    }
+    list.innerHTML = pickedFeatures
+      .map(
+        (f, i) =>
+          `<li><strong>${i + 1}.</strong> ${escapeHtml(f.headingCandidate || f.label)} <span class="field-hint">（ランキング該当 ${escapeHtml(String(f.matchCount ?? ''))}件）</span></li>`
+      )
+      .join('');
+    block.hidden = false;
+  }
+
+  function getKyosoRankingUrlsFromForm() {
+    return {
+      amazon: document.getElementById('kyoso-url-amazon')?.value.trim() || '',
+      rakuten: document.getElementById('kyoso-url-rakuten')?.value.trim() || '',
+      yahoo: document.getElementById('kyoso-url-yahoo')?.value.trim() || '',
+      kojima: document.getElementById('kyoso-url-kojima')?.value.trim() || '',
+    };
+  }
+
+  function setKyosoRankingUrlsToForm(urls) {
+    const map = {
+      amazon: 'kyoso-url-amazon',
+      rakuten: 'kyoso-url-rakuten',
+      yahoo: 'kyoso-url-yahoo',
+      kojima: 'kyoso-url-kojima',
+    };
+    for (const [key, id] of Object.entries(map)) {
+      const el = document.getElementById(id);
+      if (el) el.value = urls?.[key] || '';
+    }
+  }
+
+  function enableKyosoSubmitIfUrlsReady() {
+    const urls = getKyosoRankingUrlsFromForm();
+    const ready = Boolean(
+      urls.amazon || urls.rakuten || urls.yahoo || urls.kojima
+    );
+    if (kyosoSubmit) kyosoSubmit.disabled = !ready;
+  }
+
+  /** 需要分析候補（pickedFeatures）だけをテーマ2・3の選択肢にする */
+  function fillKyosoThemeSelectsFromFeatures(pickedFeatures, themePresets, suggestedIds) {
+    kyosoThemePresets = Array.isArray(themePresets) ? themePresets : [];
+    const presetById = new Map(kyosoThemePresets.map((p) => [p.id, p]));
+    const candidates = (pickedFeatures || []).filter((f) => f.id && presetById.has(f.id));
+
+    for (let i = 0; i < 2; i++) {
+      const sel = kyosoThemeSelects[i];
+      if (!sel) continue;
+      sel.innerHTML = '';
+      const placeholder = document.createElement('option');
+      placeholder.value = '';
+      placeholder.textContent = '候補から選択';
+      sel.appendChild(placeholder);
+      for (const f of candidates) {
+        const p = presetById.get(f.id);
+        const opt = document.createElement('option');
+        opt.value = f.id;
+        opt.textContent = `${p.label}（該当 ${f.matchCount ?? '—'}件）`;
+        sel.appendChild(opt);
+      }
+      const suggested = suggestedIds?.[i];
+      if (suggested && presetById.has(suggested)) sel.value = suggested;
+      else if (candidates[i]) sel.value = candidates[i].id;
+    }
+
+    if (kyosoThemeSelectPanel) {
+      kyosoThemeSelectPanel.hidden = candidates.length < 2;
+    }
+    if (kyosoBuildThemed) {
+      kyosoBuildThemed.disabled = candidates.length < 2;
+    }
+  }
+
+  function getKyosoRankingThemesFromForm() {
+    const themes = [];
+    const overall = kyosoThemePresets.find((p) => p.id === 'overall');
+    if (overall) {
+      themes.push({
+        id: overall.id,
+        label: overall.label,
+        title: overall.title,
+        keywords: overall.keywords || [],
+        excludeKeywords: overall.excludeKeywords || [],
+        minSiteCount: overall.minSiteCount ?? 0,
+      });
+    }
+    for (let i = 0; i < 2; i++) {
+      const sel = kyosoThemeSelects[i];
+      const id = sel?.value || '';
+      if (!id) continue;
+      const preset = kyosoThemePresets.find((p) => p.id === id);
+      if (preset) {
+        themes.push({
+          id: preset.id,
+          label: preset.label,
+          title: preset.title,
+          keywords: preset.keywords || [],
+          excludeKeywords: preset.excludeKeywords || [],
+          minSiteCount: preset.minSiteCount ?? 0,
+        });
+      }
+    }
+    return themes;
+  }
+
+  function appendThemedCsvToMeta(metaEl, data) {
+    if (!metaEl?.innerHTML || !data?.themedCsvDownloadUrl) return;
+    if (metaEl.innerHTML.includes('テーマ別 CSV')) return;
+    metaEl.innerHTML += ` / <a href="${escapeHtml(data.themedCsvDownloadUrl)}" download="${escapeHtml(data.themedCsvFilename || 'ranking-themed.csv')}">テーマ別 CSV</a>`;
+  }
+
+  function renderKyosoThemedBlocks(themedRanking, themeTopLimit = 5) {
+    if (!kyosoThemedBlocks) return;
+    const blocks = themedRanking?.themes || [];
+    const maxPerTheme = Number(themeTopLimit) > 0 ? Number(themeTopLimit) : 5;
+    if (!blocks.length) {
+      kyosoThemedBlocks.innerHTML = '';
+      return;
+    }
+    const rankCell = (n) => (n != null && n !== '' ? escapeHtml(String(n)) : '—');
+    kyosoThemedBlocks.innerHTML = blocks
+      .map((block) => {
+        const rows = (block.items || [])
+          .map(
+            (item) =>
+              `<tr>
+                <td>${escapeHtml(item.rank)}</td>
+                <td>${escapeHtml(item.modelKey || '')}</td>
+                <td>${escapeHtml(item.manufacturer || '')}</td>
+                <td>${rankCell(item.rankAmazon)}</td>
+                <td>${rankCell(item.rankRakuten)}</td>
+                <td>${rankCell(item.rankYahoo)}</td>
+                <td>${rankCell(item.rankKojima)}</td>
+                <td>${escapeHtml(item.siteCount ?? '')}</td>
+                <td>${item.avgRank != null ? escapeHtml(String(item.avgRank)) : '—'}</td>
+                <td>${escapeHtml((item.representativeModel || '').slice(0, 48))}</td>
+              </tr>`
+          )
+          .join('');
+        const note =
+          block.items.length < maxPerTheme
+            ? `<p class="field-hint">候補 ${block.candidateCount}件 — 最大${escapeHtml(String(maxPerTheme))}件が ${block.items.length}件（条件を緩めるかテーマを変更してください）</p>`
+            : '';
+        const stepTag =
+          blocks.length === 1
+            ? '② テーマ1（総合・確定）'
+            : escapeHtml(block.title || block.label);
+        return `<div class="generated-block">
+          <h3>${blocks.length === 1 ? stepTag : escapeHtml(block.title || block.label)}</h3>
+          ${note}
+          <div class="ranking-table-wrap">
+            <table class="ranking-table">
+              <thead>
+                <tr>
+                  <th>順位</th><th>型番</th><th>メーカー</th>
+                  <th>Amazon</th><th>楽天</th><th>Yahoo!</th><th>コジマ</th>
+                  <th>掲載数</th><th>平均</th><th>商品名</th>
+                </tr>
+              </thead>
+              <tbody>${rows || '<tr><td colspan="10">該当なし</td></tr>'}</tbody>
+            </table>
+          </div>
+        </div>`;
+      })
+      .join('');
+  }
+
+  kyosoResolveUrls?.addEventListener('click', async () => {
+    showError(kyosoError, '');
+    const category = document.getElementById('kyoso-category')?.value.trim() || '';
+    if (!category) {
+      showError(kyosoError, 'カテゴリを入力してください。');
+      return;
+    }
+
+    setLoading(kyosoResolveUrls, true, 'ランキング URL を自動取得（Gemini）', 'URL 取得中...');
+    try {
+      const data = await postJson('/api/resolve-category-ranking-urls', { category });
+      setKyosoRankingUrlsToForm(data.rankingUrls || {});
+      if (kyosoUrlPanel) kyosoUrlPanel.hidden = false;
+
+      const res = data.urlResolution || {};
+      const resLine = [
+        data.rankingUrls?.amazon && `Amazon: ${res.amazon || '—'}`,
+        data.rankingUrls?.rakuten && `楽天: ${res.rakuten || '—'}`,
+        data.rankingUrls?.yahoo && `Yahoo: ${res.yahoo || '—'}`,
+        data.rankingUrls?.kojima && `コジマ: ${res.kojima || '—'}`,
+      ]
+        .filter(Boolean)
+        .join(' / ');
+
+      const notes = Array.isArray(data.notes) ? data.notes.join(' ') : '';
+      if (kyosoUrlNotes) {
+        kyosoUrlNotes.textContent = [notes, resLine].filter(Boolean).join(' ');
+      }
+
+      enableKyosoSubmitIfUrlsReady();
+      kyosoResult.hidden = true;
+    } catch (err) {
+      showError(kyosoError, err.message);
+    } finally {
+      setLoading(
+        kyosoResolveUrls,
+        false,
+        'ランキング URL を自動取得（Gemini）',
+        'URL 取得中...'
+      );
+    }
+  });
+
+  ['kyoso-url-amazon', 'kyoso-url-rakuten', 'kyoso-url-yahoo', 'kyoso-url-kojima'].forEach(
+    (id) => {
+      document.getElementById(id)?.addEventListener('input', enableKyosoSubmitIfUrlsReady);
+    }
+  );
 
   formKyoso?.addEventListener('submit', async (e) => {
     e.preventDefault();
     showError(kyosoError, '');
 
-    const kakaku = document.getElementById('kyoso-kakaku-url').value.trim();
-    const other = document.getElementById('kyoso-other-url').value.trim();
-    if (!kakaku && !other) {
-      showError(kyosoError, '価格.com または別サイトのランキングURLのどちらか一方を入力してください。');
-      return;
-    }
-    if (kakaku && other) {
-      showError(kyosoError, '両方のURLには入力できません。どちらか一方だけ入力してください。');
+    const category = document.getElementById('kyoso-category')?.value.trim() || '';
+    if (!category) {
+      showError(kyosoError, 'カテゴリを入力してください。');
       return;
     }
 
-    const k1 = document.getElementById('kyoso-kw1').value.trim();
-    const k2 = document.getElementById('kyoso-kw2').value.trim();
-    const keywords = [k1, k2].filter(Boolean);
+    const rankingUrls = getKyosoRankingUrlsFromForm();
+    if (!rankingUrls.amazon && !rankingUrls.rakuten && !rankingUrls.yahoo && !rankingUrls.kojima) {
+      showError(kyosoError, '先に「ランキング URL を自動取得」を実行するか、URL を入力してください。');
+      return;
+    }
 
-    setLoading(kyosoSubmit, true, 'ランキングを取得', '取得中...');
+    setLoading(kyosoSubmit, true, '① ランキング取得・横断比較', '取得中...');
     try {
-      const data = await postJson('/api/extract-ranking-by-keywords', {
-        rankingUrl: kakaku || other,
-        keywords,
-        keyword1: k1,
-        keyword2: k2,
+      const data = await postJson('/api/extract-category-rankings', {
+        category,
+        rankingUrls,
       });
 
-      const items = Array.isArray(data.items)
-        ? [...data.items].sort((a, b) => (a.rank ?? 0) - (b.rank ?? 0))
-        : [];
+      const rows = [];
+      const sources = Array.isArray(data.sources) ? data.sources : [];
+      for (const block of sources) {
+        const typeLabel = block.sourceType === 'mall' ? 'モール' : 'コジマネット';
+        for (const item of block.items || []) {
+          rows.push({
+            typeLabel,
+            sourceLabel: block.sourceLabel || '',
+            rank: item.rank,
+            manufacturer: item.manufacturer,
+            model: item.model,
+            href: item.href,
+          });
+        }
+      }
 
-      let meta = `対象URL: ${escapeHtml(data.rankingUrl || '')}`;
-      if (data.keywords?.length) meta += ` / キーワード: ${escapeHtml(data.keywords.join('、'))}`;
-      if (typeof data.count === 'number') meta += ` / ${data.count}件`;
+      let meta = `カテゴリ: ${escapeHtml(data.category || category)}`;
+      if (data.rankingUrls && typeof data.rankingUrls === 'object') {
+        const res = data.urlResolution || {};
+        const parts = [
+          data.rankingUrls.amazon && `Amazon(${escapeHtml(res.amazon || '—')})`,
+          data.rankingUrls.rakuten && `楽天(${escapeHtml(res.rakuten || '—')})`,
+          data.rankingUrls.yahoo && `Yahoo(${escapeHtml(res.yahoo || '—')})`,
+          data.rankingUrls.kojima && `コジマ(${escapeHtml(res.kojima || '—')})`,
+        ].filter(Boolean);
+        if (parts.length) meta += ` / URL解決: ${parts.join(' · ')}`;
+      }
+      if (data.csvDownloadUrl) {
+        meta += ` / <a href="${escapeHtml(data.csvDownloadUrl)}" download="${escapeHtml(data.csvFilename || 'ranking.csv')}">サイト別 CSV</a>`;
+      }
+      if (data.compositeCsvDownloadUrl) {
+        meta += ` / <a href="${escapeHtml(data.compositeCsvDownloadUrl)}" download="${escapeHtml(data.compositeCsvFilename || 'ranking-composite.csv')}">横断比較 CSV</a>`;
+      }
+      if (data.phase === 'themed_complete' && data.themedCsvDownloadUrl) {
+        meta += ` / <a href="${escapeHtml(data.themedCsvDownloadUrl)}" download="${escapeHtml(data.themedCsvFilename || 'ranking-themed.csv')}">テーマ別 CSV</a>`;
+      }
+      if (data.rankingThemes?.length) {
+        const themeLabels = data.rankingThemes.map((t, i) => {
+          const tag = i === 0 ? '（総合・確定）' : '（選択）';
+          return `${escapeHtml(t.label)}${tag}`;
+        });
+        meta += ` / テーマ: ${themeLabels.join(' · ')}`;
+      } else if (data.phase === 'awaiting_theme_selection') {
+        meta += ' / ④ 見出し候補からテーマ2・3を選択してください';
+      }
+      if (data.warnings?.length) {
+        meta += ` / 警告: ${data.warnings.length}件`;
+      }
       kyosoMeta.innerHTML = meta;
 
-      kyosoTbody.innerHTML = items
+      kyosoTbody.innerHTML = rows
         .map(
           (row) =>
             `<tr>
+              <td>${escapeHtml(row.typeLabel)}</td>
+              <td>${escapeHtml(row.sourceLabel)}</td>
               <td>${escapeHtml(row.rank)}</td>
               <td>${escapeHtml(row.manufacturer || '')}</td>
               <td>${escapeHtml(row.model || '')}</td>
-              <td>${escapeHtml(row.feature || '—')}</td>
+              <td>${
+                row.href
+                  ? `<a href="${escapeHtml(row.href)}" target="_blank" rel="noopener">リンク</a>`
+                  : '—'
+              }</td>
             </tr>`
         )
         .join('');
+
+      const compositeItems = data.compositeRanking?.items || [];
+      const compositeStats = data.compositeRanking?.stats || {};
+      if (kyosoCompositeMeta) {
+        const parts = [
+          `型番で集約: ${compositeStats.totalRows ?? compositeItems.length}件`,
+        ];
+        if (compositeStats.unknownModelCount > 0) {
+          parts.push(`型番不明（除外）: ${compositeStats.unknownModelCount}件`);
+        }
+        kyosoCompositeMeta.textContent = parts.join(' / ');
+      }
+      if (kyosoCompositeTbody) {
+        const rankCell = (n) => (n != null && n !== '' ? escapeHtml(String(n)) : '—');
+        kyosoCompositeTbody.innerHTML = compositeItems
+          .map(
+            (row) =>
+              `<tr>
+                <td>${escapeHtml(row.modelKey || '')}</td>
+                <td>${escapeHtml(row.manufacturer || '')}</td>
+                <td>${rankCell(row.rankAmazon)}</td>
+                <td>${rankCell(row.rankRakuten)}</td>
+                <td>${rankCell(row.rankYahoo)}</td>
+                <td>${rankCell(row.rankKojima)}</td>
+                <td>${escapeHtml(row.siteCount ?? '')}</td>
+                <td>${row.avgRank != null ? escapeHtml(String(row.avgRank)) : '—'}</td>
+                <td>${escapeHtml(row.representativeModel || '')}</td>
+              </tr>`
+          )
+          .join('');
+      }
+
+      renderKyosoThemedBlocks(data.themedRanking, data.themeTopLimit);
+
+      kyosoPhase1Cache = {
+        category: data.category || category,
+        compositeItems: data.compositeRanking?.items || [],
+        themePresets: data.themePresets || [],
+        pickedFeatures: data.pickedFeatures || [],
+        suggestedThemeIds: data.suggestedThemeIds || [],
+        themeTopLimit: data.themeTopLimit,
+      };
+      fillKyosoThemeSelectsFromFeatures(
+        kyosoPhase1Cache.pickedFeatures,
+        kyosoPhase1Cache.themePresets,
+        kyosoPhase1Cache.suggestedThemeIds
+      );
+
+      const rankingCtx = {
+        category: kyosoPhase1Cache.category,
+        pickedFeatures: kyosoPhase1Cache.pickedFeatures,
+        savedAt: Date.now(),
+      };
+      saveRankingContextToStorage(rankingCtx);
+      renderKyosoPickedFeatures(rankingCtx.pickedFeatures, rankingCtx.category);
+      const headingsKw = document.getElementById('headings-keyword');
+      if (headingsKw && !headingsKw.value.trim()) {
+        applyRankingContextToHeadingsTab(rankingCtx);
+      }
+
+      if (data.warnings?.length) {
+        showError(
+          kyosoError,
+          `一部の取得元でエラーがありました:\n${data.warnings
+            .map((w) => `${w.source}: ${w.message}`)
+            .join('\n')}`
+        );
+      }
 
       kyosoResult.hidden = false;
     } catch (err) {
       showError(kyosoError, err.message);
       kyosoResult.hidden = true;
     } finally {
-      setLoading(kyosoSubmit, false, 'ランキングを取得', '取得中...');
+      setLoading(kyosoSubmit, false, '① ランキング取得・横断比較', '取得中...');
+    }
+  });
+
+  kyosoBuildThemed?.addEventListener('click', async () => {
+    showError(kyosoError, '');
+    if (!kyosoPhase1Cache?.compositeItems?.length) {
+      showError(kyosoError, '先に「① ランキング取得・横断比較」を実行してください。');
+      return;
+    }
+
+    const rankingThemes = getKyosoRankingThemesFromForm();
+    const secondaryIds = rankingThemes
+      .map((t) => t.id)
+      .filter((id) => id && id !== 'overall');
+    if (secondaryIds.length < 2) {
+      showError(kyosoError, '需要分析の見出し候補から、テーマ2・3を選んでください。');
+      return;
+    }
+    if (new Set(secondaryIds).size < 2) {
+      showError(kyosoError, 'テーマ2とテーマ3は異なる見出しを選んでください。');
+      return;
+    }
+
+    setLoading(
+      kyosoBuildThemed,
+      true,
+      '見出し別ランキングを作成（テーマ2・3）',
+      '作成中...'
+    );
+    try {
+      const data = await postJson('/api/build-category-themed-rankings', {
+        category: kyosoPhase1Cache.category,
+        compositeItems: kyosoPhase1Cache.compositeItems,
+        rankingThemes,
+      });
+
+      renderKyosoThemedBlocks(data.themedRanking, data.themeTopLimit);
+      appendThemedCsvToMeta(kyosoMeta, data);
+
+      if (data.rankingThemes?.length && kyosoMeta) {
+        const base = kyosoMeta.innerHTML.replace(
+          / \/ ④ 見出し候補からテーマ2・3を選択してください/,
+          ''
+        );
+        const themeLabels = data.rankingThemes
+          .map((t, i) => `${escapeHtml(t.label)}${i === 0 ? '（総合）' : '（選択）'}`)
+          .join(' · ');
+        kyosoMeta.innerHTML = base.includes('テーマ:')
+          ? base
+          : `${base} / テーマ: ${themeLabels}`;
+      }
+
+      if (data.warnings?.length) {
+        showError(
+          kyosoError,
+          data.warnings.map((w) => `${w.source}: ${w.message}`).join('\n')
+        );
+      }
+    } catch (err) {
+      showError(kyosoError, err.message);
+    } finally {
+      setLoading(
+        kyosoBuildThemed,
+        false,
+        '見出し別ランキングを作成（テーマ2・3）',
+        '作成中...'
+      );
     }
   });
 
@@ -185,11 +681,41 @@
     formKyoso.reset();
     showError(kyosoError, '');
     kyosoResult.hidden = true;
+    if (kyosoUrlPanel) kyosoUrlPanel.hidden = true;
+    if (kyosoThemeSelectPanel) kyosoThemeSelectPanel.hidden = true;
+    kyosoPhase1Cache = null;
+    if (kyosoUrlNotes) kyosoUrlNotes.textContent = '';
+    if (kyosoCompositeTbody) kyosoCompositeTbody.innerHTML = '';
+    if (kyosoCompositeMeta) kyosoCompositeMeta.textContent = '';
+    if (kyosoThemedBlocks) kyosoThemedBlocks.innerHTML = '';
+    const featBlock = document.getElementById('kyoso-features-block');
+    if (featBlock) featBlock.hidden = true;
+    try {
+      sessionStorage.removeItem(RANKING_CONTEXT_KEY);
+    } catch {
+      /* ignore */
+    }
+    kyosoThemePresets = [];
+    for (const sel of kyosoThemeSelects) {
+      if (sel) sel.innerHTML = '';
+    }
+    setKyosoRankingUrlsToForm({});
+    if (kyosoSubmit) kyosoSubmit.disabled = true;
   });
 
   document.getElementById('kyoso-clear')?.addEventListener('click', () => {
     kyosoResult.hidden = true;
     showError(kyosoError, '');
+    if (kyosoCompositeTbody) kyosoCompositeTbody.innerHTML = '';
+    if (kyosoCompositeMeta) kyosoCompositeMeta.textContent = '';
+    if (kyosoThemedBlocks) kyosoThemedBlocks.innerHTML = '';
+    if (kyosoThemeSelectPanel) kyosoThemeSelectPanel.hidden = true;
+    kyosoPhase1Cache = null;
+  });
+
+  document.getElementById('kyoso-to-headings')?.addEventListener('click', () => {
+    applyRankingContextToHeadingsTab(loadRankingContextFromStorage());
+    showTab('headings');
   });
 
   // --- 見出し生成 ---
@@ -213,8 +739,10 @@
 
     setLoading(headingsSubmit, true, '見出しを生成', '生成中...');
     try {
+      const headingCandidates = getHeadingCandidatesFromForm();
       const data = await postJson('/api/article/generate-headings', {
         keyword,
+        headingCandidates,
         competitorUrl1: document.getElementById('headings-url1').value.trim(),
         competitorUrl2: document.getElementById('headings-url2').value.trim(),
         competitorUrl3: document.getElementById('headings-url3').value.trim(),
@@ -310,6 +838,8 @@
         competitorUrl2: document.getElementById('article-url2').value.trim(),
         competitorUrl3: document.getElementById('article-url3').value.trim(),
         referenceUrl: document.getElementById('article-ref-url').value.trim(),
+        generateIntroduction: Boolean(document.getElementById('article-gen-intro')?.checked),
+        generateSummary: Boolean(document.getElementById('article-gen-summary')?.checked),
       });
 
       renderWarnings(articleWarnings, data.warnings);
