@@ -8,6 +8,8 @@ articleapp を **HTML / CSS / 素の JavaScript** と **Node.js + Express + EJS*
 - 見出し生成（Gemini）
 - 記事生成（Gemini）
 
+シグナル監視・LINE 配信は別リポジトリ **[tradePulseNode](../tradePulseNode)**（同一 ConoHa サーバー・別ポート）です。
+
 ## 必要環境
 
 - Node.js 18 以上
