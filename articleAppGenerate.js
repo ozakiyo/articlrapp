@@ -23,6 +23,78 @@ function normalizeSubsectionsList(v) {
   return [];
 }
 
+const MAX_ARTICLE_H3 = 5;
+const H3_SUFFIXES = ['first', 'second', 'third', 'fourth', 'fifth'];
+
+function collectArticleH3Headings(body) {
+  if (Array.isArray(body.heading_h3_list)) {
+    const padded = [...body.heading_h3_list];
+    while (padded.length < MAX_ARTICLE_H3) padded.push('');
+    return padded
+      .slice(0, MAX_ARTICLE_H3)
+      .map((h) => String(h ?? '').trim());
+  }
+  return H3_SUFFIXES.map((suffix) =>
+    String(body[`heading_h3_${suffix}`] ?? '').trim()
+  );
+}
+
+async function generateH3BodyContent({
+  getGeminiModel,
+  keyword,
+  title,
+  heading_h2_first,
+  h3Heading,
+  competitorTexts,
+  referenceOutputSection,
+  index,
+}) {
+  const prompt = `
+あなたはSEOに強い家電専門ライターです。
+以下の競合記事を分析し、キーワード「${keyword}」、タイトル「${title}」、H2見出し「${heading_h2_first}」の子見出し「${h3Heading}」の本文を200文字程度で作成してください。
+
+# 出力条件
+- JSON形式で出力
+- 形式:
+{
+  "h3": "${h3Heading}",
+  "content": "本文(200文字程度)"
+}
+- キーワードとの関連性が高く、検索ユーザーの意図を満たす構成にする
+- 内容は具体的で、独自の視点・根拠・事例を交えて説明且つ信頼感があり、客観的
+- 家電販売店にふさわしいフォーマルな文体
+- 数値・比較・用途別の提案など、検索ユーザーの満足度を意識
+- 製品名・価格は直接記載しない
+- 出力は厳密にJSONのみ
+${competitorTexts ? `\n# 他社記事\n${competitorTexts}` : ''}${referenceOutputSection}
+`;
+
+  console.log(`🧠 Generating H3-${index} body with Gemini`);
+  const model = await getGeminiModel();
+  const result = await model.generateContent({
+    contents: [{ role: 'user', parts: [{ text: prompt }] }],
+  });
+  const raw = result.response?.text?.() || '';
+  const data = parseJsonFromModelOutput(raw);
+  console.log(`🧾 H3-${index} generated:`, data);
+  return data;
+}
+
+function buildArticleH3FlatFields(h3BySlot) {
+  const flat = { h3_items: [] };
+  h3BySlot.forEach((entry, i) => {
+    if (!entry) return;
+    const suffix = H3_SUFFIXES[i];
+    if (!suffix) return;
+    const h3 = entry.data?.h3 || entry.heading;
+    const content = entry.data?.content || '';
+    flat[`h3_${suffix}`] = h3;
+    flat[`h3_${suffix}_content`] = content;
+    flat.h3_items.push({ h3, content });
+  });
+  return flat;
+}
+
 /**
  * 記事生成 UI（client/src/App_BK20260113.jsx）向け API。
  * 旧 app_BK20260113.js の POST /api/generate と同等の処理を /api/article/generate に提供する。
@@ -175,6 +247,8 @@ async function handleArticleGenerate(
       heading_h3_first,
       heading_h3_second,
       heading_h3_third,
+      heading_h3_fourth,
+      heading_h3_fifth,
       urls = [],
       competitorUrl1,
       competitorUrl2,
@@ -193,6 +267,8 @@ async function handleArticleGenerate(
       heading_h3_first,
       heading_h3_second,
       heading_h3_third,
+      heading_h3_fourth,
+      heading_h3_fifth,
       generateIntroduction,
       generateSummary,
       urls,
@@ -304,140 +380,35 @@ ${competitorTexts ? `\n# 他社記事\n${competitorTexts}` : ''}${referenceOutpu
       console.log('⏭️ Skipping introduction generation (unchecked)');
     }
 
-    const heading_h3_firstPrompt = `
-あなたはSEOに強い家電専門ライターです。
-以下の競合記事を分析し、キーワード「${keyword}」、タイトル「${title}」、H2見出し「${heading_h2_first}」の子見出し「${heading_h3_first}」の本文を200文字程度で作成してください。
+    const h3Headings = collectArticleH3Headings(req.body);
+    const h3Results = [];
 
-# 出力条件
-- JSON形式で出力
-- 形式:
-{
-  "h3": "${heading_h3_first}",
-  "content": "本文(200文字程度)"
-}
-- キーワードとの関連性が高く、検索ユーザーの意図を満たす構成にする
-- 内容は具体的で、独自の視点・根拠・事例を交えて説明且つ信頼感があり、客観的
-- 家電販売店にふさわしいフォーマルな文体
-- 数値・比較・用途別の提案など、検索ユーザーの満足度を意識
-- 製品名・価格は直接記載しない
-- 出力は厳密にJSONのみ
-${competitorTexts ? `\n# 他社記事\n${competitorTexts}` : ''}${referenceOutputSection}
-`;
-
-    let heading_h3_firstData;
-    try {
-      console.log('🧠 Generating H3-1 body with Gemini');
-      const model = await getGeminiModel();
-      const heading_h3_firstResult = await model.generateContent({
-        contents: [{ role: 'user', parts: [{ text: heading_h3_firstPrompt }] }],
-      });
-
-      const heading_h3_firstRaw = heading_h3_firstResult.response?.text?.() || '';
-
-      heading_h3_firstData = parseJsonFromModelOutput(heading_h3_firstRaw);
-      console.log('🧾 H3-1 generated:', heading_h3_firstData);
-    } catch (err) {
-      console.error('❌ H3-1 generation failed', err.message);
-      return res.status(502).json({
-        error: 'H3-1本文の生成に失敗しました。',
-        warnings,
-      });
+    for (let i = 0; i < h3Headings.length; i++) {
+      const h3Heading = h3Headings[i];
+      if (!h3Heading) continue;
+      try {
+        const data = await generateH3BodyContent({
+          getGeminiModel,
+          keyword,
+          title,
+          heading_h2_first,
+          h3Heading,
+          competitorTexts,
+          referenceOutputSection,
+          index: i + 1,
+        });
+        h3Results.push({ heading: h3Heading, data });
+      } catch (err) {
+        console.error(`❌ H3-${i + 1} generation failed`, err.message);
+        return res.status(502).json({
+          error: `H3-${i + 1}本文の生成に失敗しました。`,
+          warnings,
+        });
+      }
     }
 
-    const heading_h3_firstJSON = JSON.stringify(heading_h3_firstData, null, 2);
-    console.log('heading_h3_firstJSON', heading_h3_firstJSON);
-
-    const heading_h3_secondPrompt = `
-あなたはSEOに強い家電専門ライターです。
-以下の競合記事を分析し、キーワード「${keyword}」、タイトル「${title}」、H2見出し「${heading_h2_first}」の子見出し「${heading_h3_second}」の本文を200文字程度で作成してください。
-
-# 出力条件
-- JSON形式で出力
-- 形式:
-{
-  "h3": "${heading_h3_second}",
-  "content": "本文(200文字程度)"
-}
-- キーワードとの関連性が高く、検索ユーザーの意図を満たす構成にする
-- 内容は具体的で、独自の視点・根拠・事例を交えて説明且つ信頼感があり、客観的
-- 家電販売店にふさわしいフォーマルな文体
-- 数値・比較・用途別の提案など、検索ユーザーの満足度を意識
-- 製品名・価格は直接記載しない
-- 出力は厳密にJSONのみ
-${competitorTexts ? `\n# 他社記事\n${competitorTexts}` : ''}${referenceOutputSection}
-`;
-
-    let heading_h3_secondData;
-    try {
-      console.log('🧠 Generating H3-2 body with Gemini');
-      const model = await getGeminiModel();
-      const heading_h3_secondResult = await model.generateContent({
-        contents: [{ role: 'user', parts: [{ text: heading_h3_secondPrompt }] }],
-      });
-
-      const heading_h3_secondRaw = heading_h3_secondResult.response?.text?.() || '';
-
-      heading_h3_secondData = parseJsonFromModelOutput(heading_h3_secondRaw);
-      console.log('🧾 H3-2 generated:', heading_h3_secondData);
-    } catch (err) {
-      console.error('❌ H3-2 generation failed', err.message);
-      return res.status(502).json({
-        error: 'H3-2本文の生成に失敗しました。',
-        warnings,
-      });
-    }
-
-    const heading_h3_secondJSON = JSON.stringify(heading_h3_secondData, null, 2);
-    console.log('heading_h3_secondJSON', heading_h3_secondJSON);
-
-    const heading_h3_thirdPrompt = `
-あなたはSEOに強い家電専門ライターです。
-以下の競合記事を分析し、キーワード「${keyword}」、タイトル「${title}」、H2見出し「${heading_h2_first}」の子見出し「${heading_h3_third}」の本文を200文字程度で作成してください。
-
-# 出力条件
-- JSON形式で出力
-- 形式:
-{
-  "h3": "${heading_h3_third}",
-  "content": "本文(200文字程度)"
-}
-- キーワードとの関連性が高く、検索ユーザーの意図を満たす構成にする
-- 内容は具体的で、独自の視点・根拠・事例を交えて説明且つ信頼感があり、客観的
-- 家電販売店にふさわしいフォーマルな文体
-- 数値・比較・用途別の提案など、検索ユーザーの満足度を意識
-- 製品名・価格は直接記載しない
-- 出力は厳密にJSONのみ
-${competitorTexts ? `\n# 他社記事\n${competitorTexts}` : ''}${referenceOutputSection}
-`;
-
-    let heading_h3_thirdData;
-    try {
-      console.log('🧠 Generating H3-3 body with Gemini');
-      const model = await getGeminiModel();
-      const heading_h3_thirdResult = await model.generateContent({
-        contents: [{ role: 'user', parts: [{ text: heading_h3_thirdPrompt }] }],
-      });
-
-      const heading_h3_thirdRaw = heading_h3_thirdResult.response?.text?.() || '';
-
-      heading_h3_thirdData = parseJsonFromModelOutput(heading_h3_thirdRaw);
-      console.log('🧾 H3-3 generated:', heading_h3_thirdData);
-    } catch (err) {
-      console.error('❌ H3-3 generation failed', err.message);
-      return res.status(502).json({
-        error: 'H3-3本文の生成に失敗しました。',
-        warnings,
-      });
-    }
-
-    const heading_h3_thirdJSON = JSON.stringify(heading_h3_thirdData, null, 2);
-    console.log('heading_h3_thirdJSON', heading_h3_thirdJSON);
-
-    const h3BodiesForSummary = [
-      heading_h3_firstData?.content,
-      heading_h3_secondData?.content,
-      heading_h3_thirdData?.content,
-    ]
+    const h3BodiesForSummary = h3Results
+      .map((r) => r.data?.content)
       .filter(Boolean)
       .join('\n');
 
@@ -490,25 +461,23 @@ ${competitorTexts ? `\n# 他社記事\n${competitorTexts}` : ''}${referenceOutpu
     const sectionsRaw = pickSectionsFromIntroduction(introductionData);
     let sectionsForClient = sectionsRaw;
 
+    let resultIdx = 0;
+    const h3BySlot = h3Headings.map((heading) => {
+      if (!heading) return null;
+      const item = h3Results[resultIdx++];
+      return item ? { heading: item.heading, data: item.data } : null;
+    });
+    const articleH3Fields = buildArticleH3FlatFields(h3BySlot);
+
     if (!sectionsForClient?.length) {
       sectionsForClient = [
         {
           h2: heading_h2_first || '',
           content: '',
-          subsections: [
-            {
-              h3: heading_h3_firstData?.h3 || heading_h3_first,
-              content: heading_h3_firstData?.content || '',
-            },
-            {
-              h3: heading_h3_secondData?.h3 || heading_h3_second,
-              content: heading_h3_secondData?.content || '',
-            },
-            {
-              h3: heading_h3_thirdData?.h3 || heading_h3_third,
-              content: heading_h3_thirdData?.content || '',
-            },
-          ].filter((sub) => String(sub.h3 || sub.content || '').trim()),
+          subsections: articleH3Fields.h3_items.map((sub) => ({
+            h3: sub.h3,
+            content: sub.content,
+          })),
         },
       ].filter(
         (sec) =>
@@ -534,12 +503,7 @@ ${competitorTexts ? `\n# 他社記事\n${competitorTexts}` : ''}${referenceOutpu
         summary: summaryData?.summary || '',
         sections: sectionsForClient,
         h2: heading_h2_first,
-        h3_first: heading_h3_firstData?.h3 || heading_h3_first,
-        h3_first_content: heading_h3_firstData?.content || '',
-        h3_second: heading_h3_secondData?.h3 || heading_h3_second,
-        h3_second_content: heading_h3_secondData?.content || '',
-        h3_third: heading_h3_thirdData?.h3 || heading_h3_third,
-        h3_third_content: heading_h3_thirdData?.content || '',
+        ...articleH3Fields,
       },
     });
 }

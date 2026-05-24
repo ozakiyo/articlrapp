@@ -815,6 +815,35 @@
   const articleWarnings = document.getElementById('article-warnings');
   const articleSubmit = document.getElementById('article-submit');
 
+  const ARTICLE_H3_SUFFIXES = ['first', 'second', 'third', 'fourth', 'fifth'];
+
+  function getArticleH3Payload() {
+    const payload = {};
+    ARTICLE_H3_SUFFIXES.forEach((suffix, i) => {
+      payload[`heading_h3_${suffix}`] =
+        document.getElementById(`article-h3-${i + 1}`)?.value.trim() || '';
+    });
+    return payload;
+  }
+
+  function buildArticleH3Blocks(body) {
+    if (Array.isArray(body?.h3_items) && body.h3_items.length) {
+      return body.h3_items.map((item) => ({
+        title: item.h3 || '',
+        content: item.content || '',
+      }));
+    }
+    return ARTICLE_H3_SUFFIXES.map((suffix) => ({
+      title:
+        document.getElementById(
+          `article-h3-${ARTICLE_H3_SUFFIXES.indexOf(suffix) + 1}`
+        )?.value.trim() ||
+        body?.[`h3_${suffix}`] ||
+        '',
+      content: body?.[`h3_${suffix}_content`] || '',
+    })).filter((b) => b.title || b.content);
+  }
+
   formArticle?.addEventListener('submit', async (e) => {
     e.preventDefault();
     showError(articleError, '');
@@ -831,9 +860,7 @@
         keyword,
         title: document.getElementById('article-title').value.trim(),
         heading_h2_first: document.getElementById('article-h2').value.trim(),
-        heading_h3_first: document.getElementById('article-h3-1').value.trim(),
-        heading_h3_second: document.getElementById('article-h3-2').value.trim(),
-        heading_h3_third: document.getElementById('article-h3-3').value.trim(),
+        ...getArticleH3Payload(),
         competitorUrl1: document.getElementById('article-url1').value.trim(),
         competitorUrl2: document.getElementById('article-url2').value.trim(),
         competitorUrl3: document.getElementById('article-url3').value.trim(),
@@ -848,14 +875,7 @@
         data.article && typeof data.article === 'object' && !Array.isArray(data.article)
           ? data.article
           : null;
-      const h3First = document.getElementById('article-h3-1').value.trim() || body?.h3_first || '';
-      const h3Second = document.getElementById('article-h3-2').value.trim() || body?.h3_second || '';
-      const h3Third = document.getElementById('article-h3-3').value.trim() || body?.h3_third || '';
-      const blocks = [
-        { title: h3First, content: body?.h3_first_content || '' },
-        { title: h3Second, content: body?.h3_second_content || '' },
-        { title: h3Third, content: body?.h3_third_content || '' },
-      ].filter((b) => b.title || b.content);
+      const blocks = buildArticleH3Blocks(body);
 
       const intro = body?.introduction ?? data.introduction ?? '';
       const summary = body?.summary ?? data.summary ?? '';
