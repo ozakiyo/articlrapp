@@ -22,38 +22,51 @@
       <!-- 競合調査 -->
       <section id="panel-kyoso" class="tab-panel">
         <header>
-          <h1>ランキング商品抽出</h1>
+          <h1>カテゴリ別ランキング取得</h1>
           <p>
-            価格.com または別サイトのランキングURLのどちらか一方と、キーワード（最大2つ）を指定し、条件に合う商品を順位の高い順に表示します。
+            カテゴリ（例: 窓用エアコン）を指定し、まず Gemini で各サイトのランキング URL を自動取得します。
+            表示された URL を確認し、必要なら修正してから TOP15 を取得して CSV に出力します。
           </p>
         </header>
         <section class="panel">
           <form id="form-kyoso" class="form">
-            <div class="field">
-              <span>ランキングページURL（どちらか一方のみ）</span>
-              <p class="field-hint">価格.com と別サイトは排他です。</p>
-              <label class="field nested-field">
-                <span class="field-sub">価格.com（itemlist）</span>
-                <input type="url" id="kyoso-kakaku-url" placeholder="https://kakaku.com/..." />
-              </label>
-              <label class="field nested-field">
-                <span class="field-sub">別サイト（ヨドバシ / コジマ / ビック 等）</span>
-                <input type="url" id="kyoso-other-url" placeholder="https://www.yodobashi.com/.../ranking/" />
-              </label>
+            <label class="field">
+              <span>カテゴリ *</span>
+              <input
+                type="text"
+                id="kyoso-category"
+                required
+                placeholder="例: 窓用エアコン"
+              />
+              <p class="field-hint">
+                ①「URLを自動取得」で Gemini がランキングページ URL を提案します。②内容を確認・修正。③「ランキング取得」で CSV 出力します。
+              </p>
+            </label>
+            <div class="actions">
+              <button type="button" class="secondary" id="kyoso-resolve-urls">ランキング URL を自動取得（Gemini）</button>
             </div>
-            <div class="field">
-              <span>キーワード（最大2つ・両方指定時はAND）</span>
+            <div id="kyoso-url-panel" class="field" hidden>
+              <span>ランキング一覧 URL（確認・修正可）</span>
+              <p class="field-hint" id="kyoso-url-notes"></p>
               <label class="field nested-field">
-                <span class="field-sub">キーワード1</span>
-                <input type="text" id="kyoso-kw1" placeholder="例: SONY" />
+                <span class="field-sub">Amazon</span>
+                <input type="url" id="kyoso-url-amazon" placeholder="https://www.amazon.co.jp/gp/bestsellers/..." />
               </label>
               <label class="field nested-field">
-                <span class="field-sub">キーワード2</span>
-                <input type="text" id="kyoso-kw2" placeholder="例: ノイキャン" />
+                <span class="field-sub">楽天</span>
+                <input type="url" id="kyoso-url-rakuten" placeholder="https://ranking.rakuten.co.jp/daily/..." />
+              </label>
+              <label class="field nested-field">
+                <span class="field-sub">Yahoo!</span>
+                <input type="url" id="kyoso-url-yahoo" placeholder="https://shopping.yahoo.co.jp/searchranking?..." />
+              </label>
+              <label class="field nested-field">
+                <span class="field-sub">コジマネット</span>
+                <input type="url" id="kyoso-url-kojima" placeholder="https://www.kojima.net/ec/ranking.html?..." />
               </label>
             </div>
             <div class="actions">
-              <button type="submit" id="kyoso-submit">ランキングを取得</button>
+              <button type="submit" id="kyoso-submit" disabled>① ランキング取得・横断比較</button>
               <button type="button" class="secondary" id="kyoso-reset">リセット</button>
             </div>
           </form>
@@ -70,14 +83,64 @@
               <table class="ranking-table">
                 <thead>
                   <tr>
+                    <th>取得元種別</th>
+                    <th>取得元</th>
                     <th>順位</th>
                     <th>メーカー</th>
-                    <th>型式</th>
-                    <th>一致理由</th>
+                    <th>商品名</th>
+                    <th>URL</th>
                   </tr>
                 </thead>
                 <tbody id="kyoso-tbody"></tbody>
               </table>
+            </div>
+          </div>
+          <div class="generated-block">
+            <h3>横断比較（型番ベース）</h3>
+            <p class="note" id="kyoso-composite-meta"></p>
+            <div class="ranking-table-wrap">
+              <table class="ranking-table">
+                <thead>
+                  <tr>
+                    <th>型番</th>
+                    <th>メーカー</th>
+                    <th>Amazon</th>
+                    <th>楽天</th>
+                    <th>Yahoo!</th>
+                    <th>コジマ</th>
+                    <th>掲載数</th>
+                    <th>平均順位</th>
+                    <th>代表商品名</th>
+                  </tr>
+                </thead>
+                <tbody id="kyoso-composite-tbody"></tbody>
+              </table>
+            </div>
+          </div>
+          <div id="kyoso-themed-blocks" class="generated-block"></div>
+          <div id="kyoso-features-block" class="generated-block" hidden>
+            <h3>③ 見出し候補（総合ランキングから需要分析）</h3>
+            <p class="note" id="kyoso-features-meta"></p>
+            <ul id="kyoso-features-list" class="feature-candidate-list"></ul>
+            <div class="actions">
+              <button type="button" class="secondary" id="kyoso-to-headings">見出し生成タブへ（候補を引き継ぐ）</button>
+            </div>
+          </div>
+          <div id="kyoso-theme-select-panel" class="generated-block" hidden>
+            <h3>④ 見出し別ランキングのテーマ選択</h3>
+            <p class="field-hint">
+              テーマ1「総合おすすめ」は②で確定済みです。下記の需要候補からテーマ2・3を選び、見出しごと最大5件のランキングを作成します。
+            </p>
+            <label class="field nested-field">
+              <span class="field-sub">テーマ2（見出し用）</span>
+              <select id="kyoso-theme-2" required></select>
+            </label>
+            <label class="field nested-field">
+              <span class="field-sub">テーマ3（見出し用）</span>
+              <select id="kyoso-theme-3" required></select>
+            </label>
+            <div class="actions">
+              <button type="button" id="kyoso-build-themed">見出し別ランキングを作成（テーマ2・3）</button>
             </div>
           </div>
         </section>
@@ -87,7 +150,7 @@
       <section id="panel-headings" class="tab-panel" hidden>
         <header>
           <h1>見出し生成</h1>
-          <p>キーワードと他社URL・参考URLから、H2×3・各H2にH3×3の案を作成します。</p>
+          <p>キーワード・見出し候補（ランキング分析）・他社URL・参考URLから、H2×3・各H2にH3×3の案を作成します。</p>
         </header>
         <section class="panel">
           <form id="form-headings" class="form">
@@ -111,6 +174,32 @@
               <span>参考URL</span>
               <input type="url" id="headings-ref-url" placeholder="https://example.com/reference" />
             </label>
+            <div id="headings-candidates-panel" class="field">
+              <span>見出し候補（ランキング分析・最大5件）</span>
+              <p class="field-hint" id="headings-candidates-hint">
+                競合調査でランキング取得後、需要の高い機能・切り口が自動入力されます。編集してから見出し生成してください。
+              </p>
+              <label class="field nested-field">
+                <span class="field-sub">候補 1</span>
+                <input type="text" id="headings-candidate-1" placeholder="例: 冷房専用・ノンドレンがおすすめ" />
+              </label>
+              <label class="field nested-field">
+                <span class="field-sub">候補 2</span>
+                <input type="text" id="headings-candidate-2" placeholder="例: 冷暖房兼用の窓用エアコン" />
+              </label>
+              <label class="field nested-field">
+                <span class="field-sub">候補 3</span>
+                <input type="text" id="headings-candidate-3" placeholder="例: 7〜8畳向け 窓用エアコン" />
+              </label>
+              <label class="field nested-field">
+                <span class="field-sub">候補 4</span>
+                <input type="text" id="headings-candidate-4" />
+              </label>
+              <label class="field nested-field">
+                <span class="field-sub">候補 5</span>
+                <input type="text" id="headings-candidate-5" />
+              </label>
+            </div>
             <div class="actions">
               <button type="submit" id="headings-submit">見出しを生成</button>
               <button type="button" class="secondary" id="headings-reset">リセット</button>
@@ -127,6 +216,25 @@
           <p id="headings-copy-msg" class="field-hint" hidden></p>
           <div id="headings-warnings" class="warning" hidden></div>
           <div id="headings-body" class="generated-article"></div>
+        </section>
+        <!-- H4見出し生成 -->
+        <section id="sub-headings-panel" class="panel" hidden>
+          <h2>H4見出し生成</h2>
+          <p class="field-hint">生成されたH3見出しをクリック、またはH3を入力してH4小見出しを生成します。</p>
+          <form id="form-sub-headings" class="form">
+            <label class="field">
+              <span>対象H3見出し *</span>
+              <input type="text" id="sub-headings-h3" required placeholder="H4を生成するH3見出しを入力" />
+            </label>
+            <div class="actions">
+              <button type="submit" id="sub-headings-submit">H4見出しを生成</button>
+              <button type="button" class="secondary" id="sub-headings-clear">クリア</button>
+            </div>
+          </form>
+          <p id="sub-headings-error" class="error" hidden></p>
+          <div id="sub-headings-result" hidden>
+            <div id="sub-headings-body" class="generated-article"></div>
+          </div>
         </section>
       </section>
 
@@ -163,6 +271,44 @@
               <input type="text" id="article-h3-3" />
             </label>
             <label class="field">
+              <span>H3:見出し4（任意）</span>
+              <input type="text" id="article-h3-4" />
+            </label>
+            <label class="field">
+              <span>H3:見出し5（任意）</span>
+              <input type="text" id="article-h3-5" />
+            </label>
+            <div id="article-h4-panel" class="field">
+              <span>H4で記事生成（任意 — H4が空の場合はH3で生成）</span>
+              <p class="field-hint">
+                特定のH3の下にH4見出しを入力すると、H4単位で記事が生成されます。
+              </p>
+              <label class="field nested-field">
+                <span class="field-sub">対象H3見出し</span>
+                <input type="text" id="article-h3-target" placeholder="H4を配置するH3見出しを入力" />
+              </label>
+              <label class="field nested-field">
+                <span class="field-sub">H4:見出し1</span>
+                <input type="text" id="article-h4-1" />
+              </label>
+              <label class="field nested-field">
+                <span class="field-sub">H4:見出し2</span>
+                <input type="text" id="article-h4-2" />
+              </label>
+              <label class="field nested-field">
+                <span class="field-sub">H4:見出し3</span>
+                <input type="text" id="article-h4-3" />
+              </label>
+              <label class="field nested-field">
+                <span class="field-sub">H4:見出し4</span>
+                <input type="text" id="article-h4-4" />
+              </label>
+              <label class="field nested-field">
+                <span class="field-sub">H4:見出し5</span>
+                <input type="text" id="article-h4-5" />
+              </label>
+            </div>
+            <label class="field">
               <span>他社URL 1</span>
               <input type="url" id="article-url1" />
             </label>
@@ -178,6 +324,20 @@
               <span>参考URL</span>
               <input type="url" id="article-ref-url" />
             </label>
+            <div class="field">
+              <span>生成するブロック（H2×1・H3×最大5は毎回生成）</span>
+              <p class="field-hint">
+                見出しごとに何度か生成する場合、導入文・まとめは最初の1回だけチェックして生成するのがおすすめです。
+              </p>
+              <label class="checkbox-field">
+                <input type="checkbox" id="article-gen-intro" />
+                <span>導入文を作成する</span>
+              </label>
+              <label class="checkbox-field">
+                <input type="checkbox" id="article-gen-summary" />
+                <span>まとめを作成する</span>
+              </label>
+            </div>
             <div class="actions">
               <button type="submit" id="article-submit">記事を生成</button>
               <button type="button" class="secondary" id="article-reset">リセット</button>

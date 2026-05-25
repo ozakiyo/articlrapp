@@ -1,0 +1,32 @@
+services:
+  app:
+    build: 
+      context: ./server   # build context を server フォルダに設定
+      dockerfile: Dockerfile  # server 内の Dockerfile を指定
+    ports:
+      - "3001:3001"
+    depends_on:
+      db:
+        condition: service_healthy
+    #command: sh -c "npm install && node app.js"
+    command: ["node", "app.js"]
+
+  db:
+    image: mysql:8.0
+    environment:
+      MYSQL_ROOT_PASSWORD: root111
+      MYSQL_DATABASE: articledb
+      MYSQL_USER: user
+      MYSQL_PASSWORD: user111
+    volumes:
+      - db_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "-uroot", "-proot111"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    ports:
+      - "3306:3306"
+
+volumes:
+  db_data:

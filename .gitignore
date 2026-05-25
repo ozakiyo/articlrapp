@@ -1,3 +1,5 @@
 node_modules/
 .env
 public/pixta_*.png
+exports/
+data/
