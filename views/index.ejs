@@ -217,6 +217,25 @@
           <div id="headings-warnings" class="warning" hidden></div>
           <div id="headings-body" class="generated-article"></div>
         </section>
+        <!-- H4見出し生成 -->
+        <section id="sub-headings-panel" class="panel" hidden>
+          <h2>H4見出し生成</h2>
+          <p class="field-hint">生成されたH3見出しをクリック、またはH3を入力してH4小見出しを生成します。</p>
+          <form id="form-sub-headings" class="form">
+            <label class="field">
+              <span>対象H3見出し *</span>
+              <input type="text" id="sub-headings-h3" required placeholder="H4を生成するH3見出しを入力" />
+            </label>
+            <div class="actions">
+              <button type="submit" id="sub-headings-submit">H4見出しを生成</button>
+              <button type="button" class="secondary" id="sub-headings-clear">クリア</button>
+            </div>
+          </form>
+          <p id="sub-headings-error" class="error" hidden></p>
+          <div id="sub-headings-result" hidden>
+            <div id="sub-headings-body" class="generated-article"></div>
+          </div>
+        </section>
       </section>
 
       <!-- 記事生成 -->
@@ -259,6 +278,36 @@
               <span>H3:見出し5（任意）</span>
               <input type="text" id="article-h3-5" />
             </label>
+            <div id="article-h4-panel" class="field">
+              <span>H4で記事生成（任意 — H4が空の場合はH3で生成）</span>
+              <p class="field-hint">
+                特定のH3の下にH4見出しを入力すると、H4単位で記事が生成されます。
+              </p>
+              <label class="field nested-field">
+                <span class="field-sub">対象H3見出し</span>
+                <input type="text" id="article-h3-target" placeholder="H4を配置するH3見出しを入力" />
+              </label>
+              <label class="field nested-field">
+                <span class="field-sub">H4:見出し1</span>
+                <input type="text" id="article-h4-1" />
+              </label>
+              <label class="field nested-field">
+                <span class="field-sub">H4:見出し2</span>
+                <input type="text" id="article-h4-2" />
+              </label>
+              <label class="field nested-field">
+                <span class="field-sub">H4:見出し3</span>
+                <input type="text" id="article-h4-3" />
+              </label>
+              <label class="field nested-field">
+                <span class="field-sub">H4:見出し4</span>
+                <input type="text" id="article-h4-4" />
+              </label>
+              <label class="field nested-field">
+                <span class="field-sub">H4:見出し5</span>
+                <input type="text" id="article-h4-5" />
+              </label>
+            </div>
             <label class="field">
               <span>他社URL 1</span>
               <input type="url" id="article-url1" />
