@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>競合調査・記事生成</title>
+    <title>Content Radar — 週次レポート・記事生成</title>
     <link rel="stylesheet" href="/css/style.css" />
   </head>
   <body>
@@ -12,15 +12,321 @@
         <div class="app-main-nav-inner">
           <span class="app-main-nav-label">利用するアプリ</span>
           <div class="app-main-nav-buttons">
-            <button type="button" data-tab="kyoso" class="tab-btn">競合調査（ランキング抽出）</button>
+            <button type="button" data-tab="weekly" class="tab-btn">週次レポート</button>
+            <button type="button" data-tab="kyoso" class="tab-btn secondary">競合調査（ランキング抽出）</button>
             <button type="button" data-tab="headings" class="tab-btn secondary">見出し生成</button>
             <button type="button" data-tab="article" class="tab-btn secondary">記事生成</button>
           </div>
         </div>
       </nav>
 
+      <!-- 週次レポート（②-A） -->
+      <section id="panel-weekly" class="tab-panel">
+        <header>
+          <h1>週次レポート</h1>
+          <p>
+            ②-A 市場データAI — 毎週ここから「何が変わったか」「今週何を直すか」を確認します。
+            <span class="weekly-demo-badge" id="weekly-phase-badge">Phase 1</span>
+          </p>
+        </header>
+
+        <section class="panel weekly-header-panel">
+          <div class="weekly-header-grid">
+            <label class="field weekly-field-inline">
+              <span>カテゴリ</span>
+              <select id="weekly-category"></select>
+              <input
+                type="text"
+                id="weekly-category-other"
+                class="category-other-input"
+                placeholder="カテゴリ名を入力"
+                hidden
+              />
+            </label>
+            <label class="field weekly-field-inline">
+              <span>対象週</span>
+              <select id="weekly-week" disabled>
+                <option id="weekly-week-option" selected>—</option>
+              </select>
+            </label>
+            <label class="field weekly-field-inline">
+              <span>比較</span>
+              <select id="weekly-compare">
+                <option value="latest" selected>先週の最終（前回取得）</option>
+                <option value="prev_month">前月の最終</option>
+              </select>
+            </label>
+          </div>
+          <p class="note weekly-status">
+            <span class="weekly-status-dot" id="weekly-status-dot" aria-hidden="true"></span>
+            <span id="weekly-status-text">読み込み中…</span>
+            <span id="weekly-fetch-msg"></span>
+          </p>
+          <div class="actions">
+            <button type="button" id="weekly-fetch">今週のランキングを取得</button>
+            <button type="button" class="secondary" id="weekly-to-kyoso">競合調査で詳細を見る</button>
+            <a id="weekly-csv-link" class="button-link secondary" href="#" hidden>CSVダウンロード</a>
+          </div>
+          <p class="field-hint" id="weekly-compare-note" hidden></p>
+          <p id="weekly-error" class="error" hidden></p>
+        </section>
+
+        <section class="panel weekly-priority-panel" id="weekly-priority-panel">
+          <h2>優先アクション TOP3</h2>
+          <span class="weekly-task-progress" id="weekly-task-progress">0 / 0 完了</span>
+          <ul class="weekly-task-list weekly-priority-list" id="weekly-priority-list"></ul>
+          <h3 class="weekly-subsection-title">その他のタスク</h3>
+          <ul class="weekly-task-list" id="weekly-task-list"></ul>
+          <div class="actions">
+            <button type="button" class="secondary" id="weekly-all-headings">提案をすべて見出しタブへ</button>
+          </div>
+        </section>
+
+        <section class="panel weekly-q-panel weekly-performance-panel" id="weekly-q6-panel">
+          <h2>柱記事 — 効き目</h2>
+          <div class="weekly-hub-pv-row" id="weekly-hub-pv-row">
+            <span class="weekly-hub-pv-label">柱記事PV</span>
+            <strong id="weekly-hub-pv-value">—</strong>
+            <span id="weekly-hub-pv-change">—</span>
+            <span class="weekly-reason-cell" id="weekly-hub-pv-reason"></span>
+          </div>
+          <h3 class="weekly-subsection-title">見出し別クリック</h3>
+          <div class="ranking-table-wrap">
+            <table class="ranking-table weekly-table">
+              <thead>
+                <tr>
+                  <th>見出し</th>
+                  <th>クリック</th>
+                  <th>先週比</th>
+                  <th>理由</th>
+                </tr>
+              </thead>
+              <tbody id="weekly-menu-clicks-tbody">
+                <tr><td colspan="4" class="weekly-empty-cell">読み込み中…</td></tr>
+              </tbody>
+            </table>
+          </div>
+          <h3 class="weekly-subsection-title">商品別クリック</h3>
+          <div class="ranking-table-wrap">
+            <table class="ranking-table weekly-table">
+              <thead>
+                <tr>
+                  <th>商品</th>
+                  <th>掲載順位</th>
+                  <th>セクション</th>
+                  <th>クリック</th>
+                  <th>先週比</th>
+                  <th>理由</th>
+                </tr>
+              </thead>
+              <tbody id="weekly-product-clicks-tbody">
+                <tr><td colspan="6" class="weekly-empty-cell">読み込み中…</td></tr>
+              </tbody>
+            </table>
+          </div>
+          <p class="field-hint">※ 柱記事1ページのPV・クリックは記事マスタで手動更新（Analytics）</p>
+        </section>
+
+        <section class="panel weekly-q-panel" id="weekly-q1-panel">
+          <h2>商品 — 売れ筋・伸び</h2>
+          <div class="ranking-table-wrap">
+            <table class="ranking-table weekly-table">
+              <thead>
+                <tr>
+                  <th>種別</th>
+                  <th>順位</th>
+                  <th>商品</th>
+                  <th>Amazon</th>
+                  <th>楽天</th>
+                  <th>Yahoo</th>
+                  <th>コジマ</th>
+                  <th>ビック</th>
+                  <th>入れ替え提案</th>
+                  <th>理由</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody id="weekly-products-tbody">
+                <tr><td colspan="11" class="weekly-empty-cell">ランキング未取得</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        <section class="panel weekly-q-panel" id="weekly-q3b-panel">
+          <h2>商品 — 売れ筋変動（詳細） <span class="weekly-q-hint">（前週比の全変動）</span></h2>
+          <div class="weekly-filter-row">
+            <span class="weekly-filter-label">表示:</span>
+            <button type="button" class="weekly-filter-btn active" data-filter="all">全件</button>
+            <button type="button" class="weekly-filter-btn secondary" data-filter="up" id="filter-up-btn">UP</button>
+            <button type="button" class="weekly-filter-btn secondary" data-filter="down" id="filter-down-btn">DOWN</button>
+            <button type="button" class="weekly-filter-btn secondary" data-filter="new" id="filter-new-btn">新入り</button>
+          </div>
+          <div class="ranking-table-wrap">
+            <table class="ranking-table weekly-table">
+              <thead>
+                <tr>
+                  <th>種別</th>
+                  <th>商品名</th>
+                  <th>型番</th>
+                  <th>Amazon</th>
+                  <th>楽天</th>
+                  <th>Yahoo</th>
+                  <th>コジマ</th>
+                  <th>ビック</th>
+                  <th>変動</th>
+                </tr>
+              </thead>
+              <tbody id="weekly-ranking-tbody">
+                <tr><td colspan="9" class="weekly-empty-cell">変動データなし</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        <section class="panel weekly-q-panel weekly-competitor-panel" id="weekly-competitor-panel">
+          <h2>記事 — 競合比較 <span class="weekly-q-hint">（見出し差分）</span></h2>
+          <div class="weekly-competitor-actions">
+            <button type="button" class="secondary" id="weekly-competitor-analyze">競合記事を取得・比較</button>
+            <button type="button" class="secondary" id="weekly-competitor-setup">競合記事URLを編集</button>
+          </div>
+          <p class="field-hint" id="weekly-competitor-msg">競合調査タブで記事 URL を保存後、比較を実行してください。</p>
+          <div class="ranking-table-wrap">
+            <table class="ranking-table weekly-table">
+              <thead>
+                <tr>
+                  <th>優先</th>
+                  <th>競合サイト</th>
+                  <th>見出し</th>
+                  <th>レベル</th>
+                  <th>理由</th>
+                  <th>参考URL</th>
+                </tr>
+              </thead>
+              <tbody id="weekly-competitor-tbody">
+                <tr><td colspan="6" class="weekly-empty-cell">比較データなし</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        <section class="panel weekly-q-panel weekly-articles-panel" id="weekly-q45-panel">
+          <h2>記事 — 新規・更新</h2>
+          <div class="ranking-table-wrap">
+            <table class="ranking-table weekly-table">
+              <thead>
+                <tr>
+                  <th>種別</th>
+                  <th>セクション / テーマ</th>
+                  <th>商品クリック</th>
+                  <th>先週比</th>
+                  <th>見出しクリック</th>
+                  <th>最終更新</th>
+                  <th>状態</th>
+                  <th>推奨</th>
+                  <th>理由</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody id="weekly-articles-tbody">
+                <tr><td colspan="10" class="weekly-empty-cell">読み込み中…</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        <section class="panel weekly-q-panel" id="weekly-q8-panel">
+          <h2>先週の変更 — 効果検証</h2>
+          <p class="field-hint" id="weekly-change-effects-msg"></p>
+          <h3 class="weekly-subsection-title">記事の効果検証</h3>
+          <div class="ranking-table-wrap">
+            <table class="ranking-table weekly-table">
+              <thead>
+                <tr>
+                  <th>セクション</th>
+                  <th>変更内容</th>
+                  <th>柱記事PV</th>
+                  <th>見出しクリック</th>
+                  <th>判定</th>
+                  <th>理由</th>
+                </tr>
+              </thead>
+              <tbody id="weekly-change-effects-article-tbody">
+                <tr><td colspan="6" class="weekly-empty-cell">記事の変更ログなし</td></tr>
+              </tbody>
+            </table>
+          </div>
+          <h3 class="weekly-subsection-title">商品の効果検証</h3>
+          <div class="ranking-table-wrap">
+            <table class="ranking-table weekly-table">
+              <thead>
+                <tr>
+                  <th>商品</th>
+                  <th>変更内容</th>
+                  <th>商品クリック</th>
+                  <th>判定</th>
+                  <th>理由</th>
+                </tr>
+              </thead>
+              <tbody id="weekly-change-effects-product-tbody">
+                <tr><td colspan="5" class="weekly-empty-cell">商品の変更ログなし</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        <section class="panel weekly-points-panel">
+          <h2>今週のポイント</h2>
+          <ul class="weekly-points-list" id="weekly-points-list">
+            <li>読み込み中…</li>
+          </ul>
+          <div class="weekly-points-season" id="weekly-points-season">
+            <h3 class="weekly-subsection-title">季節・イベント</h3>
+            <p class="weekly-season-inline" id="weekly-season-inline">—</p>
+            <h3 class="weekly-subsection-title">ニュース・新製品</h3>
+            <div class="ranking-table-wrap">
+              <table class="ranking-table weekly-table weekly-news-table">
+                <thead>
+                  <tr><th>日付</th><th>内容</th><th>影響</th><th>記事アクション</th></tr>
+                </thead>
+                <tbody id="weekly-news-tbody">
+                  <tr><td colspan="4" class="weekly-empty-cell">ニュースなし</td></tr>
+                </tbody>
+              </table>
+            </div>
+            <p class="field-hint">※ ニュースは記事マスタで手動更新（将来はRSS連携）</p>
+          </div>
+          <p class="field-hint" id="weekly-points-footnote" hidden></p>
+        </section>
+
+        <section class="panel weekly-q-panel weekly-interest-panel" id="weekly-interest-panel">
+          <h2>関心・検索 <span class="weekly-q-hint">（Google サジェスト TOP10）</span></h2>
+          <div class="ranking-table-wrap">
+            <table class="ranking-table weekly-table">
+              <thead>
+                <tr><th>順位</th><th>検索クエリ</th></tr>
+              </thead>
+              <tbody id="weekly-interest-tbody">
+                <tr><td colspan="2" class="weekly-empty-cell">読み込み中…</td></tr>
+              </tbody>
+            </table>
+          </div>
+          <p class="field-hint" id="weekly-interest-footnote">※ Google サジェストから自動取得</p>
+        </section>
+
+        <section class="panel weekly-footer-panel">
+          <div class="actions">
+            <button type="button" id="weekly-confirm">週次レポートを確定</button>
+            <button type="button" class="secondary" id="weekly-to-headings-main">見出し生成へ進む</button>
+          </div>
+          <p class="field-hint" id="weekly-confirm-msg">
+            確定すると今週のスナップショットを保存し、来週の前週比に使います。
+          </p>
+        </section>
+      </section>
+
       <!-- 競合調査 -->
-      <section id="panel-kyoso" class="tab-panel">
+      <section id="panel-kyoso" class="tab-panel" hidden>
         <header>
           <h1>カテゴリ別ランキング取得</h1>
           <p>
@@ -32,22 +338,26 @@
           <form id="form-kyoso" class="form">
             <label class="field">
               <span>カテゴリ *</span>
+              <select id="kyoso-category" required></select>
               <input
                 type="text"
-                id="kyoso-category"
-                required
-                placeholder="例: 窓用エアコン"
+                id="kyoso-category-other"
+                class="category-other-input"
+                placeholder="例: 空気清浄機"
+                hidden
               />
               <p class="field-hint">
-                ①「URLを自動取得」で Gemini がランキングページ URL を提案します。②内容を確認・修正。③「ランキング取得」で CSV 出力します。
+                ① 各モールのランキング URL を調べて入力（または Gemini で自動取得）。②「URLを保存」で <code>data/ranking-urls.json</code> にカテゴリ名ごとに記録。③ 以降は週次レポート取得でも自動使用されます。「その他」で新規カテゴリを追加できます。
               </p>
             </label>
             <div class="actions">
               <button type="button" class="secondary" id="kyoso-resolve-urls">ランキング URL を自動取得（Gemini）</button>
+              <button type="button" class="secondary" id="kyoso-save-urls">URLを保存</button>
             </div>
             <div id="kyoso-url-panel" class="field" hidden>
               <span>ランキング一覧 URL（確認・修正可）</span>
               <p class="field-hint" id="kyoso-url-notes"></p>
+              <p class="field-hint" id="kyoso-url-saved-hint"></p>
               <label class="field nested-field">
                 <span class="field-sub">Amazon</span>
                 <input type="url" id="kyoso-url-amazon" placeholder="https://www.amazon.co.jp/gp/bestsellers/..." />
@@ -64,6 +374,10 @@
                 <span class="field-sub">コジマネット</span>
                 <input type="url" id="kyoso-url-kojima" placeholder="https://www.kojima.net/ec/ranking.html?..." />
               </label>
+              <label class="field nested-field">
+                <span class="field-sub">ビックカメラ</span>
+                <input type="url" id="kyoso-url-bic" placeholder="https://www.biccamera.com/bc/ranking/..." />
+              </label>
             </div>
             <div class="actions">
               <button type="submit" id="kyoso-submit" disabled>① ランキング取得・横断比較</button>
@@ -71,6 +385,41 @@
             </div>
           </form>
           <p id="kyoso-error" class="error" hidden></p>
+        </section>
+
+        <section class="panel" id="kyoso-article-panel">
+          <h2>競合記事 URL（記事改修用）</h2>
+          <p class="field-hint">
+            各サイトのおすすめ記事 URL をカテゴリごとに保存します（<code>data/competitor-articles.json</code>）。
+            保存後「競合記事を取得・比較」で見出し構成を自社柱記事と比較できます。
+          </p>
+          <div id="kyoso-article-url-list" class="competitor-article-list"></div>
+          <div class="actions">
+            <button type="button" class="secondary" id="kyoso-article-add">行を追加</button>
+            <button type="button" class="secondary" id="kyoso-article-save">記事URLを保存</button>
+            <button type="button" id="kyoso-article-analyze">競合記事を取得・比較</button>
+          </div>
+          <p class="field-hint" id="kyoso-article-saved-hint"></p>
+          <p id="kyoso-article-error" class="error" hidden></p>
+          <div id="kyoso-article-result" class="generated-block" hidden>
+            <h3>競合記事 見出し比較</h3>
+            <p class="note" id="kyoso-article-meta"></p>
+            <div class="ranking-table-wrap">
+              <table class="ranking-table">
+                <thead>
+                  <tr>
+                    <th>優先</th>
+                    <th>競合サイト</th>
+                    <th>見出し</th>
+                    <th>レベル</th>
+                    <th>理由</th>
+                    <th>参考URL</th>
+                  </tr>
+                </thead>
+                <tbody id="kyoso-article-tbody"></tbody>
+              </table>
+            </div>
+          </div>
         </section>
         <section id="kyoso-result" class="panel" hidden>
           <h2>取得結果</h2>
@@ -108,6 +457,7 @@
                     <th>楽天</th>
                     <th>Yahoo!</th>
                     <th>コジマ</th>
+                    <th>ビック</th>
                     <th>掲載数</th>
                     <th>平均順位</th>
                     <th>代表商品名</th>
@@ -356,5 +706,6 @@
       </section>
     </div>
     <script src="/js/main.js"></script>
+    <script src="/js/weeklyReport.js"></script>
   </body>
 </html>

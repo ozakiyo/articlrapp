@@ -2,11 +2,128 @@
   const TAB_KEY = 'articleappNode-tab';
   const RANKING_CONTEXT_KEY = 'articleappNode.rankingContext';
   const panels = {
+    weekly: document.getElementById('panel-weekly'),
     kyoso: document.getElementById('panel-kyoso'),
     headings: document.getElementById('panel-headings'),
     article: document.getElementById('panel-article'),
   };
   const tabButtons = document.querySelectorAll('.tab-btn');
+
+  const CategorySelect = {
+    OTHER: '__other__',
+    defaultCategory: '掃除機',
+    pairs: [
+      { selectId: 'weekly-category', otherId: 'weekly-category-other' },
+      { selectId: 'kyoso-category', otherId: 'kyoso-category-other' },
+    ],
+
+    get(selectId, otherId) {
+      const select = document.getElementById(selectId);
+      const other = document.getElementById(otherId);
+      if (!select) return '';
+      if (select.value === this.OTHER) {
+        return String(other?.value || '').trim();
+      }
+      return String(select.value || '').trim();
+    },
+
+    syncOtherVisibility(selectId, otherId) {
+      const select = document.getElementById(selectId);
+      const other = document.getElementById(otherId);
+      if (!select || !other) return;
+      const isOther = select.value === this.OTHER;
+      other.hidden = !isOther;
+      if (!isOther) other.value = '';
+    },
+
+    fillSelect(select, categories, preferred) {
+      if (!select) return;
+      const current =
+        preferred ||
+        (select.value === this.OTHER
+          ? ''
+          : select.value) ||
+        this.defaultCategory;
+      const labels = Array.isArray(categories) ? categories.map((c) => c.label || c.id) : [];
+      const hasPreferred = preferred && !labels.includes(preferred);
+      select.innerHTML = '';
+      for (const label of labels) {
+        const opt = document.createElement('option');
+        opt.value = label;
+        opt.textContent = label;
+        select.appendChild(opt);
+      }
+      const otherOpt = document.createElement('option');
+      otherOpt.value = this.OTHER;
+      otherOpt.textContent = 'その他（自由入力）';
+      select.appendChild(otherOpt);
+
+      if (hasPreferred) {
+        select.value = this.OTHER;
+      } else if (labels.includes(current)) {
+        select.value = current;
+      } else if (labels.includes(this.defaultCategory)) {
+        select.value = this.defaultCategory;
+      } else if (labels.length) {
+        select.value = labels[0];
+      } else {
+        select.value = this.OTHER;
+      }
+    },
+
+    set(selectId, otherId, label) {
+      const select = document.getElementById(selectId);
+      const other = document.getElementById(otherId);
+      const name = String(label || '').trim();
+      if (!select) return;
+      const optionValues = [...select.options].map((o) => o.value);
+      if (name && optionValues.includes(name)) {
+        select.value = name;
+        if (other) {
+          other.hidden = true;
+          other.value = '';
+        }
+        return;
+      }
+      select.value = this.OTHER;
+      if (other) {
+        other.hidden = false;
+        other.value = name;
+      }
+    },
+
+    async refresh(options = {}) {
+      const preferLabel = String(options.preferLabel || '').trim();
+      const res = await fetch('/api/categories');
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || 'カテゴリ一覧の取得に失敗しました');
+      this.defaultCategory = data.defaultCategory || '掃除機';
+      if (data.otherOptionValue) this.OTHER = data.otherOptionValue;
+      const categories = Array.isArray(data.categories) ? data.categories : [];
+
+      for (const pair of this.pairs) {
+        const select = document.getElementById(pair.selectId);
+        const previous = this.get(pair.selectId, pair.otherId);
+        this.fillSelect(select, categories, preferLabel || previous);
+        if (preferLabel) {
+          this.set(pair.selectId, pair.otherId, preferLabel);
+        } else if (previous) {
+          this.set(pair.selectId, pair.otherId, previous);
+        }
+        this.syncOtherVisibility(pair.selectId, pair.otherId);
+      }
+      return data;
+    },
+  };
+  window.CategorySelect = CategorySelect;
+
+  function getKyosoCategory() {
+    return CategorySelect.get('kyoso-category', 'kyoso-category-other');
+  }
+
+  function getWeeklyCategory() {
+    return CategorySelect.get('weekly-category', 'weekly-category-other');
+  }
 
   function showTab(name) {
     Object.keys(panels).forEach((key) => {
@@ -22,6 +139,10 @@
     } catch {
       /* ignore */
     }
+    if (name === 'kyoso') {
+      loadKyosoSavedRankingUrls();
+      loadKyosoSavedCompetitorArticles();
+    }
   }
 
   tabButtons.forEach((btn) => {
@@ -31,15 +152,43 @@
     });
   });
 
-  let initialTab = 'kyoso';
+  let initialTab = 'weekly';
   try {
     const saved = localStorage.getItem(TAB_KEY);
     if (saved && panels[saved]) initialTab = saved;
   } catch {
     /* ignore */
   }
-  showTab(initialTab);
-  if (initialTab === 'headings') loadHeadingCandidatesFromStorage();
+
+  CategorySelect.refresh()
+    .catch((err) => console.warn('CategorySelect.refresh:', err.message))
+    .finally(() => {
+      showTab(initialTab);
+      if (initialTab === 'headings') loadHeadingCandidatesFromStorage();
+      window.dispatchEvent(new CustomEvent('categories-ready'));
+    });
+
+  for (const pair of CategorySelect.pairs) {
+    document.getElementById(pair.selectId)?.addEventListener('change', () => {
+      CategorySelect.syncOtherVisibility(pair.selectId, pair.otherId);
+      if (pair.selectId === 'kyoso-category') {
+        loadKyosoSavedRankingUrls();
+        loadKyosoSavedCompetitorArticles();
+      }
+      if (pair.selectId === 'weekly-category') {
+        window.dispatchEvent(new CustomEvent('weekly-category-changed'));
+      }
+    });
+    document.getElementById(pair.otherId)?.addEventListener('change', () => {
+      if (pair.selectId === 'kyoso-category') {
+        loadKyosoSavedRankingUrls();
+        loadKyosoSavedCompetitorArticles();
+      }
+      if (pair.selectId === 'weekly-category') {
+        window.dispatchEvent(new CustomEvent('weekly-category-changed'));
+      }
+    });
+  }
 
   function showError(el, message) {
     if (!el) return;
@@ -148,8 +297,10 @@
 
   const kyosoSubmit = document.getElementById('kyoso-submit');
   const kyosoResolveUrls = document.getElementById('kyoso-resolve-urls');
+  const kyosoSaveUrls = document.getElementById('kyoso-save-urls');
   const kyosoUrlPanel = document.getElementById('kyoso-url-panel');
   const kyosoUrlNotes = document.getElementById('kyoso-url-notes');
+  const kyosoUrlSavedHint = document.getElementById('kyoso-url-saved-hint');
 
   function saveRankingContextToStorage(ctx) {
     try {
@@ -241,6 +392,7 @@
       rakuten: document.getElementById('kyoso-url-rakuten')?.value.trim() || '',
       yahoo: document.getElementById('kyoso-url-yahoo')?.value.trim() || '',
       kojima: document.getElementById('kyoso-url-kojima')?.value.trim() || '',
+      bic: document.getElementById('kyoso-url-bic')?.value.trim() || '',
     };
   }
 
@@ -250,6 +402,7 @@
       rakuten: 'kyoso-url-rakuten',
       yahoo: 'kyoso-url-yahoo',
       kojima: 'kyoso-url-kojima',
+      bic: 'kyoso-url-bic',
     };
     for (const [key, id] of Object.entries(map)) {
       const el = document.getElementById(id);
@@ -260,9 +413,42 @@
   function enableKyosoSubmitIfUrlsReady() {
     const urls = getKyosoRankingUrlsFromForm();
     const ready = Boolean(
-      urls.amazon || urls.rakuten || urls.yahoo || urls.kojima
+      urls.amazon || urls.rakuten || urls.yahoo || urls.kojima || urls.bic
     );
     if (kyosoSubmit) kyosoSubmit.disabled = !ready;
+  }
+
+  function setKyosoSavedHint(message) {
+    if (kyosoUrlSavedHint) kyosoUrlSavedHint.textContent = message || '';
+  }
+
+  async function loadKyosoSavedRankingUrls() {
+    const category = getKyosoCategory();
+    if (!category) {
+      setKyosoSavedHint('');
+      return;
+    }
+    try {
+      const res = await fetch(
+        `/api/category-ranking-urls?category=${encodeURIComponent(category)}`
+      );
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || '保存済み URL の読み込みに失敗しました');
+      if (!data.saved) {
+        setKyosoSavedHint('保存済み URL はありません。調べた URL を入力して「URLを保存」してください。');
+        return;
+      }
+      setKyosoRankingUrlsToForm(data.rankingUrls || {});
+      if (kyosoUrlPanel) kyosoUrlPanel.hidden = false;
+      enableKyosoSubmitIfUrlsReady();
+      const savedDate = data.savedAt ? data.savedAt.slice(0, 10) : '—';
+      setKyosoSavedHint(
+        `保存済み URL を読み込みました（${savedDate} 保存 / data/ranking-urls.json）。週次レポート取得でも自動使用されます。`
+      );
+    } catch (err) {
+      setKyosoSavedHint('');
+      console.warn('loadKyosoSavedRankingUrls:', err.message);
+    }
   }
 
   /** 需要分析候補（pickedFeatures）だけをテーマ2・3の選択肢にする */
@@ -359,6 +545,7 @@
                 <td>${rankCell(item.rankRakuten)}</td>
                 <td>${rankCell(item.rankYahoo)}</td>
                 <td>${rankCell(item.rankKojima)}</td>
+                <td>${rankCell(item.rankBic)}</td>
                 <td>${escapeHtml(item.siteCount ?? '')}</td>
                 <td>${item.avgRank != null ? escapeHtml(String(item.avgRank)) : '—'}</td>
                 <td>${escapeHtml((item.representativeModel || '').slice(0, 48))}</td>
@@ -381,11 +568,11 @@
               <thead>
                 <tr>
                   <th>順位</th><th>型番</th><th>メーカー</th>
-                  <th>Amazon</th><th>楽天</th><th>Yahoo!</th><th>コジマ</th>
+                  <th>Amazon</th><th>楽天</th><th>Yahoo!</th><th>コジマ</th><th>ビック</th>
                   <th>掲載数</th><th>平均</th><th>商品名</th>
                 </tr>
               </thead>
-              <tbody>${rows || '<tr><td colspan="10">該当なし</td></tr>'}</tbody>
+              <tbody>${rows || '<tr><td colspan="11">該当なし</td></tr>'}</tbody>
             </table>
           </div>
         </div>`;
@@ -395,7 +582,7 @@
 
   kyosoResolveUrls?.addEventListener('click', async () => {
     showError(kyosoError, '');
-    const category = document.getElementById('kyoso-category')?.value.trim() || '';
+    const category = getKyosoCategory();
     if (!category) {
       showError(kyosoError, 'カテゴリを入力してください。');
       return;
@@ -413,6 +600,7 @@
         data.rankingUrls?.rakuten && `楽天: ${res.rakuten || '—'}`,
         data.rankingUrls?.yahoo && `Yahoo: ${res.yahoo || '—'}`,
         data.rankingUrls?.kojima && `コジマ: ${res.kojima || '—'}`,
+        data.rankingUrls?.bic && `ビック: ${res.bic || '—'}`,
       ]
         .filter(Boolean)
         .join(' / ');
@@ -436,7 +624,276 @@
     }
   });
 
-  ['kyoso-url-amazon', 'kyoso-url-rakuten', 'kyoso-url-yahoo', 'kyoso-url-kojima'].forEach(
+  kyosoSaveUrls?.addEventListener('click', async () => {
+    showError(kyosoError, '');
+    const category = getKyosoCategory();
+    if (!category) {
+      showError(kyosoError, 'カテゴリを入力してください。');
+      return;
+    }
+    const rankingUrls = getKyosoRankingUrlsFromForm();
+    if (
+      !rankingUrls.amazon &&
+      !rankingUrls.rakuten &&
+      !rankingUrls.yahoo &&
+      !rankingUrls.kojima &&
+      !rankingUrls.bic
+    ) {
+      showError(kyosoError, '保存する URL を1件以上入力してください。');
+      return;
+    }
+
+    setLoading(kyosoSaveUrls, true, 'URLを保存', '保存中...');
+    try {
+      const data = await postJson('/api/category-ranking-urls', { category, rankingUrls });
+      if (kyosoUrlPanel) kyosoUrlPanel.hidden = false;
+      const savedDate = data.savedAt ? data.savedAt.slice(0, 10) : '—';
+      setKyosoSavedHint(
+        `URL を保存しました（${savedDate} / data/ranking-urls.json）。週次レポートの「今週のランキングを取得」でも自動使用されます。`
+      );
+      await CategorySelect.refresh({ preferLabel: category });
+      CategorySelect.set('weekly-category', 'weekly-category-other', category);
+    } catch (err) {
+      showError(kyosoError, err.message);
+    } finally {
+      setLoading(kyosoSaveUrls, false, 'URLを保存', '保存中...');
+    }
+  });
+
+  // category change handlers are bound in CategorySelect init above
+
+  // --- 競合記事 URL ---
+  const kyosoArticleList = document.getElementById('kyoso-article-url-list');
+  const kyosoArticleSave = document.getElementById('kyoso-article-save');
+  const kyosoArticleAdd = document.getElementById('kyoso-article-add');
+  const kyosoArticleAnalyze = document.getElementById('kyoso-article-analyze');
+  const kyosoArticleError = document.getElementById('kyoso-article-error');
+  const kyosoArticleSavedHint = document.getElementById('kyoso-article-saved-hint');
+  const kyosoArticleResult = document.getElementById('kyoso-article-result');
+  const kyosoArticleMeta = document.getElementById('kyoso-article-meta');
+  const kyosoArticleTbody = document.getElementById('kyoso-article-tbody');
+  const COMPETITOR_ANALYSIS_KEY = 'articleappNode.competitorAnalysis';
+
+  function setKyosoArticleSavedHint(message) {
+    if (kyosoArticleSavedHint) kyosoArticleSavedHint.textContent = message || '';
+  }
+
+  function competitorArticleRowHtml(article = {}, index = 0) {
+    return `<div class="competitor-article-row" data-index="${index}">
+      <label class="field nested-field competitor-article-site">
+        <span class="field-sub">サイト名</span>
+        <input type="text" class="kyoso-article-site" placeholder="例: ビックカメラ" value="${escapeHtml(article.site || '')}" />
+      </label>
+      <label class="field nested-field competitor-article-title">
+        <span class="field-sub">記事名（任意）</span>
+        <input type="text" class="kyoso-article-title" placeholder="例: 掃除機のおすすめ" value="${escapeHtml(article.title || '')}" />
+      </label>
+      <label class="field nested-field competitor-article-url">
+        <span class="field-sub">記事 URL</span>
+        <input type="url" class="kyoso-article-url" placeholder="https://..." value="${escapeHtml(article.url || '')}" />
+      </label>
+      <button type="button" class="secondary competitor-article-remove" title="行を削除">×</button>
+    </div>`;
+  }
+
+  function renderCompetitorArticleRows(articles = []) {
+    if (!kyosoArticleList) return;
+    const rows = articles.length
+      ? articles
+      : [
+          { site: 'ビックカメラ', title: '', url: '' },
+          { site: 'ヨドバシ', title: '', url: '' },
+          { site: '価格.com', title: '', url: '' },
+        ];
+    kyosoArticleList.innerHTML = rows.map((a, i) => competitorArticleRowHtml(a, i)).join('');
+    kyosoArticleList.querySelectorAll('.competitor-article-remove').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        btn.closest('.competitor-article-row')?.remove();
+        if (!kyosoArticleList.querySelector('.competitor-article-row')) {
+          renderCompetitorArticleRows([]);
+        }
+      });
+    });
+  }
+
+  function getCompetitorArticlesFromForm() {
+    if (!kyosoArticleList) return [];
+    return [...kyosoArticleList.querySelectorAll('.competitor-article-row')]
+      .map((row) => ({
+        site: row.querySelector('.kyoso-article-site')?.value.trim() || '',
+        title: row.querySelector('.kyoso-article-title')?.value.trim() || '',
+        url: row.querySelector('.kyoso-article-url')?.value.trim() || '',
+      }))
+      .filter((a) => a.url);
+  }
+
+  function competitorPriorityBadge(priority) {
+    if (priority === 'high') return '<span class="weekly-badge weekly-badge-warn">高</span>';
+    return '<span class="weekly-badge weekly-badge-info">中</span>';
+  }
+
+  function renderCompetitorAnalysisTable(data, tbody, metaEl) {
+    const proposals = data?.proposals || [];
+    const summary = data?.summary || {};
+    if (metaEl) {
+      const parts = [
+        `自社見出し ${data.ownHeadingCount ?? 0}件`,
+        `競合 ${summary.successCount ?? 0}/${summary.competitorCount ?? 0} 件取得`,
+        `改修候補 ${summary.proposalCount ?? 0}件（高優先 ${summary.highPriorityCount ?? 0}）`,
+      ];
+      if (data.fetchedAt) {
+        parts.push(`取得: ${new Date(data.fetchedAt).toLocaleString('ja-JP')}`);
+      }
+      metaEl.textContent = parts.join(' / ');
+    }
+    if (!tbody) return;
+    if (!proposals.length) {
+      tbody.innerHTML =
+        '<tr><td colspan="6" class="weekly-empty-cell">自社にない見出し候補はありません（または取得失敗）</td></tr>';
+      return;
+    }
+    tbody.innerHTML = proposals
+      .map(
+        (p) => `<tr>
+        <td>${competitorPriorityBadge(p.priority)}</td>
+        <td>${escapeHtml(p.site)}</td>
+        <td>${escapeHtml(p.heading)}</td>
+        <td>${escapeHtml(p.level?.toUpperCase() || '')}</td>
+        <td class="weekly-reason-cell">${escapeHtml(p.reason)}</td>
+        <td><a href="${escapeHtml(p.sourceUrl)}" target="_blank" rel="noopener">参照</a></td>
+      </tr>`
+      )
+      .join('');
+  }
+
+  function storeCompetitorAnalysis(category, data) {
+    try {
+      sessionStorage.setItem(
+        COMPETITOR_ANALYSIS_KEY,
+        JSON.stringify({ category, data, storedAt: Date.now() })
+      );
+    } catch {
+      /* ignore */
+    }
+    window.dispatchEvent(
+      new CustomEvent('competitor-analysis-updated', { detail: { category, data } })
+    );
+  }
+
+  async function loadKyosoSavedCompetitorArticles() {
+    const category = getKyosoCategory();
+    if (!category) {
+      renderCompetitorArticleRows([]);
+      setKyosoArticleSavedHint('');
+      return;
+    }
+    try {
+      const res = await fetch(
+        `/api/competitor-articles?category=${encodeURIComponent(category)}`
+      );
+      const data = await res.json();
+      if (data.saved && Array.isArray(data.articles)) {
+        renderCompetitorArticleRows(data.articles);
+        const savedDate = data.savedAt
+          ? new Date(data.savedAt).toLocaleString('ja-JP')
+          : '—';
+        setKyosoArticleSavedHint(
+          `保存済み競合記事 ${data.articles.length}件（${savedDate} / data/competitor-articles.json）`
+        );
+      } else {
+        renderCompetitorArticleRows([]);
+        setKyosoArticleSavedHint('');
+      }
+    } catch {
+      renderCompetitorArticleRows([]);
+    }
+  }
+
+  kyosoArticleAdd?.addEventListener('click', () => {
+    if (!kyosoArticleList) return;
+    const count = kyosoArticleList.querySelectorAll('.competitor-article-row').length;
+    if (count >= 8) {
+      showError(kyosoArticleError, '競合記事 URL は最大8件までです。');
+      return;
+    }
+    showError(kyosoArticleError, '');
+    kyosoArticleList.insertAdjacentHTML('beforeend', competitorArticleRowHtml({}, count));
+    const lastRow = kyosoArticleList.lastElementChild;
+    lastRow?.querySelector('.competitor-article-remove')?.addEventListener('click', () => {
+      lastRow.remove();
+    });
+  });
+
+  kyosoArticleSave?.addEventListener('click', async () => {
+    showError(kyosoArticleError, '');
+    const category = getKyosoCategory();
+    if (!category) {
+      showError(kyosoArticleError, 'カテゴリを入力してください。');
+      return;
+    }
+    const articles = getCompetitorArticlesFromForm();
+    if (!articles.length) {
+      showError(kyosoArticleError, '保存する記事 URL を1件以上入力してください。');
+      return;
+    }
+    setLoading(kyosoArticleSave, true, '記事URLを保存', '保存中...');
+    try {
+      const data = await postJson('/api/competitor-articles', { category, articles });
+      const savedDate = data.savedAt
+        ? new Date(data.savedAt).toLocaleString('ja-JP')
+        : '—';
+      setKyosoArticleSavedHint(
+        `競合記事 URL を保存しました（${savedDate} / data/competitor-articles.json）`
+      );
+      await CategorySelect.refresh({ preferLabel: category });
+      CategorySelect.set('weekly-category', 'weekly-category-other', category);
+    } catch (err) {
+      showError(kyosoArticleError, err.message);
+    } finally {
+      setLoading(kyosoArticleSave, false, '記事URLを保存', '保存中...');
+    }
+  });
+
+  kyosoArticleAnalyze?.addEventListener('click', async () => {
+    showError(kyosoArticleError, '');
+    const category = getKyosoCategory();
+    if (!category) {
+      showError(kyosoArticleError, 'カテゴリを入力してください。');
+      return;
+    }
+    const articles = getCompetitorArticlesFromForm();
+    setLoading(kyosoArticleAnalyze, true, '競合記事を取得・比較', '取得中…');
+    if (kyosoArticleResult) kyosoArticleResult.hidden = true;
+    try {
+      const data = await postJson('/api/competitor-articles/analyze', {
+        category,
+        articles: articles.length ? articles : undefined,
+      });
+      renderCompetitorAnalysisTable(data, kyosoArticleTbody, kyosoArticleMeta);
+      if (kyosoArticleResult) kyosoArticleResult.hidden = false;
+      if (data.warnings?.length) {
+        showError(
+          kyosoArticleError,
+          data.warnings.map((w) => `${w.site}: ${w.message}`).join('\n')
+        );
+      }
+      storeCompetitorAnalysis(category, data);
+    } catch (err) {
+      showError(kyosoArticleError, err.message);
+    } finally {
+      setLoading(kyosoArticleAnalyze, false, '競合記事を取得・比較', '取得中…');
+    }
+  });
+
+  renderCompetitorArticleRows([]);
+
+  [
+    'kyoso-url-amazon',
+    'kyoso-url-rakuten',
+    'kyoso-url-yahoo',
+    'kyoso-url-kojima',
+    'kyoso-url-bic',
+  ].forEach(
     (id) => {
       document.getElementById(id)?.addEventListener('input', enableKyosoSubmitIfUrlsReady);
     }
@@ -446,14 +903,20 @@
     e.preventDefault();
     showError(kyosoError, '');
 
-    const category = document.getElementById('kyoso-category')?.value.trim() || '';
+    const category = getKyosoCategory();
     if (!category) {
       showError(kyosoError, 'カテゴリを入力してください。');
       return;
     }
 
     const rankingUrls = getKyosoRankingUrlsFromForm();
-    if (!rankingUrls.amazon && !rankingUrls.rakuten && !rankingUrls.yahoo && !rankingUrls.kojima) {
+    if (
+      !rankingUrls.amazon &&
+      !rankingUrls.rakuten &&
+      !rankingUrls.yahoo &&
+      !rankingUrls.kojima &&
+      !rankingUrls.bic
+    ) {
       showError(kyosoError, '先に「ランキング URL を自動取得」を実行するか、URL を入力してください。');
       return;
     }
@@ -489,6 +952,7 @@
           data.rankingUrls.rakuten && `楽天(${escapeHtml(res.rakuten || '—')})`,
           data.rankingUrls.yahoo && `Yahoo(${escapeHtml(res.yahoo || '—')})`,
           data.rankingUrls.kojima && `コジマ(${escapeHtml(res.kojima || '—')})`,
+          data.rankingUrls.bic && `ビック(${escapeHtml(res.bic || '—')})`,
         ].filter(Boolean);
         if (parts.length) meta += ` / URL解決: ${parts.join(' · ')}`;
       }
@@ -556,6 +1020,7 @@
                 <td>${rankCell(row.rankRakuten)}</td>
                 <td>${rankCell(row.rankYahoo)}</td>
                 <td>${rankCell(row.rankKojima)}</td>
+                <td>${rankCell(row.rankBic)}</td>
                 <td>${escapeHtml(row.siteCount ?? '')}</td>
                 <td>${row.avgRank != null ? escapeHtml(String(row.avgRank)) : '—'}</td>
                 <td>${escapeHtml(row.representativeModel || '')}</td>
@@ -685,6 +1150,7 @@
     if (kyosoThemeSelectPanel) kyosoThemeSelectPanel.hidden = true;
     kyosoPhase1Cache = null;
     if (kyosoUrlNotes) kyosoUrlNotes.textContent = '';
+    setKyosoSavedHint('');
     if (kyosoCompositeTbody) kyosoCompositeTbody.innerHTML = '';
     if (kyosoCompositeMeta) kyosoCompositeMeta.textContent = '';
     if (kyosoThemedBlocks) kyosoThemedBlocks.innerHTML = '';
@@ -701,6 +1167,7 @@
     }
     setKyosoRankingUrlsToForm({});
     if (kyosoSubmit) kyosoSubmit.disabled = true;
+    CategorySelect.refresh().catch(() => {});
   });
 
   document.getElementById('kyoso-clear')?.addEventListener('click', () => {

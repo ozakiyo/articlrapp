@@ -1,0 +1,46 @@
+{
+  "version": 1,
+  "updatedAt": "2026-07-13T23:33:05.560Z",
+  "categories": {
+    "掃除機": {
+      "articles": [
+        {
+          "id": "f25418bd7461",
+          "site": "ビックカメラ",
+          "title": "ビックカメラ",
+          "url": "https://www.biccamera.com/bc/i/topics/cleaner/index.jsp?srsltid=AfmBOor1GIdTeXPxgcG1GffV_OxzGfSuvBMSwy02_W49aLOXZpX_ckB4",
+          "note": null
+        },
+        {
+          "id": "0da1db98e9d5",
+          "site": "ヨドバシ",
+          "title": "ヨドバシ",
+          "url": "https://www.yodobashi.com/category/6353/6354/6365/6463/h001/",
+          "note": null
+        },
+        {
+          "id": "6254e72167ae",
+          "site": "ジョーシン",
+          "title": "ジョーシン",
+          "url": "https://joshinweb.jp/kaden/clnr.html?srsltid=AfmBOoo4h9XWF7mx90byErH-ZjuEEvNlNvfrFwTptg9loVuSw8hWcDOs",
+          "note": null
+        },
+        {
+          "id": "4a018ffa8f6d",
+          "site": "ヤマダ",
+          "title": "ヤマダ",
+          "url": "https://www.yamada-denkiweb.com/media/29021/?srsltid=AfmBOoqhYdZxcjoc7ZCbstf_Acpi_aYXInDy_OFkfBJDHuvHxy6s195q",
+          "note": null
+        },
+        {
+          "id": "ad0e093ded49",
+          "site": "エディオン",
+          "title": "エディオン",
+          "url": "https://www.edion.com/special.html?identificationid=osusumecleaner",
+          "note": null
+        }
+      ],
+      "savedAt": "2026-07-13T23:33:05.560Z"
+    }
+  }
+}

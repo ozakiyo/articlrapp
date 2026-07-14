@@ -2,4 +2,8 @@ node_modules/
 .env
 public/pixta_*.png
 exports/
-data/
+
+# data/ は原則 ignore。ランキングURL・競合記事URLのみリポジトリ管理
+data/*
+!data/ranking-urls.json
+!data/competitor-articles.json

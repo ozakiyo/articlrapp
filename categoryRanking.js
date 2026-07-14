@@ -1,11 +1,12 @@
 /**
- * カテゴリ指定で Amazon・楽天・Yahoo!（モール）とコジマネット（kojima.net）の
+ * カテゴリ指定で Amazon・楽天・Yahoo!・ビックカメラとコジマネットの
  * ランキング TOP15 を取得し、CSV へ出力する。
  */
 const fs = require('fs');
 const path = require('path');
 const cheerio = require('cheerio');
 const { chromium } = require('playwright');
+const { loadSavedRankingUrls } = require('./rankingUrlStore');
 
 const CSV_EXPORT_DIR = path.join(__dirname, 'exports', 'rankings');
 
@@ -30,7 +31,10 @@ const MALL_SOURCES = [
   { id: 'amazon', label: 'Amazon', type: 'mall' },
   { id: 'rakuten', label: '楽天', type: 'mall' },
   { id: 'yahoo', label: 'Yahoo!', type: 'mall' },
+  { id: 'bic', label: 'ビックカメラ', type: 'mall' },
 ];
+
+const RANKING_SOURCE_KEYS = ['amazon', 'rakuten', 'yahoo', 'kojima', 'bic'];
 
 const KOJIMA_NET_SOURCE = {
   id: 'kojima',
@@ -39,6 +43,15 @@ const KOJIMA_NET_SOURCE = {
   defaultRankingUrl(category) {
     const q = encodeURIComponent(String(category || '').trim());
     return `https://www.kojima.net/ec/ranking.html?keyword=${q}`;
+  },
+};
+
+const BIC_CAMERA_SOURCE = {
+  id: 'bic',
+  label: 'ビックカメラ',
+  type: 'mall',
+  defaultRankingUrl() {
+    return 'https://www.biccamera.com/bc/c/contents/ranking/index.jsp';
   },
 };
 
@@ -158,6 +171,17 @@ const KNOWN_CATEGORY_RANKING_URLS = {
     yahoo:
       'https://shopping.yahoo.co.jp/searchranking?p=%E7%AA%93%E7%94%A8%E3%82%A8%E3%82%A2%E3%82%B3%E3%83%B3&cid=26311&rcid=26311&rterm=default&rmore=1&prom=1',
   },
+  スポットクーラー: {
+    // Amazon: Portable Air Conditioners / スポットクーラー
+    amazon: 'https://www.amazon.co.jp/gp/bestsellers/kitchen/2354281051',
+    // 楽天: スポットエアコン
+    rakuten: 'https://ranking.rakuten.co.jp/daily/565124/',
+    // Yahoo! スポットクーラー（cid は自動発見結果を固定）
+    yahoo:
+      'https://shopping.yahoo.co.jp/searchranking?p=%E3%82%B9%E3%83%9D%E3%83%83%E3%83%88%E3%82%AF%E3%83%BC%E3%83%A9%E3%83%BC&cid=26309&rcid=26309&rterm=default&rmore=1&prom=1',
+    // コジマ: 冷風機・冷風扇（スポットクーラー含む）
+    kojima: 'https://www.kojima.net/ec/ranking.html?cate=fan_circulator_010',
+  },
 };
 
 /** 検索ベースのフォールバック URL */
@@ -168,6 +192,7 @@ function buildDefaultRankingUrls(category) {
     rakuten: `https://search.rakuten.co.jp/search/mall/${q}/?s=4&sv=6`,
     yahoo: `https://shopping.yahoo.co.jp/search?p=${q}&X=2`,
     kojima: KOJIMA_NET_SOURCE.defaultRankingUrl(category),
+    bic: BIC_CAMERA_SOURCE.defaultRankingUrl(),
   };
 }
 
@@ -504,8 +529,13 @@ async function discoverYahooRankingUrl(category, fetchHtmlWithHttpClient) {
 
 function discoverKojimaRankingUrl(category) {
   const trimmed = String(category || '').trim();
+  const known = KNOWN_CATEGORY_RANKING_URLS[normalizeCategoryKey(trimmed)];
+  if (known?.kojima) return known.kojima;
   if (/窓/.test(trimmed) && /エアコン/.test(trimmed)) {
     return 'https://www.kojima.net/ec/ranking.html?cate=window_air_conditioner';
+  }
+  if (/スポット/.test(trimmed) && /クーラー|エアコン/.test(trimmed)) {
+    return 'https://www.kojima.net/ec/ranking.html?cate=fan_circulator_010';
   }
   return KOJIMA_NET_SOURCE.defaultRankingUrl(trimmed);
 }
@@ -517,6 +547,12 @@ function discoverAmazonRankingUrl(category) {
   if (/窓/.test(trimmed) && /エアコン/.test(trimmed)) {
     return (
       KNOWN_CATEGORY_RANKING_URLS['窓用エアコン']?.amazon ||
+      buildDefaultRankingUrls(trimmed).amazon
+    );
+  }
+  if (/スポット/.test(trimmed) && /クーラー|エアコン/.test(trimmed)) {
+    return (
+      KNOWN_CATEGORY_RANKING_URLS['スポットクーラー']?.amazon ||
       buildDefaultRankingUrls(trimmed).amazon
     );
   }
@@ -559,13 +595,19 @@ function isValidMallRankingUrl(mallId, url) {
   if (mallId === 'rakuten') return /ranking\.rakuten\.co\.jp|search\.rakuten\.co\.jp/i.test(u);
   if (mallId === 'yahoo') return /shopping\.yahoo\.co\.jp/i.test(u);
   if (mallId === 'kojima') return /kojima\.net\/ec\/ranking/i.test(u);
+  if (mallId === 'bic') {
+    return (
+      /biccamera\.com\/bc\/(?:ranking|c\/contents\/ranking)/i.test(u) ||
+      /houjin\.biccamera\.com\/ranking\/list\.aspx/i.test(u)
+    );
+  }
   return false;
 }
 
 function applyManualRankingUrls(defaults, manualUrls) {
   const out = { ...defaults };
   if (!manualUrls || typeof manualUrls !== 'object') return out;
-  for (const key of ['amazon', 'rakuten', 'yahoo', 'kojima']) {
+  for (const key of RANKING_SOURCE_KEYS) {
     const v = normalizeMallRankingUrl(manualUrls[key]);
     if (v) out[key] = v;
   }
@@ -574,7 +616,7 @@ function applyManualRankingUrls(defaults, manualUrls) {
 
 function hasProvidedRankingUrls(manualUrls) {
   if (!manualUrls || typeof manualUrls !== 'object') return false;
-  return ['amazon', 'rakuten', 'yahoo', 'kojima'].some((k) =>
+  return RANKING_SOURCE_KEYS.some((k) =>
     Boolean(normalizeMallRankingUrl(manualUrls[k]))
   );
 }
@@ -592,9 +634,10 @@ async function discoverRankingUrlsWithGemini(category, deps) {
 - rakuten: https://ranking.rakuten.co.jp/daily/数字/ （tags= 付き可）
 - yahoo: https://shopping.yahoo.co.jp/searchranking?p=...&cid=...
 - kojima: https://www.kojima.net/ec/ranking.html?cate=... または ?keyword=...
+- bic: https://www.biccamera.com/bc/ranking/... （人気売れ筋ランキング）
 
 # 出力（JSON のみ・説明不要）
-{"amazon":"","rakuten":"","yahoo":"","kojima":""}
+{"amazon":"","rakuten":"","yahoo":"","kojima":"","bic":""}
 `;
 
   try {
@@ -610,6 +653,7 @@ async function discoverRankingUrlsWithGemini(category, deps) {
       rakuten: normalizeMallRankingUrl(data.rakuten),
       yahoo: normalizeMallRankingUrl(data.yahoo),
       kojima: normalizeMallRankingUrl(data.kojima),
+      bic: normalizeMallRankingUrl(data.bic),
     };
     for (const key of Object.keys(out)) {
       if (out[key] && !isValidMallRankingUrl(key, out[key])) {
@@ -626,6 +670,7 @@ async function discoverRankingUrlsWithGemini(category, deps) {
 
 function classifyUrlResolution(mallId, url, method) {
   if (method === 'manual') return 'manual';
+  if (method === 'saved') return 'saved';
   if (method === 'known') return 'known';
   if (mallId === 'amazon') {
     if (method === 'gemini') return 'gemini-bestsellers';
@@ -650,12 +695,35 @@ function classifyUrlResolution(mallId, url, method) {
     if (/cate=/.test(url)) return 'auto-category';
     return 'keyword';
   }
+  if (mallId === 'bic') {
+    if (/\/bc\/ranking\//i.test(url)) return method === 'gemini' ? 'gemini-ranking' : 'ranking';
+    return method;
+  }
   return method;
 }
 
+function applyKnownCategoryRankingUrls(urls, methods, category) {
+  const known = KNOWN_CATEGORY_RANKING_URLS[normalizeCategoryKey(category)];
+  if (!known) return 0;
+  let applied = 0;
+  for (const key of RANKING_SOURCE_KEYS) {
+    if (methods[key] !== 'fallback') continue;
+    const candidate = normalizeMallRankingUrl(known[key]);
+    if (!candidate || !isValidMallRankingUrl(key, candidate)) continue;
+    urls[key] = candidate;
+    methods[key] = 'known';
+    applied += 1;
+  }
+  return applied;
+}
+
+function needsGeminiUrlDiscovery(methods) {
+  return RANKING_SOURCE_KEYS.some((key) => methods[key] === 'fallback');
+}
+
 /**
- * Gemini 優先でランキング URL を解決（確認後に手動上書きする想定）
- * @returns {Promise<{ urls: object, urlResolution: object, notes: string[] }>}
+ * 保存済み URL → 既知マスタ → Gemini / スクレイピングの順でランキング URL を解決
+ * @returns {Promise<{ urls: object, urlResolution: object, notes: string[], savedRankingUrls?: object }>}
  */
 async function resolveCategoryRankingUrls(category, deps = {}) {
   const trimmed = String(category || '').trim();
@@ -669,28 +737,57 @@ async function resolveCategoryRankingUrls(category, deps = {}) {
     rakuten: 'fallback',
     yahoo: 'fallback',
     kojima: 'fallback',
+    bic: 'fallback',
   };
 
-  if (getGeminiModel) {
+  const saved = loadSavedRankingUrls(trimmed);
+  if (saved?.rankingUrls) {
+    for (const key of RANKING_SOURCE_KEYS) {
+      const candidate = normalizeMallRankingUrl(saved.rankingUrls[key]);
+      if (!candidate || !isValidMallRankingUrl(key, candidate)) continue;
+      urls[key] = candidate;
+      methods[key] = 'saved';
+    }
+    const savedCount = RANKING_SOURCE_KEYS.filter(
+      (k) => methods[k] === 'saved'
+    ).length;
+    if (savedCount > 0) {
+      const savedAt = saved.savedAt ? `（${saved.savedAt.slice(0, 10)} 保存）` : '';
+      notes.push(`保存済みランキング URL を ${savedCount} 件使用します${savedAt}。`);
+    }
+  }
+
+  const knownCount = applyKnownCategoryRankingUrls(urls, methods, trimmed);
+  if (knownCount > 0) {
+    notes.push(`登録済みマスタ URL を ${knownCount} 件使用しました。`);
+  }
+
+  if (needsGeminiUrlDiscovery(methods) && getGeminiModel) {
     const geminiUrls = await discoverRankingUrlsWithGemini(trimmed, deps);
     if (geminiUrls) {
-      for (const key of ['amazon', 'rakuten', 'yahoo', 'kojima']) {
-        if (geminiUrls[key]) {
-          urls[key] = geminiUrls[key];
-          methods[key] = 'gemini';
-        }
+      for (const key of RANKING_SOURCE_KEYS) {
+        if (methods[key] !== 'fallback' || !geminiUrls[key]) continue;
+        urls[key] = geminiUrls[key];
+        methods[key] = 'gemini';
       }
-      const filled = ['amazon', 'rakuten', 'yahoo', 'kojima'].filter((k) => geminiUrls[k]).length;
-      notes.push(`Gemini で ${filled} 件のランキング URL を取得しました。内容を確認してください。`);
-    } else {
+      const filled = RANKING_SOURCE_KEYS.filter(
+        (k) => methods[k] === 'gemini'
+      ).length;
+      if (filled > 0) {
+        notes.push(`Gemini で ${filled} 件のランキング URL を補完しました。内容を確認してください。`);
+      }
+    } else if (needsGeminiUrlDiscovery(methods)) {
       notes.push('Gemini から URL を取得できませんでした。スクレイピングで補完します。');
     }
-  } else {
+  } else if (needsGeminiUrlDiscovery(methods) && !getGeminiModel) {
     notes.push('GEMINI_API_KEY が未設定です。スクレイピングと検索 URL で補完します。');
   }
 
   if (fetchHtmlWithHttpClient) {
-    if (methods.yahoo !== 'gemini' || !isYahooCategoryRankingUrl(urls.yahoo)) {
+    if (
+      methods.yahoo === 'fallback' ||
+      (methods.yahoo === 'gemini' && !isYahooCategoryRankingUrl(urls.yahoo))
+    ) {
       try {
         urls.yahoo = await discoverYahooRankingUrl(trimmed, fetchHtmlWithHttpClient);
         methods.yahoo = isYahooCategoryRankingUrl(urls.yahoo) ? 'auto' : 'fallback';
@@ -700,13 +797,15 @@ async function resolveCategoryRankingUrls(category, deps = {}) {
         methods.yahoo = 'fallback';
       }
     }
-    if (!isRakutenDailyRankingUrl(urls.rakuten)) {
-      urls.rakuten = await discoverRakutenRankingUrl(trimmed, fetchHtmlWithHttpClient);
-      if (isRakutenDailyRankingUrl(urls.rakuten)) methods.rakuten = 'auto';
+    if (methods.rakuten === 'fallback' || !isRakutenOfficialRankingUrl(urls.rakuten)) {
+      if (methods.rakuten === 'fallback') {
+        urls.rakuten = await discoverRakutenRankingUrl(trimmed, fetchHtmlWithHttpClient);
+        if (isRakutenOfficialRankingUrl(urls.rakuten)) methods.rakuten = 'auto';
+      }
     }
   }
 
-  if (!isAmazonBestsellerUrl(urls.amazon)) {
+  if (methods.amazon === 'fallback' && !isAmazonBestsellerUrl(urls.amazon)) {
     const amazonCandidate = discoverAmazonRankingUrl(trimmed);
     if (isAmazonBestsellerUrl(amazonCandidate)) {
       urls.amazon = amazonCandidate;
@@ -714,10 +813,14 @@ async function resolveCategoryRankingUrls(category, deps = {}) {
     }
   }
 
-  if (methods.kojima !== 'gemini' || !/kojima\.net\/ec\/ranking/i.test(urls.kojima)) {
+  if (
+    methods.kojima === 'fallback' ||
+    (methods.kojima === 'gemini' && !/kojima\.net\/ec\/ranking/i.test(urls.kojima))
+  ) {
     urls.kojima = discoverKojimaRankingUrl(trimmed);
     if (/cate=/.test(urls.kojima)) methods.kojima = 'pattern';
-    else methods.kojima = methods.kojima === 'gemini' ? 'gemini' : 'fallback';
+    else if (methods.kojima === 'gemini') methods.kojima = 'gemini';
+    else if (methods.kojima === 'fallback') methods.kojima = 'fallback';
   }
 
   const urlResolution = {
@@ -725,9 +828,16 @@ async function resolveCategoryRankingUrls(category, deps = {}) {
     rakuten: classifyUrlResolution('rakuten', urls.rakuten, methods.rakuten),
     yahoo: classifyUrlResolution('yahoo', urls.yahoo, methods.yahoo),
     kojima: classifyUrlResolution('kojima', urls.kojima, methods.kojima),
+    bic: classifyUrlResolution('bic', urls.bic, methods.bic),
   };
 
-  return { urls, urlResolution, notes };
+  return {
+    urls,
+    urlResolution,
+    notes,
+    savedRankingUrls: saved?.rankingUrls || null,
+    savedAt: saved?.savedAt || null,
+  };
 }
 
 /** @deprecated 互換用。resolveCategoryRankingUrls を利用 */
@@ -747,8 +857,13 @@ function isYahooCategoryRankingUrl(url) {
   );
 }
 
+function isRakutenOfficialRankingUrl(url) {
+  return /ranking\.rakuten\.co\.jp\/(?:daily|weekly)\/\d+/i.test(String(url || ''));
+}
+
+/** @deprecated use isRakutenOfficialRankingUrl */
 function isRakutenDailyRankingUrl(url) {
-  return /ranking\.rakuten\.co\.jp\/daily\/\d+/i.test(String(url || ''));
+  return isRakutenOfficialRankingUrl(url);
 }
 
 function categoryMatchTokens(category) {
@@ -766,17 +881,39 @@ function titleMatchesCategory(title, category) {
   const raw = String(title || '');
   const normalized = raw.replace(/\s+/g, '');
   if (!normalized) return false;
+  const cat = String(category || '').trim();
+  if (!cat) return true;
+
+  // スポットクーラー: ルームエアコン・他カテゴリの総合ランキング混入を除外
+  if (/スポット/.test(cat) && /クーラー|エアコン/.test(cat)) {
+    const isSpot =
+      /スポット\s*(クーラー|エアコン|エアクーラー)|ポータブル\s*(クーラー|エアコン)|移動式\s*(クーラー|エアコン)|コンパクトクーラー|ダクトレス.*クーラー|工事不要.*クーラー|排気ダクト|排熱ダクト/i.test(
+        raw
+      );
+    if (!isSpot) return false;
+    // 壁掛けルームエアコン（おもにN畳用 + 室外機想定の型番）を除外
+    if (
+      /おもに\d+畳|白くまくん|リララ|RAS-|RC-\d{4}|壁掛|セパレート/i.test(raw) &&
+      !/スポット|ポータブル|移動式|ダクトレス|工事不要/i.test(raw)
+    ) {
+      return false;
+    }
+    return true;
+  }
+
   const tokens = categoryMatchTokens(category);
   if (tokens.length === 0) return true;
   const lower = normalized.toLowerCase();
   if (tokens.some((t) => lower.includes(t.replace(/\s+/g, '').toLowerCase()))) {
     return true;
   }
-  const cat = String(category || '');
   if (/エアコン/.test(cat) && /エアコン|aircon|air.?con|airconditioner|クーラー/i.test(raw)) {
     return true;
   }
   if (/窓/.test(cat) && /窓|window/i.test(raw)) {
+    return true;
+  }
+  if (/掃除機/.test(cat) && /掃除機|クリーナー|cleaner|コードレス.*掃除機|スティッククリーナー/i.test(raw)) {
     return true;
   }
   return false;
@@ -967,7 +1104,7 @@ function extractYahooRankingRows(html, limit = CATEGORY_RANKING_TOP, category = 
 }
 
 /** コジマネット ec/ranking.html */
-function extractKojimaNetRankingRows(html, limit = CATEGORY_RANKING_TOP) {
+function extractKojimaNetRankingRows(html, limit = CATEGORY_RANKING_TOP, category = '') {
   const $ = cheerio.load(String(html || ''));
   const rows = [];
   const seen = new Set();
@@ -989,13 +1126,17 @@ function extractKojimaNetRankingRows(html, limit = CATEGORY_RANKING_TOP) {
       href = `https://www.kojima.net/${href.replace(/^\//, '')}`;
     }
     if (seen.has(href)) return;
-    seen.add(href);
 
     let titleText = $box.find('p.name a span').first().text().replace(/\s+/g, ' ').trim();
     if (!titleText) titleText = String($box.find('.inner').attr('mk2pname') || '').trim();
     if (!titleText) {
       titleText = String($box.find('.image img[title]').first().attr('title') || '').trim();
     }
+    if (!titleText) return;
+    if (category && !titleMatchesCategory(titleText, category)) return;
+
+    seen.add(href);
+
     const manufacturer = findManufacturerInBlock(titleText) || '不明';
     let model = titleText;
     if (manufacturer !== '不明') {
@@ -1018,6 +1159,124 @@ function extractKojimaNetRankingRows(html, limit = CATEGORY_RANKING_TOP) {
   });
 
   return rows.sort((a, b) => a.rank - b.rank).slice(0, limit);
+}
+
+/** ビックカメラ.com /bc/ranking/... */
+function extractBicCameraRankingRows(html, limit = CATEGORY_RANKING_TOP, category = '') {
+  const $ = cheerio.load(String(html || ''));
+  const rows = [];
+  const seen = new Set();
+
+  const isAccessory = (title) =>
+    /掃除機用|交換用|取り替え用|紙パック.*枚入|フィルター|アクセサリー|アタッチメント/i.test(
+      title
+    );
+
+  // 法人専用サイトは Akamai 回避用の公式フォールバックとして利用する。
+  $('.product_list_item').each((index, item) => {
+    if (rows.length >= limit) return false;
+    const $item = $(item);
+    const $a = $item.find('a[href*="/product/detail.aspx"]').filter((_, a) => {
+      return $(a).text().replace(/\s+/g, ' ').trim().length >= 8;
+    }).first();
+    const href = String($a.attr('href') || '').trim();
+    const title = $a.text().replace(/\s+/g, ' ').trim();
+    if (!href || !title || isAccessory(title) || seen.has(href)) return;
+    if (category && !titleMatchesCategory(title, category)) return;
+
+    const rankSrc = String(
+      $item.find('img[src*="icon_ranking"]').first().attr('src') || ''
+    );
+    const rankMatch = /no(\d{1,2})\.png/i.exec(rankSrc);
+    const rank = rankMatch ? Number(rankMatch[1]) : index + 1;
+    const absoluteHref = href.startsWith('/')
+      ? `https://houjin.biccamera.com${href}`
+      : href;
+    seen.add(absoluteHref);
+    rows.push(
+      normalizeRow(
+        {
+          title,
+          href: absoluteHref,
+          manufacturer: findManufacturerInBlock($item.text()) || findManufacturerInBlock(title),
+          sourceLabel: BIC_CAMERA_SOURCE.label,
+          sourceType: BIC_CAMERA_SOURCE.type,
+        },
+        rank
+      )
+    );
+  });
+  if (rows.length >= limit) {
+    return rows.sort((a, b) => a.rank - b.rank).slice(0, limit);
+  }
+
+  $('a[href*="/bc/item/"]').each((_, anchor) => {
+    if (rows.length >= limit) return false;
+
+    const $a = $(anchor);
+    let href = String($a.attr('href') || '').trim();
+    if (!href) return;
+    if (href.startsWith('//')) href = `https:${href}`;
+    else if (href.startsWith('/')) href = `https://www.biccamera.com${href}`;
+    if (!/^https?:\/\/(?:www\.)?biccamera\.com\/bc\/item\//i.test(href)) return;
+    href = href.split('?')[0];
+    if (seen.has(href)) return;
+
+    let $block = $a.closest(
+      'li, article, [class*="rankingItem"], [class*="ranking_item"], [class*="rankItem"]'
+    );
+    if (!$block.length) $block = $a.parent();
+
+    let title = [
+      $block.find('[class*="itemName"], [class*="item_name"]').first().text(),
+      $block.find('[class*="productName"], [class*="product_name"]').first().text(),
+      $a.text(),
+      $a.find('img[alt]').first().attr('alt'),
+      $block.find('img[alt]').first().attr('alt'),
+    ]
+      .map((v) => String(v || '').replace(/\s+/g, ' ').trim())
+      .find((v) => v.length >= 8);
+    if (!title || isAccessory(title)) return;
+    if (category && !titleMatchesCategory(title, category)) return;
+
+    const rankCandidates = [
+      $block.find('[class*="rank"]').first().text(),
+      $block.find('img[alt*="位"]').first().attr('alt'),
+      $block.text().slice(0, 300),
+    ];
+    let rank = null;
+    for (const candidate of rankCandidates) {
+      const match = String(candidate || '').replace(/\s+/g, ' ').match(/(?:第)?(\d{1,2})\s*位|#\s*(\d{1,2})/);
+      if (match) {
+        rank = Number(match[1] || match[2]);
+        break;
+      }
+    }
+    if (!Number.isFinite(rank) || rank < 1) rank = rows.length + 1;
+
+    seen.add(href);
+    rows.push(
+      normalizeRow(
+        {
+          title,
+          href,
+          manufacturer: findManufacturerInBlock(title),
+          sourceLabel: BIC_CAMERA_SOURCE.label,
+          sourceType: BIC_CAMERA_SOURCE.type,
+        },
+        rank
+      )
+    );
+  });
+
+  return rows.sort((a, b) => a.rank - b.rank).slice(0, limit);
+}
+
+function buildBicCorporateRankingUrl(url) {
+  const match = String(url || '').match(/\/bc\/ranking\/((?:\d+\/?)+)/i);
+  const categoryId = match?.[1]?.replace(/\D/g, '');
+  if (!categoryId) return '';
+  return `https://houjin.biccamera.com/ranking/list.aspx?ctid=${categoryId}`;
 }
 
 function kojimaNetRankingPageUrls(originalUrlStr, pageCount = 3) {
@@ -1155,7 +1414,28 @@ function extractModelKey(text) {
     const m = re.exec(t);
     if (m) return normalizeModelKeyToken(m[0]);
   }
-  return null;
+
+  // 掃除機などの一般的な家電型番（MC-SB54K / SV46FF / CL108FDSHW 等）
+  const genericCandidates = String(t)
+    .toUpperCase()
+    .match(/\b(?=[A-Z0-9-]{4,20}\b)(?=[A-Z0-9-]*\d)[A-Z][A-Z0-9]*(?:-[A-Z0-9]+){0,2}\b/g);
+  if (!genericCandidates?.length) return null;
+
+  const ignored = /^(?:HEPA\d*|TYPE-C|USB\d*|LED\d*|2WAY|3WAY|WI-?FI)$/i;
+  const candidates = [...new Set(genericCandidates)]
+    .filter((token) => !ignored.test(token))
+    .map((token) => {
+      let score = token.length;
+      if (token.includes('-')) score += 8;
+      if (/^(?:MC|SV|PV|CV|VC|TC|EC|SCD|CL|HC|Y|G|DEX|RV|ROBOROCK)/i.test(token)) {
+        score += 12;
+      }
+      if (/^[A-Z]\d{1,2}$/i.test(token)) score -= 8;
+      return { token, score };
+    })
+    .sort((a, b) => b.score - a.score || b.token.length - a.token.length);
+
+  return candidates[0] ? normalizeModelKeyToken(candidates[0].token) : null;
 }
 
 const COMPOSITE_SOURCE_RANK_FIELDS = {
@@ -1163,6 +1443,7 @@ const COMPOSITE_SOURCE_RANK_FIELDS = {
   楽天: { rank: 'rankRakuten', href: 'hrefRakuten' },
   'Yahoo!': { rank: 'rankYahoo', href: 'hrefYahoo' },
   コジマネット: { rank: 'rankKojima', href: 'hrefKojima' },
+  ビックカメラ: { rank: 'rankBic', href: 'hrefBic' },
 };
 
 function buildCompositeRanking(sourceResults) {
@@ -1194,10 +1475,12 @@ function buildCompositeRanking(sourceResults) {
           rankRakuten: null,
           rankYahoo: null,
           rankKojima: null,
+          rankBic: null,
           hrefAmazon: '',
           hrefRakuten: '',
           hrefYahoo: '',
           hrefKojima: '',
+          hrefBic: '',
         });
       }
       const agg = byKey.get(modelKey);
@@ -1223,9 +1506,13 @@ function buildCompositeRanking(sourceResults) {
 
   const items = [...byKey.values()]
     .map((row) => {
-      const ranks = [row.rankAmazon, row.rankRakuten, row.rankYahoo, row.rankKojima].filter(
-        (r) => r != null
-      );
+      const ranks = [
+        row.rankAmazon,
+        row.rankRakuten,
+        row.rankYahoo,
+        row.rankKojima,
+        row.rankBic,
+      ].filter((r) => r != null);
       const siteCount = ranks.length;
       const avgRank =
         siteCount > 0
@@ -1280,6 +1567,7 @@ function pickPrimaryProductHref(row) {
     row.hrefRakuten ||
     row.hrefYahoo ||
     row.hrefKojima ||
+    row.hrefBic ||
     ''
   );
 }
@@ -1324,11 +1612,13 @@ function buildThemedRankings(compositeItems, themes, options = {}) {
         rankRakuten: row.rankRakuten,
         rankYahoo: row.rankYahoo,
         rankKojima: row.rankKojima,
+        rankBic: row.rankBic,
         href: pickPrimaryProductHref(row),
         hrefAmazon: row.hrefAmazon,
         hrefRakuten: row.hrefRakuten,
         hrefYahoo: row.hrefYahoo,
         hrefKojima: row.hrefKojima,
+        hrefBic: row.hrefBic,
       });
       usedKeys?.add(row.modelKey);
     }
@@ -1529,6 +1819,7 @@ function buildThemedRankingsCsv(category, themedResult) {
       '楽天順位',
       'Yahoo順位',
       'コジマ順位',
+      'ビック順位',
       '代表URL',
       '取得日時',
     ]
@@ -1548,6 +1839,7 @@ function buildThemedRankingsCsv(category, themedResult) {
           '',
           '',
           '（該当商品なし）',
+          '',
           '',
           '',
           '',
@@ -1579,6 +1871,7 @@ function buildThemedRankingsCsv(category, themedResult) {
           item.rankRakuten ?? '',
           item.rankYahoo ?? '',
           item.rankKojima ?? '',
+          item.rankBic ?? '',
           item.href || '',
           fetchedAt,
         ]
@@ -1619,12 +1912,14 @@ function buildCompositeRankingsCsv(category, compositeItems) {
       '楽天順位',
       'Yahoo順位',
       'コジマ順位',
+      'ビック順位',
       '掲載サイト数',
       '平均順位',
       'Amazon URL',
       '楽天 URL',
       'Yahoo URL',
       'コジマ URL',
+      'ビック URL',
       '取得日時',
     ]
       .map(escapeCsvCell)
@@ -1642,12 +1937,14 @@ function buildCompositeRankingsCsv(category, compositeItems) {
         row.rankRakuten ?? '',
         row.rankYahoo ?? '',
         row.rankKojima ?? '',
+        row.rankBic ?? '',
         row.siteCount,
         row.avgRank ?? '',
         row.hrefAmazon || '',
         row.hrefRakuten || '',
         row.hrefYahoo || '',
         row.hrefKojima || '',
+        row.hrefBic || '',
         fetchedAt,
       ]
         .map(escapeCsvCell)
@@ -1733,6 +2030,7 @@ function buildManualUrlResolution(manualUrls) {
     rakuten: normalizeMallRankingUrl(manualUrls?.rakuten) ? 'manual' : 'fallback',
     yahoo: normalizeMallRankingUrl(manualUrls?.yahoo) ? 'manual' : 'fallback',
     kojima: normalizeMallRankingUrl(manualUrls?.kojima) ? 'manual' : 'fallback',
+    bic: normalizeMallRankingUrl(manualUrls?.bic) ? 'manual' : 'fallback',
   };
 }
 
@@ -1767,6 +2065,16 @@ async function fetchCategoryRankings(category, deps, options = {}) {
     urls = resolved.urls;
     urlResolution = resolved.urlResolution;
     urlNotes = resolved.notes || [];
+    const savedCount = Object.values(urlResolution).filter((v) => v === 'saved').length;
+    if (savedCount > 0) {
+      console.log(`💾 Using ${savedCount} saved ranking URL(s) from data/ranking-urls.json`);
+    } else if (!loadSavedRankingUrls(trimmedCategory)) {
+      console.warn(
+        '⚠️ No saved ranking URLs for category:',
+        trimmedCategory,
+        '— add URLs in 競合調査 tab or data/ranking-urls.json'
+      );
+    }
   }
 
   const sourceResults = [];
@@ -1776,6 +2084,7 @@ async function fetchCategoryRankings(category, deps, options = {}) {
     let items = [];
     let html = '';
     const fetchUrl = mall.id === 'yahoo' ? ensureYahooRankingListUrl(url) : url;
+    let effectiveUrl = fetchUrl;
     try {
       try {
         html = await fetchHtmlWithHttpClient(fetchUrl);
@@ -1784,12 +2093,32 @@ async function fetchCategoryRankings(category, deps, options = {}) {
         html = await fetchHtmlWithPlaywright(fetchUrl, playwrightOpts);
       }
       const skipCategoryFilter =
-        (mall.id === 'amazon' && isAmazonBestsellerUrl(fetchUrl)) ||
-        (mall.id === 'yahoo' && /searchranking/i.test(fetchUrl)) ||
-        (mall.id === 'rakuten' && isRakutenDailyRankingUrl(fetchUrl));
-      const categoryForExtract = skipCategoryFilter ? '' : trimmedCategory;
+        (mall.id === 'amazon' &&
+          isAmazonBestsellerUrl(fetchUrl) &&
+          /\/gp\/bestsellers\/[^/?#]+\/\d+/i.test(fetchUrl)) ||
+        (mall.id === 'yahoo' && isYahooCategoryRankingUrl(fetchUrl)) ||
+        (mall.id === 'rakuten' && isRakutenOfficialRankingUrl(fetchUrl));
+      // スポットクーラー等の曖昧カテゴリは、専用ランキングでもタイトル絞り込みを必須にする
+      const forceCategoryFilter = /スポット/.test(trimmedCategory);
+      const categoryForExtract =
+        skipCategoryFilter && !forceCategoryFilter ? '' : trimmedCategory;
       items = extractFn(html, CATEGORY_RANKING_TOP, categoryForExtract);
-      if (items.length === 0 && mall.id === 'amazon') {
+      if (items.length === 0 && mall.id === 'bic') {
+        const corporateUrl = buildBicCorporateRankingUrl(fetchUrl);
+        if (corporateUrl) {
+          try {
+            const corporateHtml = await fetchHtmlWithHttpClient(corporateUrl);
+            items = extractFn(corporateHtml, CATEGORY_RANKING_TOP, categoryForExtract);
+            if (items.length > 0) {
+              effectiveUrl = corporateUrl;
+              urlNotes.push('ビックカメラは公式法人サイトの週間ランキングで補完しました。');
+            }
+          } catch (corporateErr) {
+            console.warn('⚠️ ビックカメラ法人ランキング fallback failed:', corporateErr.message);
+          }
+        }
+      }
+      if (items.length === 0 && (mall.id === 'amazon' || mall.id === 'bic')) {
         try {
           html = await fetchHtmlWithPlaywright(url, playwrightOpts);
           items = extractFn(html, CATEGORY_RANKING_TOP, categoryForExtract);
@@ -1813,7 +2142,7 @@ async function fetchCategoryRankings(category, deps, options = {}) {
       sourceId: mall.id,
       sourceLabel: mall.label,
       sourceType: 'mall',
-      rankingUrl: fetchUrl,
+      rankingUrl: effectiveUrl,
       count: items.length,
       items: items.map((it) => ({
         ...it,
@@ -1841,6 +2170,12 @@ async function fetchCategoryRankings(category, deps, options = {}) {
     extractYahooRankingRows,
     { waitForSelector: 'img[alt]' }
   );
+  await fetchMall(
+    MALL_SOURCES[3],
+    urls.bic,
+    extractBicCameraRankingRows,
+    { waitForSelector: 'a[href*="/bc/item/"]' }
+  );
 
   // コジマネット（モールではなく kojima.net から取得）
   const kojimaUrl = urls.kojima || KOJIMA_NET_SOURCE.defaultRankingUrl(trimmedCategory);
@@ -1857,7 +2192,7 @@ async function fetchCategoryRankings(category, deps, options = {}) {
         if (!merged.length) throw err;
         break;
       }
-      const part = extractKojimaNetRankingRows(html, CATEGORY_RANKING_TOP);
+      const part = extractKojimaNetRankingRows(html, CATEGORY_RANKING_TOP, trimmedCategory);
       for (const row of part) {
         if (row.href && seenHref.has(row.href)) continue;
         if (row.href) seenHref.add(row.href);
@@ -1989,6 +2324,7 @@ module.exports = {
   CSV_EXPORT_DIR,
   MALL_SOURCES,
   KOJIMA_NET_SOURCE,
+  BIC_CAMERA_SOURCE,
   KNOWN_CATEGORY_RANKING_URLS,
   buildDefaultRankingUrls,
   buildYahooSearchRankingUrl,
@@ -2022,4 +2358,6 @@ module.exports = {
   extractRakutenRankingRows,
   extractYahooRankingRows,
   extractKojimaNetRankingRows,
+  extractBicCameraRankingRows,
+  buildBicCorporateRankingUrl,
 };

@@ -83,6 +83,48 @@ header p {
   line-height: 1.55;
 }
 
+.weekly-competitor-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-bottom: 0.75rem;
+}
+
+.competitor-article-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  margin: 1rem 0;
+}
+
+.competitor-article-row {
+  display: grid;
+  grid-template-columns: 1fr 1.2fr 2fr auto;
+  gap: 0.5rem;
+  align-items: end;
+  padding: 0.75rem;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  background: #fafafa;
+}
+
+.competitor-article-row .competitor-article-remove {
+  min-width: 2.25rem;
+  padding: 0.5rem;
+  margin-bottom: 0.15rem;
+}
+
+@media (max-width: 900px) {
+  .competitor-article-row {
+    grid-template-columns: 1fr;
+  }
+}
+
+.category-other-input {
+  margin-top: 0.5rem;
+  width: 100%;
+}
+
 .field-hint + .nested-field {
   margin-top: 0.35rem;
 }
@@ -735,4 +777,433 @@ button.secondary {
 }
 .clickable-h3:hover {
   background-color: rgba(0, 102, 204, 0.08);
+}
+
+.ranking-table-wrap {
+  overflow-x: auto;
+  margin-top: 0.75rem;
+}
+
+.ranking-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9rem;
+}
+
+.ranking-table th,
+.ranking-table td {
+  border: 1px solid #e2e8f0;
+  padding: 0.55rem 0.65rem;
+  text-align: left;
+  vertical-align: top;
+}
+
+.ranking-table th {
+  background: #f1f5f9;
+  font-weight: 600;
+  color: #334155;
+  white-space: nowrap;
+}
+
+.ranking-table tbody tr:nth-child(even) {
+  background: #fafbfc;
+}
+
+.weekly-demo-badge {
+  display: inline-block;
+  margin-left: 0.35rem;
+  padding: 0.15rem 0.5rem;
+  font-size: 0.8rem;
+  font-weight: 600;
+  border-radius: 4px;
+  background: #fef3c7;
+  color: #92400e;
+}
+
+.weekly-header-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.weekly-field-inline select {
+  border: 1px solid #d2d6dc;
+  border-radius: 8px;
+  padding: 0.65rem 0.75rem;
+  font-size: 1rem;
+  background: #fff;
+}
+
+.weekly-status {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+}
+
+.weekly-status-dot {
+  width: 0.55rem;
+  height: 0.55rem;
+  border-radius: 50%;
+  background: #22c55e;
+  flex-shrink: 0;
+}
+
+.weekly-summary-cards .weekly-card-highlight {
+  background: #eef2ff;
+  border: 1px solid #c7d2fe;
+}
+
+.weekly-priority-panel h2 {
+  margin: 0 0 1rem;
+  font-size: 1.2rem;
+  color: #1e3a8a;
+}
+
+.weekly-priority-panel .weekly-task-progress {
+  display: block;
+  margin-bottom: 0.75rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: #52606d;
+}
+
+.weekly-points-panel h2 {
+  margin: 0 0 1rem;
+  font-size: 1.2rem;
+  color: #1e3a8a;
+}
+
+.weekly-points-list {
+  margin: 0 0 1rem;
+  padding-left: 1.25rem;
+  line-height: 1.75;
+  color: #334155;
+}
+
+.weekly-points-list li {
+  margin-bottom: 0.35rem;
+}
+
+.weekly-points-season {
+  border-top: 1px solid #e2e8f0;
+  padding-top: 0.85rem;
+}
+
+.weekly-points-priority {
+  border-top: 1px solid #e2e8f0;
+  margin-top: 1rem;
+  padding-top: 0.85rem;
+}
+
+.weekly-points-priority .weekly-task-progress {
+  display: block;
+  margin-bottom: 0.75rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: #52606d;
+}
+
+.weekly-points-priority .weekly-priority-list .weekly-task-item {
+  border-left: 3px solid #f59e0b;
+  padding-left: 0.65rem;
+}
+
+.weekly-news-table {
+  margin-top: 0.5rem;
+}
+
+.weekly-interest-panel h2,
+.weekly-q-panel h3.weekly-subsection-title {
+  margin-top: 1rem;
+}
+
+.weekly-season-inline {
+  margin: 0.35rem 0 0;
+  color: #475569;
+  line-height: 1.6;
+}
+
+.weekly-hub-pv-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.65rem 1rem;
+  padding: 0.85rem 1rem;
+  margin-bottom: 1rem;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+}
+
+.weekly-hub-pv-label {
+  font-size: 0.875rem;
+  color: #52606d;
+  font-weight: 600;
+}
+
+.weekly-hub-pv-row strong {
+  font-size: 1.25rem;
+  color: #1e3a8a;
+}
+
+.weekly-insight-panel h2,
+.weekly-tasks-panel h2,
+.weekly-season-panel h2,
+.weekly-articles-panel h2 {
+  margin: 0 0 1rem;
+  font-size: 1.2rem;
+  color: #1e3a8a;
+}
+
+.weekly-insight-list {
+  margin: 0;
+  padding-left: 1.25rem;
+  line-height: 1.75;
+  color: #334155;
+}
+
+.weekly-insight-list li {
+  margin-bottom: 0.35rem;
+}
+
+.weekly-two-col {
+  display: grid;
+  grid-template-columns: 1.4fr 1fr;
+  gap: 1rem;
+  margin-bottom: 0;
+}
+
+.weekly-panel-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+}
+
+.weekly-panel-head h2 {
+  margin: 0;
+}
+
+.weekly-task-progress {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: #52606d;
+}
+
+.weekly-task-list {
+  list-style: none;
+  margin: 0 0 1rem;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+}
+
+.weekly-task-item {
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  padding: 0.85rem 1rem;
+  background: #f8fafc;
+}
+
+.weekly-task-label {
+  display: flex;
+  gap: 0.65rem;
+  align-items: flex-start;
+  cursor: pointer;
+}
+
+.weekly-task-label input {
+  margin-top: 0.25rem;
+  flex-shrink: 0;
+}
+
+.weekly-task-body {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.weekly-task-body strong {
+  color: #1f2933;
+  line-height: 1.45;
+}
+
+.weekly-task-detail {
+  font-size: 0.875rem;
+  color: #64748b;
+}
+
+.weekly-task-actions {
+  margin-top: 0.65rem;
+  padding-left: 1.5rem;
+}
+
+.weekly-task-actions button {
+  padding: 0.45rem 1rem;
+  font-size: 0.875rem;
+}
+
+.weekly-season-dl {
+  margin: 0;
+}
+
+.weekly-subtab-nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+}
+
+.weekly-subtab {
+  padding: 0.5rem 1rem;
+  font-size: 0.9rem;
+}
+
+.weekly-filter-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.75rem;
+}
+
+.weekly-filter-label {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: #52606d;
+}
+
+.weekly-filter-btn {
+  padding: 0.4rem 0.85rem;
+  font-size: 0.85rem;
+}
+
+.weekly-badge {
+  display: inline-block;
+  padding: 0.15rem 0.45rem;
+  border-radius: 4px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.weekly-badge-up {
+  background: #dcfce7;
+  color: #166534;
+}
+
+.weekly-badge-down {
+  background: #fee2e2;
+  color: #991b1b;
+}
+
+.weekly-badge-new {
+  background: #dbeafe;
+  color: #1e40af;
+}
+
+.weekly-badge-warn {
+  background: #ffedd5;
+  color: #9a3412;
+}
+
+.weekly-badge-ok {
+  background: #dcfce7;
+  color: #166534;
+}
+
+.weekly-badge-info {
+  background: #e0e7ff;
+  color: #3730a3;
+}
+
+.weekly-trend-up {
+  color: #15803d;
+  font-weight: 600;
+}
+
+.weekly-trend-down {
+  color: #b91c1c;
+  font-weight: 600;
+}
+
+.weekly-confirm-done {
+  color: #166534;
+  font-weight: 600;
+}
+
+.weekly-q-panel h2 {
+  margin: 0 0 1rem;
+  font-size: 1.15rem;
+  color: #1e3a8a;
+}
+
+.weekly-q-hint {
+  font-size: 0.8rem;
+  font-weight: 500;
+  color: #64748b;
+}
+
+.weekly-reason-cell {
+  font-size: 0.85rem;
+  line-height: 1.5;
+  color: #334155;
+  min-width: 12rem;
+}
+
+.weekly-empty-cell {
+  text-align: center;
+  color: #94a3b8;
+  font-style: italic;
+}
+
+.weekly-task-empty {
+  color: #64748b;
+  font-size: 0.9rem;
+  padding: 0.5rem 0;
+}
+
+.button-link {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.65rem 1.25rem;
+  border-radius: 8px;
+  font-size: 1rem;
+  font-weight: 600;
+  text-decoration: none;
+  border: 1px solid #d2d6dc;
+  background: #fff;
+  color: #1f2933;
+  cursor: pointer;
+}
+
+.button-link:hover {
+  background: #f7fafc;
+}
+
+.weekly-priority-panel .weekly-priority-list .weekly-task-item {
+  border-left: 3px solid #f59e0b;
+  padding-left: 0.65rem;
+}
+
+.weekly-subsection-title {
+  margin: 1rem 0 0.5rem;
+  font-size: 0.95rem;
+  color: #64748b;
+  font-weight: 600;
+}
+
+.weekly-performance-panel {
+  border: 1px solid #c7d2fe;
+  background: #fafbff;
+}
+
+@media (max-width: 800px) {
+  .weekly-two-col {
+    grid-template-columns: 1fr;
+  }
 }

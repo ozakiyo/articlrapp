@@ -176,6 +176,57 @@ const {
   getDefaultRankingThemeSelection,
   CSV_EXPORT_DIR,
 } = require('./categoryRanking');
+const weeklyReportConfig = require('./weeklyReportConfig');
+const { fetchGoogleSuggestTop10 } = require('./googleSearchSuggest');
+const {
+  loadSavedRankingUrls,
+  listSavedRankingCategories,
+  saveRankingUrls,
+} = require('./rankingUrlStore');
+const {
+  ensureStoreFile: ensureCompetitorArticlesStoreFile,
+  loadSavedCompetitorArticles,
+  listSavedCompetitorCategories,
+  saveCompetitorArticles,
+} = require('./competitorArticlesStore');
+const { analyzeCompetitorArticles } = require('./competitorArticleEngine');
+const { getCategoriesPayload } = require('./categoryRegistry');
+const {
+  getIsoWeekId,
+  getPreviousWeekId,
+  loadArticleMaster,
+  loadSnapshot,
+  saveSnapshot,
+  listSnapshots,
+  findLatestSnapshot,
+  buildWeeklyReport,
+  buildEmptyReport,
+  buildReportFromSnapshot,
+  buildEmptyReportWithComparison,
+  buildWeeklyReportWithComparison,
+  normalizeCompareMode,
+  buildChangeLogFromTasks,
+  extractHubPerformanceSnapshot,
+} = require('./weeklyReportEngine');
+
+async function attachGoogleSearchInterest(report, category) {
+  try {
+    const googleSearchInterest = await fetchGoogleSuggestTop10(category);
+    return { ...report, googleSearchInterest };
+  } catch (err) {
+    console.warn('⚠️ Google Suggest failed:', err.message);
+    return {
+      ...report,
+      googleSearchInterest: {
+        keyword: category,
+        fetchedAt: null,
+        items: [],
+        source: 'google-suggest',
+        error: err.message,
+      },
+    };
+  }
+}
 
 /*
 「AIモデルのインスタンスを効率的に取得すること」
@@ -1708,6 +1759,8 @@ app.post('/api/resolve-category-ranking-urls', async (req, res) => {
       rankingUrls: result.urls,
       urlResolution: result.urlResolution,
       notes: result.notes || [],
+      savedAt: result.savedAt || null,
+      hasSavedUrls: Boolean(result.savedRankingUrls),
       themePresets: getRankingThemePresets(category),
       defaultThemeSelection: getDefaultRankingThemeSelection(category),
     });
@@ -1761,6 +1814,126 @@ app.post('/api/build-category-themed-rankings', async (req, res) => {
   }
 });
 
+app.get('/api/category-ranking-urls', (req, res) => {
+  const category = String(req.query?.category ?? '').trim();
+  if (!category) {
+    const categories = listSavedRankingCategories();
+    return res.json({
+      saved: categories.length > 0,
+      count: categories.length,
+      categories,
+    });
+  }
+  const saved = loadSavedRankingUrls(category);
+  if (!saved) {
+    return res.json({ category, saved: false, rankingUrls: null });
+  }
+  return res.json({
+    category: saved.category,
+    saved: true,
+    rankingUrls: saved.rankingUrls,
+    savedAt: saved.savedAt,
+    note: saved.note,
+  });
+});
+
+app.post('/api/category-ranking-urls', (req, res) => {
+  const category = String(req.body?.category ?? '').trim();
+  const rankingUrls = req.body?.rankingUrls;
+  const note = req.body?.note;
+
+  if (!category) {
+    return res.status(400).json({ error: 'カテゴリを指定してください。' });
+  }
+
+  try {
+    const payload = saveRankingUrls(category, rankingUrls, { note });
+    console.log('💾 Saved category ranking URLs:', { category: payload.category });
+    return res.json({ ok: true, ...payload });
+  } catch (err) {
+    return res.status(400).json({ error: err.message });
+  }
+});
+
+app.get('/api/competitor-articles', (req, res) => {
+  ensureCompetitorArticlesStoreFile();
+  const category = String(req.query?.category ?? '').trim();
+  if (!category) {
+    const categories = listSavedCompetitorCategories();
+    return res.json({
+      saved: categories.length > 0,
+      count: categories.length,
+      categories,
+    });
+  }
+  const saved = loadSavedCompetitorArticles(category);
+  if (!saved) {
+    return res.json({ category, saved: false, articles: null });
+  }
+  return res.json({
+    category: saved.category,
+    saved: true,
+    articles: saved.articles,
+    hubUrl: saved.hubUrl,
+    savedAt: saved.savedAt,
+    note: saved.note,
+  });
+});
+
+app.post('/api/competitor-articles', (req, res) => {
+  const category = String(req.body?.category ?? '').trim();
+  const articles = req.body?.articles;
+  const note = req.body?.note;
+  const hubUrl = req.body?.hubUrl;
+
+  if (!category) {
+    return res.status(400).json({ error: 'カテゴリを指定してください。' });
+  }
+
+  try {
+    const payload = saveCompetitorArticles(category, articles, { note, hubUrl });
+    console.log('💾 Saved competitor articles:', {
+      category: payload.category,
+      count: payload.articles.length,
+    });
+    return res.json({ ok: true, ...payload });
+  } catch (err) {
+    return res.status(400).json({ error: err.message });
+  }
+});
+
+app.post('/api/competitor-articles/analyze', async (req, res) => {
+  const category = String(req.body?.category ?? '').trim();
+  const articles = req.body?.articles;
+
+  if (!category) {
+    return res.status(400).json({ error: 'カテゴリを指定してください。' });
+  }
+
+  console.log('🛎️ POST /api/competitor-articles/analyze called with:', { category });
+
+  try {
+    const result = await analyzeCompetitorArticles(
+      category,
+      { articles: Array.isArray(articles) ? articles : undefined },
+      {
+        fetchHtmlWithHttpClient,
+        scrapeText: scrape,
+        loadArticleMaster,
+      }
+    );
+    console.log('✅ Competitor article analysis:', {
+      category,
+      proposals: result.summary?.proposalCount,
+      success: result.summary?.successCount,
+    });
+    return res.json(result);
+  } catch (err) {
+    console.error('❌ Competitor article analysis failed:', err.message);
+    return res.status(400).json({ error: err.message });
+  }
+});
+
 app.post('/api/extract-category-rankings', async (req, res) => {
   const requestStartedAt = Date.now();
   const category = String(req.body?.category ?? '').trim();
@@ -1811,6 +1984,172 @@ app.post('/api/extract-category-rankings', async (req, res) => {
       details: err.message,
     });
   }
+});
+
+app.get('/api/categories', (_req, res) => {
+  try {
+    return res.json(getCategoriesPayload());
+  } catch (err) {
+    console.error('❌ GET /api/categories failed:', err.message);
+    return res.status(500).json({ error: err.message });
+  }
+});
+
+app.get('/api/weekly/config', (req, res) => {
+  return res.json({
+    defaultCategory: weeklyReportConfig.defaultCategory,
+    categories: getCategoriesPayload().categories,
+    bestseller: weeklyReportConfig.bestseller,
+    articlePerformancePhase: weeklyReportConfig.articlePerformancePhase,
+    reasonMode: weeklyReportConfig.reasonMode,
+    weekDefinition: weeklyReportConfig.weekDefinition,
+    performance: weeklyReportConfig.performance,
+    priorityScoring: weeklyReportConfig.priorityScoring,
+    signals: weeklyReportConfig.signals,
+    comparison: weeklyReportConfig.comparison,
+  });
+});
+
+app.get('/api/weekly/report', async (req, res) => {
+  const category = String(req.query?.category || weeklyReportConfig.defaultCategory).trim();
+  const weekId = String(req.query?.weekId || '').trim() || getIsoWeekId();
+  const compareMode = normalizeCompareMode(req.query?.compare);
+  const articleMaster = loadArticleMaster(category);
+
+  let snapshot = loadSnapshot(category, weekId);
+  if (!snapshot) {
+    const latest = findLatestSnapshot(category);
+    if (latest?.weekId === weekId) snapshot = latest;
+  }
+
+  if (snapshot) {
+    const report = await attachGoogleSearchInterest(
+      buildReportFromSnapshot(snapshot, articleMaster, compareMode),
+      category
+    );
+    return res.json({
+      ...report,
+      snapshots: listSnapshots(category),
+    });
+  }
+
+  const report = await attachGoogleSearchInterest(
+    buildEmptyReportWithComparison(category, articleMaster, weekId, compareMode),
+    category
+  );
+  return res.json({
+    ...report,
+    snapshots: listSnapshots(category),
+  });
+});
+
+app.post('/api/weekly/fetch', async (req, res) => {
+  const requestStartedAt = Date.now();
+  const category = String(req.body?.category || weeklyReportConfig.defaultCategory).trim();
+  const compareMode = normalizeCompareMode(req.body?.compare);
+  const weekId = getIsoWeekId();
+  const articleMaster = loadArticleMaster(category);
+
+  console.log('🛎️ POST /api/weekly/fetch called with:', {
+    category,
+    weekId,
+    compareMode,
+  });
+
+  try {
+    const fetchResult = await fetchCategoryRankings(
+      category,
+      {
+        fetchHtmlWithHttpClient,
+        getGeminiModel,
+        parseJsonFromModelOutput,
+      },
+      {}
+    );
+
+    const fetchedAt = new Date().toISOString();
+    const report = buildWeeklyReportWithComparison({
+      category,
+      weekId,
+      fetchResult,
+      articleMaster,
+      fetchedAt,
+      compareMode,
+    });
+
+    saveSnapshot(category, weekId, {
+      weekId,
+      category,
+      fetchedAt: report.fetchedAt,
+      compositeRanking: fetchResult.compositeRanking,
+      warnings: fetchResult.warnings || [],
+      report,
+    });
+
+    console.log('✅ Completed /api/weekly/fetch in', `${Date.now() - requestStartedAt}ms`);
+
+    const reportWithInterest = await attachGoogleSearchInterest(report, category);
+
+    return res.json({
+      ...reportWithInterest,
+      snapshots: listSnapshots(category),
+      csvDownloadUrl: fetchResult.compositeCsvDownloadUrl || null,
+    });
+  } catch (err) {
+    console.error('❌ Weekly fetch failed', err.message);
+    if (isGeminiQuotaExceededError(err)) {
+      const retryAfterSec = parseRetryAfterSecondsFromMessage(err.message);
+      const payload = {
+        error:
+          'Gemini API の利用上限に達しました。しばらく待って再実行するか、APIキーの利用枠/課金設定を確認してください。',
+        details: err.message,
+      };
+      if (retryAfterSec) payload.retryAfterSeconds = retryAfterSec;
+      return res.status(429).json(payload);
+    }
+    return res.status(502).json({
+      error: '週次ランキングの取得に失敗しました。',
+      details: err.message,
+    });
+  }
+});
+
+app.post('/api/weekly/confirm', (req, res) => {
+  const category = String(req.body?.category || weeklyReportConfig.defaultCategory).trim();
+  const weekId = String(req.body?.weekId || '').trim() || getIsoWeekId();
+  const snapshot = loadSnapshot(category, weekId);
+
+  if (!snapshot) {
+    return res.status(404).json({
+      error: `週次スナップショットが見つかりません（${weekId}）。先にランキングを取得してください。`,
+    });
+  }
+
+  const confirmedAt = new Date().toISOString();
+  const articleMaster = loadArticleMaster(category);
+  const tasks =
+    snapshot.report?.priorityTasks || snapshot.report?.tasks || [];
+
+  snapshot.confirmedAt = confirmedAt;
+  snapshot.changeLog = buildChangeLogFromTasks(tasks, weekId, confirmedAt);
+  const hubSnapshot = extractHubPerformanceSnapshot(articleMaster);
+  snapshot.hubPagePerformance = hubSnapshot.hubPagePerformance;
+  snapshot.productClicks = hubSnapshot.productClicks;
+  snapshot.menuClicks = hubSnapshot.menuClicks;
+  if (snapshot.report) {
+    snapshot.report.confirmedAt = confirmedAt;
+    snapshot.report.changeEffects = undefined;
+  }
+  saveSnapshot(category, weekId, snapshot);
+
+  console.log('✅ Weekly report confirmed:', { category, weekId, confirmedAt });
+
+  return res.json({
+    ok: true,
+    category,
+    weekId,
+    confirmedAt,
+  });
 });
 
 app.get('/api/download-category-ranking-csv/:filename', (req, res) => {
