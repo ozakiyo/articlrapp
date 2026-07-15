@@ -958,39 +958,145 @@ const KNOWN_MANUFACTURERS = [
   'MSI',
   'IODATA',
   'IO DATA',
+  'JBL',
+  'Bose',
+  'BOSE',
+  'Anker',
+  'ANKER',
+  'Marshall',
+  'YAMAHA',
+  'ヤマハ',
+  'Ultimate Ears',
+  'UE',
+  'Bang & Olufsen',
+  'B&O',
+  'Audio-Technica',
+  'オーディオテクニカ',
+  'ELECOM',
+  'エレコム',
+  'ロジクール',
+  'Logicool',
+  'Logitech',
+  'Harman Kardon',
+  'ハーマンカードン',
+  'Bambi',
 ];
 
 function findManufacturerInBlock(headBlock, knownManufacturers = KNOWN_MANUFACTURERS) {
+  const text = String(headBlock || '');
   const sorted = [...knownManufacturers].sort((a, b) => b.length - a.length);
   let best = null;
   let bestIdx = Infinity;
   for (const name of sorted) {
-    const idx = headBlock.indexOf(name);
+    const n = String(name);
+    // 短い英字コード（UE/LG 等）は単語境界のみ。長い名前は部分一致可
+    let idx = -1;
+    if (/^[A-Za-z0-9&]+$/.test(n) && n.length <= 3) {
+      const re = new RegExp(`(?:^|[^A-Za-z0-9])${escapeRegExp_(n)}(?:[^A-Za-z0-9]|$)`, 'i');
+      const m = re.exec(text);
+      if (m) idx = m.index + (m[0].match(/^[^A-Za-z0-9]/) ? 1 : 0);
+    } else {
+      idx = text.toLowerCase().indexOf(n.toLowerCase());
+    }
     if (idx >= 0 && idx < bestIdx) {
       bestIdx = idx;
       best = name;
     }
   }
+  // モールタイトル末尾の「｜Bambi」「| Anker」形式
+  if (!best) {
+    const pipe = /[｜|]\s*([A-Za-z0-9][A-Za-z0-9 &\-]{1,40})\s*$/.exec(text);
+    if (pipe) best = pipe[1].trim();
+  }
   return best;
+}
+/**
+ * モール長文タイトル → メーカー / 商品名 / 型式
+ */
+function parseProductIdentity(rawTitle, manufacturerHint) {
+  const title = String(rawTitle || '').replace(/\s+/g, ' ').trim();
+  let manufacturer =
+    manufacturerHint && manufacturerHint !== '不明'
+      ? manufacturerHint
+      : findManufacturerInBlock(title) || '不明';
+
+  // 表記ゆれの正規化
+  if (/^bose$/i.test(manufacturer)) manufacturer = 'Bose';
+  if (/^jbl$/i.test(manufacturer)) manufacturer = 'JBL';
+
+  const modelCode = extractModelKey(`${title} ${manufacturer}`) || '';
+  let productName = shortenProductName(title, manufacturer, modelCode);
+
+  // 型式が取れた場合は商品名を短く揃える（「Bluetoothスピーカー GO 5」→「GO 5」）
+  if (modelCode && /^(GO|CHARGE|FLIP|CLIP|PULSE|XTREME|BOOMBOX)-/i.test(modelCode)) {
+    productName = modelCode
+      .split('-')
+      .map((p, i) => (i > 0 && /^[A-Z]+$/i.test(p) && p.length > 2 ? p[0] + p.slice(1).toLowerCase() : p))
+      .join(' ');
+  }
+
+  if (!productName) productName = modelCode || title.slice(0, 40) || '不明';
+
+  return {
+    manufacturer,
+    productName: productName.slice(0, 80),
+    modelCode: modelCode || '',
+  };
+}
+
+function shortenProductName(title, manufacturer, modelCode) {
+  let t = String(title || '')
+    .replace(/【[^】]*】/g, ' ')
+    .replace(/＼[^／]*／/g, ' ')
+    .replace(/\[[^\]]*\]/g, ' ')
+    .replace(/\([^)]*\)/g, ' ')
+    .replace(/[｜|].*$/, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+
+  if (manufacturer && manufacturer !== '不明') {
+    t = t.replace(new RegExp(escapeRegExp_(manufacturer), 'ig'), ' ').replace(/\s+/g, ' ').trim();
+  }
+  // カタカナ正式名の重複（ジェービーエル 等）を落とす
+  t = t.replace(/ジェービーエル|ジェイビーエル/g, ' ').replace(/\s+/g, ' ').trim();
+
+  // スペック・カテゴリ語の手前まで（先頭のカテゴリ名「スピーカー」は商品名に残す）
+  const marker =
+    /(?:ポータブル|ワイヤレス|Bluetooth|ブルートゥース|防水|防塵|コンパクト|マイク|ハンズフリー|お風呂|USB|Type-?C|公式|軽量|大音量|新型)/i;
+  const m = marker.exec(t);
+  let cut = m && m.index > 0 ? t.slice(0, m.index) : t;
+  cut = cut.replace(/^[\/\-\s　]+|[\/\-\s　]+$/g, '').trim();
+  // 「スピーカー Bluetooth」だけになると長いので、先頭の一般カテゴリ＋英数字型番っぽい部分を優先
+  if (cut.length > 28) {
+    const short = cut.match(
+      /^(?:[ぁ-んァ-ン一-龥ー]{2,12}\s+)?([A-Za-z][A-Za-z0-9]+(?:\s+[A-Za-z0-9]+){0,3}|\d+)/
+    );
+    if (short) cut = short[0].trim();
+  }
+
+  if (cut.length >= 2 && cut.length <= 48) return cut;
+  if (modelCode) return String(modelCode).replace(/-/g, ' ');
+  if (t.length >= 2) return t.slice(0, 28);
+  return '';
+}
+
+function escapeRegExp_(s) {
+  return String(s || '').replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 
 function normalizeRow(raw, rank) {
   const title = String(raw.model || raw.title || '').replace(/\s+/g, ' ').trim();
-  const manufacturer =
-    raw.manufacturer && raw.manufacturer !== '不明'
-      ? raw.manufacturer
-      : findManufacturerInBlock(title) || '不明';
-  let model = title;
-  if (manufacturer !== '不明') {
-    model = title.replace(manufacturer, '').replace(/^[\s　]+/, '').trim() || title;
-  }
+  const id = parseProductIdentity(title, raw.manufacturer);
   return {
     rank,
-    manufacturer,
-    model: model.slice(0, 200),
+    manufacturer: id.manufacturer,
+    productName: id.productName,
+    model: id.productName,
+    modelCode: id.modelCode,
     href: raw.href || '',
     sourceLabel: raw.sourceLabel || '',
     sourceType: raw.sourceType || '',
+    rawTitle: title.slice(0, 200),
   };
 }
 
@@ -1396,6 +1502,15 @@ const MODEL_KEY_PATTERNS = [
   /\bKAW-\d{4,5}(?:\/W)?/i,
   /\bACW-S?\d{2}R(?:-W)?/i,
   /\bTIW-A\d{3}M\b/i,
+  // ポータブルスピーカー等（モール長文タイトル向け）
+  /\bGO\s+Essential\s+\d+\b/i,
+  /\bGO\s+\d+\b/i,
+  /\bCHARGE\s+(?:Essential\s+)?\d+\b/i,
+  /\bFLIP\s+\d+\b/i,
+  /\bCLIP\s+\d+\b/i,
+  /\bPULSE\s+\d+\b/i,
+  /\bXTREME\s+\d+\b/i,
+  /\bBOOMBOX\s+\d+\b/i,
 ];
 
 function normalizeModelKeyToken(raw) {
@@ -1403,6 +1518,7 @@ function normalizeModelKeyToken(raw) {
     .toUpperCase()
     .replace(/\(WS\)/gi, '')
     .trim();
+  k = k.replace(/\s+/g, '-');
   k = k.replace(/-WS$/i, '').replace(/\/W$/i, '');
   if (/^JA-W\d{2}[A-Z]-W$/i.test(k)) k = k.replace(/-W$/i, '');
   else if (/R-W$/i.test(k) && /^CW|^CWH/i.test(k)) k = k.replace(/-W$/i, '');
@@ -1423,7 +1539,8 @@ function extractModelKey(text) {
     .match(/\b(?=[A-Z0-9-]{4,20}\b)(?=[A-Z0-9-]*\d)[A-Z][A-Z0-9]*(?:-[A-Z0-9]+){0,2}\b/g);
   if (!genericCandidates?.length) return null;
 
-  const ignored = /^(?:HEPA\d*|TYPE-C|USB\d*|LED\d*|2WAY|3WAY|WI-?FI)$/i;
+  const ignored =
+    /^(?:HEPA\d*|TYPE-?C|USB\d*|LED\d*|2WAY|3WAY|WI-?FI|IPX?\d+|BLUETOOTH|VGP\d*|IEEE\d*|HDMI|AAC|SBC|LDAC)$/i;
   const candidates = [...new Set(genericCandidates)]
     .filter((token) => !ignored.test(token))
     .map((token) => {
@@ -1460,9 +1577,16 @@ function buildCompositeRanking(sourceResults) {
     if (!fields) continue;
 
     for (const item of block.items || []) {
-      const modelKey = extractModelKey(
-        `${item.model || ''} ${item.manufacturer || ''} ${item.title || ''}`
-      );
+      const titleBlob = `${item.rawTitle || ''} ${item.model || ''} ${item.productName || ''} ${item.manufacturer || ''} ${item.title || ''}`;
+      const identity = parseProductIdentity(titleBlob, item.manufacturer);
+      const modelKey =
+        extractModelKey(titleBlob) ||
+        (identity.modelCode && identity.modelCode !== identity.productName
+          ? identity.modelCode
+          : null) ||
+        (identity.manufacturer !== '不明' && identity.productName
+          ? normalizeModelKeyToken(`${identity.manufacturer}-${identity.productName}`)
+          : null);
       if (!modelKey) {
         unknownModelCount++;
         continue;
@@ -1472,6 +1596,7 @@ function buildCompositeRanking(sourceResults) {
         byKey.set(modelKey, {
           modelKey,
           manufacturer: '不明',
+          productName: '',
           representativeModel: '',
           rankAmazon: null,
           rankRakuten: null,
@@ -1486,14 +1611,24 @@ function buildCompositeRanking(sourceResults) {
         });
       }
       const agg = byKey.get(modelKey);
-      const mfr = item.manufacturer && item.manufacturer !== '不明' ? item.manufacturer : null;
-      if (mfr) agg.manufacturer = mfr;
-      const modelText = String(item.model || '').trim();
+      if (identity.manufacturer !== '不明') agg.manufacturer = identity.manufacturer;
+      else if (item.manufacturer && item.manufacturer !== '不明') {
+        agg.manufacturer = item.manufacturer;
+      }
+      const pname = identity.productName || item.productName || '';
+      if (pname && (!agg.productName || pname.length < agg.productName.length)) {
+        agg.productName = pname;
+      }
+      const modelText = String(item.model || item.productName || '').trim();
       if (
         modelText &&
         (!agg.representativeModel || modelText.length < agg.representativeModel.length)
       ) {
         agg.representativeModel = modelText;
+      }
+      // 型式表示は短いキー優先
+      if (!agg.modelCode || String(modelKey).length < String(agg.modelCode).length) {
+        agg.modelCode = modelKey;
       }
 
       const rank = Number(item.rank);
@@ -2348,6 +2483,7 @@ module.exports = {
   normalizeRankingThemesInput,
   fetchCategoryRankings,
   extractModelKey,
+  parseProductIdentity,
   buildCompositeRanking,
   buildThemedRankings,
   buildRankingsCsv,

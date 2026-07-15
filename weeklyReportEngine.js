@@ -259,8 +259,22 @@ function formatRankChange(prev, curr) {
 
 function productLabel(row) {
   const mfr = row.manufacturer && row.manufacturer !== '不明' ? row.manufacturer : '';
-  const model = row.representativeModel || row.modelKey || '';
-  return [mfr, model].filter(Boolean).join(' ').trim() || row.modelKey || '不明';
+  const name = row.productName || '';
+  const code = row.modelCode || row.modelKey || '';
+  const parts = [];
+  if (mfr) parts.push(mfr);
+  if (name && name !== mfr) parts.push(name);
+  if (code && code !== name && code !== mfr) parts.push(code);
+  if (parts.length) return parts.join(' / ');
+  return row.representativeModel || row.modelKey || '不明';
+}
+
+function productParts(row) {
+  return {
+    manufacturer: row.manufacturer && row.manufacturer !== '不明' ? row.manufacturer : '—',
+    productName: row.productName || row.representativeModel || '—',
+    modelCode: row.modelCode || row.modelKey || '—',
+  };
 }
 
 function buildRankMap(items, topN) {
@@ -312,8 +326,10 @@ function compareWeeklyRankings(currentItems, previousItems, options = {}) {
       type,
       modelKey,
       label: productLabel(row),
-      manufacturer: row.manufacturer,
-      representativeModel: row.representativeModel,
+      manufacturer: productParts(row).manufacturer,
+      productName: productParts(row).productName,
+      modelCode: productParts(row).modelCode,
+      representativeModel: row.productName || row.representativeModel,
       compositeRank: currRank,
       prevCompositeRank: prevRank,
       delta,
@@ -1105,19 +1121,25 @@ function buildWeeklyReport({
     .sort((a, b) => b.score - a.score)
     .slice(0, config.bestseller.topN);
 
-  const bestsellers = ranked.map(({ row, compositeRank }, i) => ({
-    rank: i + 1,
-    compositeRank,
-    modelKey: row.modelKey,
-    label: productLabel(row),
-    rankAmazon: row.rankAmazon,
-    rankRakuten: row.rankRakuten,
-    rankYahoo: row.rankYahoo,
-    rankKojima: row.rankKojima,
-    rankBic: row.rankBic,
-    siteCount: row.siteCount,
-    reason: reasonBestseller(row, i + 1),
-  }));
+  const bestsellers = ranked.map(({ row, compositeRank }, i) => {
+    const parts = productParts(row);
+    return {
+      rank: i + 1,
+      compositeRank,
+      modelKey: row.modelKey,
+      label: productLabel(row),
+      manufacturer: parts.manufacturer,
+      productName: parts.productName,
+      modelCode: parts.modelCode,
+      rankAmazon: row.rankAmazon,
+      rankRakuten: row.rankRakuten,
+      rankYahoo: row.rankYahoo,
+      rankKojima: row.rankKojima,
+      rankBic: row.rankBic,
+      siteCount: row.siteCount,
+      reason: reasonBestseller(row, i + 1),
+    };
+  });
 
   const rising = comparison.changes
     .filter((c) => c.type === 'new' || c.type === 'up')
@@ -1125,6 +1147,9 @@ function buildWeeklyReport({
     .map((c) => ({
       type: c.type,
       label: c.label,
+      manufacturer: c.manufacturer,
+      productName: c.productName,
+      modelCode: c.modelCode,
       modelKey: c.modelKey,
       amazonChange: c.amazonChange,
       compositeRank: c.compositeRank,
@@ -1469,6 +1494,7 @@ module.exports = {
   enrichReportWithSalesMetrics,
   buildCompositeRanking,
   productLabel,
+  productParts,
   mallScore,
   formatPv,
   pvChangePercent,

@@ -1,13 +1,14 @@
 {
   "version": 1,
-  "updatedAt": "2026-07-15T06:24:44.837Z",
+  "updatedAt": "2026-07-15T14:26:27.576Z",
   "categories": {
     "掃除機": {
       "rankingUrls": {
         "amazon": "https://www.amazon.co.jp/gp/bestsellers/kitchen/4083091",
         "rakuten": "https://ranking.rakuten.co.jp/weekly/204492/",
         "yahoo": "https://shopping.yahoo.co.jp/searchranking?p=%E6%8E%83%E9%99%A4%E6%A9%9F&cid=26216&rcid=26216&rterm=default&rmore=1&prom=1",
-        "kojima": "https://www.kojima.net/ec/ranking.html?cate=cleaner&rType=BRWS&rTerm=WEEK&rPage=1"
+        "kojima": "https://www.kojima.net/ec/ranking.html?cate=cleaner&rType=BRWS&rTerm=MONTH&rPage=1",
+        "bic": "https://www.biccamera.com/bc/ranking/001/150/020/"
       },
       "savedAt": "2026-07-13T12:32:55.171Z",
       "note": "柱記事向け: Amazon=家電掃除機ベストセラー / 楽天=掃除機・クリーナー / Yahoo=cid26216 / コジマ=cate cleaner / Bic=掃除機・クリーナー人気売れ筋"

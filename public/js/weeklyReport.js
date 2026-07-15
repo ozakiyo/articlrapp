@@ -225,7 +225,9 @@
       htmlRows.push(`<tr>
         <td><span class="weekly-badge weekly-badge-info">売れ筋</span></td>
         <td>${r.rank}</td>
-        <td>${esc(r.label)}</td>
+        <td>${esc(r.manufacturer || '—')}</td>
+        <td>${esc(r.productName || r.label || '—')}</td>
+        <td>${esc(r.modelCode || r.modelKey || '—')}</td>
         <td>${rankCell(r.rankAmazon)}</td>
         <td>${rankCell(r.rankRakuten)}</td>
         <td>${rankCell(r.rankYahoo)}</td>
@@ -244,7 +246,9 @@
       htmlRows.push(`<tr>
         <td><span class="weekly-badge ${badgeClass(r.type)}">${badgeLabel(r.type)}</span></td>
         <td>${rankCell(r.compositeRank)}${r.delta > 0 ? ` (+${r.delta})` : r.type === 'new' ? ' 新規' : ''}</td>
-        <td>${esc(r.label)}</td>
+        <td>${esc(r.manufacturer || '—')}</td>
+        <td>${esc(r.productName || r.label || '—')}</td>
+        <td>${esc(r.modelCode || r.modelKey || '—')}</td>
         <td>${esc(r.amazonChange)}</td>
         <td>—</td>
         <td>—</td>
@@ -264,7 +268,7 @@
       htmlRows.push(`<tr>
         <td><span class="weekly-badge weekly-badge-warn">入替</span></td>
         <td>${rep.fromPosition ? `${rep.fromPosition}位` : '—'}</td>
-        <td>${esc(rep.fromLabel)}</td>
+        <td colspan="3">${esc(rep.fromLabel)}</td>
         <td>—</td><td>—</td><td>—</td><td>—</td><td>—</td>
         <td>→ <strong>${esc(rep.toLabel)}</strong></td>
         <td class="weekly-reason-cell">${esc(rep.reason)}</td>
@@ -274,7 +278,7 @@
 
     if (!htmlRows.length) {
       tbody.innerHTML =
-        '<tr><td colspan="11" class="weekly-empty-cell">ランキング未取得、または該当なし</td></tr>';
+        '<tr><td colspan="13" class="weekly-empty-cell">ランキング未取得、または該当なし</td></tr>';
       return;
     }
     tbody.innerHTML = htmlRows.join('');
@@ -619,15 +623,16 @@
     if (!tbody) return;
     const changes = report.comparison?.changes || [];
     if (!changes.length) {
-      tbody.innerHTML = '<tr><td colspan="9" class="weekly-empty-cell">変動データなし</td></tr>';
+      tbody.innerHTML = '<tr><td colspan="10" class="weekly-empty-cell">変動データなし</td></tr>';
       return;
     }
     tbody.innerHTML = changes
       .map(
         (c) => `<tr data-type="${esc(c.type)}">
         <td><span class="weekly-badge ${badgeClass(c.type)}">${badgeLabel(c.type)}</span></td>
-        <td>${esc(c.label)}</td>
-        <td>${esc(c.representativeModel || c.modelKey)}</td>
+        <td>${esc(c.manufacturer || '—')}</td>
+        <td>${esc(c.productName || c.label || '—')}</td>
+        <td>${esc(c.modelCode || c.modelKey || '—')}</td>
         <td>${esc(c.amazonChange)}</td>
         <td>${esc(c.rakutenChange)}</td>
         <td>${esc(c.yahooChange)}</td>
