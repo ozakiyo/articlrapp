@@ -334,10 +334,12 @@ function normalizeRankingThemesInput(themes, category) {
 
 function buildYahooSearchRankingUrl(category, cid) {
   const q = encodeURIComponent(String(category || '').trim());
-  const base = `https://shopping.yahoo.co.jp/searchranking?p=${q}`;
-  if (!cid) return base;
-  const c = encodeURIComponent(String(cid));
-  return `${base}&cid=${c}&rcid=${c}&rterm=default&rmore=1&prom=1`;
+  // 新形式: /searchranking/{キーワード}/{cid}/ （クエリ形式の cid= は表示できない場合がある）
+  if (cid) {
+    const c = encodeURIComponent(String(cid));
+    return `https://shopping.yahoo.co.jp/searchranking/${q}/${c}/?rmore=1&prom=1`;
+  }
+  return `https://shopping.yahoo.co.jp/searchranking?p=${q}&rmore=1&prom=1`;
 }
 
 /** ランキング TOP15 取得用（rmore=1 で一覧をまとめて読み込む） */
@@ -851,10 +853,10 @@ function isAmazonBestsellerUrl(url) {
 }
 
 function isYahooCategoryRankingUrl(url) {
-  return (
-    /shopping\.yahoo\.co\.jp\/searchranking/i.test(String(url || '')) &&
-    /[?&]cid=\d+/.test(String(url || ''))
-  );
+  const u = String(url || '');
+  if (!/shopping\.yahoo\.co\.jp\/searchranking/i.test(u)) return false;
+  // 旧: ?cid=123 / 新: /searchranking/キーワード/123/
+  return /[?&]cid=\d+/i.test(u) || /\/searchranking\/[^/]+\/\d+\/?/i.test(u);
 }
 
 function isRakutenOfficialRankingUrl(url) {

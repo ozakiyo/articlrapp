@@ -1,14 +1,13 @@
 {
   "version": 1,
-  "updatedAt": "2026-07-14T00:01:28.496Z",
+  "updatedAt": "2026-07-15T06:24:44.837Z",
   "categories": {
     "掃除機": {
       "rankingUrls": {
         "amazon": "https://www.amazon.co.jp/gp/bestsellers/kitchen/4083091",
         "rakuten": "https://ranking.rakuten.co.jp/weekly/204492/",
         "yahoo": "https://shopping.yahoo.co.jp/searchranking?p=%E6%8E%83%E9%99%A4%E6%A9%9F&cid=26216&rcid=26216&rterm=default&rmore=1&prom=1",
-        "kojima": "https://www.kojima.net/ec/ranking.html?cate=cleaner&rType=BRWS&rTerm=MONTH&rPage=1",
-        "bic": "https://www.biccamera.com/bc/ranking/001/150/020/"
+        "kojima": "https://www.kojima.net/ec/ranking.html?cate=cleaner&rType=BRWS&rTerm=WEEK&rPage=1"
       },
       "savedAt": "2026-07-13T12:32:55.171Z",
       "note": "柱記事向け: Amazon=家電掃除機ベストセラー / 楽天=掃除機・クリーナー / Yahoo=cid26216 / コジマ=cate cleaner / Bic=掃除機・クリーナー人気売れ筋"
@@ -16,12 +15,372 @@
     "スポットクーラー": {
       "rankingUrls": {
         "amazon": "https://www.amazon.co.jp/gp/bestsellers/kitchen/2354281051",
-        "rakuten": "https://ranking.rakuten.co.jp/daily/565124/",
+        "rakuten": "https://ranking.rakuten.co.jp/weekly/565124/",
         "yahoo": "https://shopping.yahoo.co.jp/searchranking?p=%E3%82%B9%E3%83%9D%E3%83%83%E3%83%88%E3%82%AF%E3%83%BC%E3%83%A9%E3%83%BC&cid=26309&rcid=26309&rterm=default&rmore=1&prom=1",
-        "kojima": "https://www.kojima.net/ec/ranking.html?cate=fan_circulator_010"
+        "kojima": "https://www.kojima.net/ec/ranking.html?cate=fan_circulator_010&rType=BRWS&rTerm=WEEK&rPage=1"
       },
       "savedAt": "2026-07-13T23:54:14.482Z",
       "note": "Amazon=Portable AC / 楽天=スポットエアコン / Yahoo=cid26309 / コジマ=冷風機・冷風扇"
+    },
+    "冷蔵庫": {
+      "rankingUrls": {
+        "amazon": "https://www.amazon.co.jp/gp/bestsellers/appliances/219651127051/ref=zg_bs_nav_appliances_2_16299621",
+        "rakuten": "https://ranking.rakuten.co.jp/weekly/204490/",
+        "yahoo": "https://shopping.yahoo.co.jp/searchranking/%E5%86%B7%E8%94%B5%E5%BA%AB/26250/?rmore=1&prom=1",
+        "kojima": "https://www.kojima.net/ec/ranking.html?cate=refrigerator&rType=BRWS&rTerm=WEEK&rPage=1"
+      },
+      "savedAt": "2026-07-15T06:27:00.000Z",
+      "note": "Amazon=標準冷蔵庫 / 楽天=冷蔵庫週間 / Yahoo=パス形式 cid26250 冷蔵庫 / コジマ=cate refrigerator 週間"
+    },
+    "炊飯器": {
+      "rankingUrls": {
+        "amazon": "https://www.amazon.co.jp/gp/bestsellers/kitchen/2275305051/ref=zg_bs_nav_kitchen_4_4083391",
+        "rakuten": "https://ranking.rakuten.co.jp/weekly/204586/",
+        "yahoo": "https://shopping.yahoo.co.jp/searchranking/%E7%82%8A%E9%A3%AF%E5%99%A8/26266/?rmore=1&prom=1",
+        "kojima": "https://www.kojima.net/ec/ranking.html?cate=rice_cooker&rType=BRWS&rTerm=WEEK&rPage=1"
+      },
+      "savedAt": "2026-07-15T06:50:00.000Z",
+      "note": "Amazon=炊飯器 / 楽天=炊飯器週間 / Yahoo=cid26266 炊飯器本体 / コジマ=cate rice_cooker 週間"
+    },
+    "ポット": {
+      "rankingUrls": {
+        "amazon": "https://www.amazon.co.jp/gp/bestsellers/kitchen/16245381/ref=zg_bs_nav_kitchen_3_3895771",
+        "rakuten": "https://ranking.rakuten.co.jp/weekly/208411/",
+        "yahoo": "https://shopping.yahoo.co.jp/searchranking/%E9%9B%BB%E6%B0%97%E3%83%9D%E3%83%83%E3%83%88/38054/?rmore=1&prom=1",
+        "kojima": "https://www.kojima.net/ec/ranking.html?cate=electric_pot&rType=BRWS&rTerm=WEEK&rPage=1"
+      },
+      "savedAt": "2026-07-15T06:55:00.000Z",
+      "note": "Amazon=電気ポット / 楽天=電気ポット週間 / Yahoo=cid38054 電気ポット / コジマ=cate electric_pot 週間"
+    },
+    "電気ケトル": {
+      "rankingUrls": {
+        "amazon": "https://www.amazon.co.jp/gp/bestsellers/kitchen/16245081/ref=zg_bs_nav_kitchen_3_16245381",
+        "rakuten": "https://ranking.rakuten.co.jp/weekly/562661/",
+        "yahoo": "https://shopping.yahoo.co.jp/searchranking/%E9%9B%BB%E6%B0%97%E3%82%B1%E3%83%88%E3%83%AB/38053/?rmore=1&prom=1",
+        "kojima": "https://www.kojima.net/ec/ranking.html?cate=electric_kettle_001&rType=BRWS&rTerm=WEEK&rPage=1"
+      },
+      "savedAt": "2026-07-15T06:58:00.000Z",
+      "note": "Amazon=電気ケトル / 楽天=電気ケトル週間 / Yahoo=cid38053 電気ケトル / コジマ=cate electric_kettle_001 週間"
+    },
+    "コーヒーメーカー": {
+      "rankingUrls": {
+        "amazon": "https://www.amazon.co.jp/gp/bestsellers/kitchen/2276690051/ref=zg_bs_nav_kitchen_4_4083471",
+        "rakuten": "https://ranking.rakuten.co.jp/weekly/208440/",
+        "yahoo": "https://shopping.yahoo.co.jp/searchranking/%E3%82%B3%E3%83%BC%E3%83%92%E3%83%BC%E3%83%A1%E3%83%BC%E3%82%AB%E3%83%BC/38058/?rmore=1&prom=1",
+        "kojima": "https://www.kojima.net/ec/ranking.html?cate=coffee_maker_003&rType=BRWS&rTerm=WEEK&rPage=1"
+      },
+      "savedAt": "2026-07-15T07:00:00.000Z",
+      "note": "Amazon=2276690051 コーヒーメーカー / 楽天=コーヒーメーカー週間 / Yahoo=cid38058 家庭用コーヒーメーカー / コジマ=cate coffee_maker_003 週間"
+    },
+    "ホットプレート": {
+      "rankingUrls": {
+        "amazon": "https://www.amazon.co.jp/gp/bestsellers/kitchen/16247421/ref=zg_bs_nav_kitchen_4_4083321",
+        "rakuten": "https://ranking.rakuten.co.jp/weekly/212377/",
+        "yahoo": "https://shopping.yahoo.co.jp/searchranking/%E3%83%9B%E3%83%83%E3%83%88%E3%83%97%E3%83%AC%E3%83%BC%E3%83%88/38046/?rmore=1&prom=1",
+        "kojima": "https://www.kojima.net/ec/ranking.html?cate=hotplate_001&rType=BRWS&rTerm=WEEK&rPage=1"
+      },
+      "savedAt": "2026-07-15T07:05:00.000Z",
+      "note": "Amazon=ホットプレート / 楽天=ホットプレート週間 / Yahoo=cid38046 / コジマ=cate hotplate_001 週間"
+    },
+    "浄水器・整水器": {
+      "rankingUrls": {
+        "amazon": "https://www.amazon.co.jp/gp/bestsellers/kitchen/13944851",
+        "rakuten": "https://ranking.rakuten.co.jp/weekly/212464/",
+        "yahoo": "https://shopping.yahoo.co.jp/searchranking/%E6%B5%84%E6%B0%B4%E5%99%A8/67441/?rmore=1&prom=1",
+        "kojima": "https://www.kojima.net/ec/ranking.html?cate=water_purifier&rType=BRWS&rTerm=WEEK&rPage=1"
+      },
+      "savedAt": "2026-07-15T07:08:00.000Z",
+      "note": "Amazon=浄水器・整水器 / 楽天=浄水器・整水器週間 / Yahoo=cid67441 浄水器、整水器 / コジマ=cate water_purifier 週間"
+    },
+    "食器洗い機": {
+      "rankingUrls": {
+        "amazon": "https://www.amazon.co.jp/gp/bestsellers/kitchen/16299971",
+        "rakuten": "https://ranking.rakuten.co.jp/weekly/208489/",
+        "yahoo": "https://shopping.yahoo.co.jp/searchranking/%E9%A3%9F%E5%99%A8%E6%B4%97%E3%81%84%E4%B9%BE%E7%87%A5%E6%A9%9F/580/?rmore=1&prom=1",
+        "kojima": "https://www.kojima.net/ec/ranking.html?cate=dishwashing_machine_001&rType=BRWS&rTerm=WEEK&rPage=1"
+      },
+      "savedAt": "2026-07-15T07:15:00.000Z",
+      "note": "Amazon=食器洗い乾燥機 / 楽天=食器洗い乾燥機週間 / Yahoo=cid580 / コジマ=cate dishwashing_machine_001 週間"
+    },
+    "スチームクリーナー": {
+      "rankingUrls": {
+        "amazon": "https://www.amazon.co.jp/s?k=%E3%82%B9%E3%83%81%E3%83%BC%E3%83%A0%E3%82%AF%E3%83%AA%E3%83%BC%E3%83%8A%E3%83%BC&s=exact-aware-popularity-rank",
+        "rakuten": "https://ranking.rakuten.co.jp/weekly/565106/",
+        "yahoo": "https://shopping.yahoo.co.jp/searchranking?p=%E3%82%B9%E3%83%81%E3%83%BC%E3%83%A0%E3%82%AF%E3%83%AA%E3%83%BC%E3%83%8A%E3%83%BC&rmore=1&prom=1",
+        "kojima": "https://www.kojima.net/ec/ranking.html?cate=steam_cleaner&rType=BRWS&rTerm=WEEK&rPage=1"
+      },
+      "savedAt": "2026-07-15T06:16:46.921Z",
+      "note": "暫定URL（手動修正可）。コジマ=cate steam_cleaner（L2相当: スチームクリーナー）。他モールは検索フォールバック。"
+    },
+    "アイロン": {
+      "rankingUrls": {
+        "amazon": "https://www.amazon.co.jp/gp/bestsellers/kitchen/4083141",
+        "rakuten": "https://ranking.rakuten.co.jp/weekly/212585/",
+        "yahoo": "https://shopping.yahoo.co.jp/searchranking/%E3%82%A2%E3%82%A4%E3%83%AD%E3%83%B3/26238/?rmore=1&prom=1",
+        "kojima": "https://www.kojima.net/ec/ranking.html?cate=iorn&rType=BRWS&rTerm=WEEK&rPage=1"
+      },
+      "savedAt": "2026-07-15T07:25:00.000Z",
+      "note": "Amazon=4083141 アイロン・スチーマー / 楽天=アイロン週間 / Yahoo=cid26238 / コジマ=cate iorn 週間"
+    },
+    "ミシン": {
+      "rankingUrls": {
+        "amazon": "https://www.amazon.co.jp/gp/bestsellers/kitchen/13311751",
+        "rakuten": "https://ranking.rakuten.co.jp/weekly/208538/",
+        "yahoo": "https://shopping.yahoo.co.jp/searchranking/%E3%83%9F%E3%82%B7%E3%83%B3/26241/?rmore=1&prom=1",
+        "kojima": "https://www.kojima.net/ec/ranking.html?cate=sewing_machine_001&rType=BRWS&rTerm=WEEK&rPage=1"
+      },
+      "savedAt": "2026-07-15T07:30:00.000Z",
+      "note": "Amazon=13311751 ミシン / 楽天=ミシン週間 / Yahoo=cid26241 生活家電>ミシン / コジマ=cate sewing_machine_001 本体 週間"
+    },
+    "温水洗浄便座": {
+      "rankingUrls": {
+        "amazon": "https://www.amazon.co.jp/gp/bestsellers/kitchen/16299211",
+        "rakuten": "https://ranking.rakuten.co.jp/weekly/501103/",
+        "yahoo": "https://shopping.yahoo.co.jp/searchranking/%E6%B8%A9%E6%B0%B4%E6%B4%97%E6%B5%84%E4%BE%BF%E5%BA%A7/40578/?rmore=1&prom=1",
+        "kojima": "https://www.kojima.net/ec/ranking.html?cate=washlet&rType=BRWS&rTerm=WEEK&rPage=1"
+      },
+      "savedAt": "2026-07-15T07:36:00.000Z",
+      "note": "Amazon=16299211 温水洗浄便座 / 楽天=温水洗浄便座週間 / Yahoo=cid40578 / コジマ=cate washlet 週間"
+    },
+    "換気扇": {
+      "rankingUrls": {
+        "amazon": "https://www.amazon.co.jp/gp/bestsellers/diy/2033793051",
+        "rakuten": "https://ranking.rakuten.co.jp/weekly/565536/",
+        "yahoo": "https://shopping.yahoo.co.jp/searchranking/%E6%8F%9B%E6%B0%97%E6%89%87/71143/?rmore=1&prom=1",
+        "kojima": "https://www.kojima.net/ec/ranking.html?cate=extractor_fan&rType=BRWS&rTerm=WEEK&rPage=1"
+      },
+      "savedAt": "2026-07-15T08:00:00.000Z",
+      "note": "Amazon=diy/2033793051 換気扇 / 楽天=換気扇・レンジフード週間 / Yahoo=cid71143 住宅設備>換気扇 / コジマ=cate extractor_fan 週間"
+    },
+    "エアコン": {
+      "rankingUrls": {
+        "amazon": "https://www.amazon.co.jp/gp/bestsellers/kitchen/84823051",
+        "rakuten": "https://ranking.rakuten.co.jp/weekly/565123/",
+        "yahoo": "https://shopping.yahoo.co.jp/searchranking/%E3%82%A8%E3%82%A2%E3%82%B3%E3%83%B3/26309/?rmore=1&prom=1",
+        "kojima": "https://www.kojima.net/ec/ranking.html?cate=air_conditioner_001&rType=BRWS&rTerm=WEEK&rPage=1"
+      },
+      "savedAt": "2026-07-15T08:00:00.000Z",
+      "note": "Amazon=84823051 エアコン本体 / 楽天=ルームエアコン週間 / Yahoo=cid26309 家庭用エアコン / コジマ=cate air_conditioner_001 エアコン 週間"
+    },
+    "空気清浄機": {
+      "rankingUrls": {
+        "amazon": "https://www.amazon.co.jp/gp/bestsellers/kitchen/4083011",
+        "rakuten": "https://ranking.rakuten.co.jp/weekly/204519/",
+        "yahoo": "https://shopping.yahoo.co.jp/searchranking/%E7%A9%BA%E6%B0%97%E6%B8%85%E6%B5%84%E6%A9%9F/26319/?rmore=1&prom=1",
+        "kojima": "https://www.kojima.net/ec/ranking.html?cate=air_cleaner_002&rType=BRWS&rTerm=WEEK&rPage=1"
+      },
+      "savedAt": "2026-07-15T08:25:00.000Z",
+      "note": "Amazon=4083011 空気清浄機 / 楽天=空気清浄機週間 / Yahoo=cid26319 空気清浄機本体 / コジマ=cate air_cleaner_002 空気清浄機 週間"
+    },
+    "扇風機": {
+      "rankingUrls": {
+        "amazon": "https://www.amazon.co.jp/gp/bestsellers/kitchen/4082981",
+        "rakuten": "https://ranking.rakuten.co.jp/weekly/208375/",
+        "yahoo": "https://shopping.yahoo.co.jp/searchranking/%E6%89%87%E9%A2%A8%E6%A9%9F/26337/?rmore=1&prom=1",
+        "kojima": "https://www.kojima.net/ec/ranking.html?cate=fan_circulator&rType=BRWS&rTerm=WEEK&rPage=1"
+      },
+      "savedAt": "2026-07-15T08:30:00.000Z",
+      "note": "Amazon=4082981 扇風機 / 楽天=扇風機週間 / Yahoo=cid26337 扇風機 / コジマ=cate fan_circulator 扇風機 週間"
+    },
+    "リビング扇風機": {
+      "rankingUrls": {
+        "amazon": "https://www.amazon.co.jp/gp/bestsellers/kitchen/14157251",
+        "rakuten": "https://ranking.rakuten.co.jp/weekly/208375/",
+        "yahoo": "https://shopping.yahoo.co.jp/searchranking/%E3%83%AA%E3%83%93%E3%83%B3%E3%82%B0%E6%89%87%E9%A2%A8%E6%A9%9F/26338/?rmore=1&prom=1",
+        "kojima": "https://www.kojima.net/ec/ranking.html?cate=fan_circulator_001&rType=BRWS&rTerm=WEEK&rPage=1"
+      },
+      "savedAt": "2026-07-15T10:10:00.000Z",
+      "note": "Amazon=14157251 リビング扇風機 / 楽天=扇風機週間（リビング専用なし） / Yahoo=cid26338+キーワードリビング扇風機（扇風機本体） / コジマ=cate fan_circulator_001 リビング扇風機 週間"
+    },
+    "タワーファン": {
+      "rankingUrls": {
+        "amazon": "https://www.amazon.co.jp/gp/bestsellers/kitchen/14157301",
+        "rakuten": "https://ranking.rakuten.co.jp/weekly/208375/",
+        "yahoo": "https://shopping.yahoo.co.jp/searchranking/%E3%82%BF%E3%83%AF%E3%83%BC%E3%83%95%E3%82%A1%E3%83%B3/26338/?rmore=1&prom=1",
+        "kojima": "https://www.kojima.net/ec/ranking.html?cate=fan_circulator_002&rType=BRWS&rTerm=WEEK&rPage=1"
+      },
+      "savedAt": "2026-07-15T10:20:00.000Z",
+      "note": "Amazon=14157301 スリム扇風機・タワーファン / 楽天=扇風機週間（タワー専用なし） / Yahoo=cid26338+キーワードタワーファン / コジマ=cate fan_circulator_002 タワーファン（スリムファン） 週間"
+    },
+    "サーキュレーター": {
+      "rankingUrls": {
+        "amazon": "https://www.amazon.co.jp/gp/bestsellers/kitchen/14157321",
+        "rakuten": "https://ranking.rakuten.co.jp/weekly/409927/",
+        "yahoo": "https://shopping.yahoo.co.jp/searchranking/%E3%82%B5%E3%83%BC%E3%82%AD%E3%83%A5%E3%83%AC%E3%83%BC%E3%82%BF%E3%83%BC/26338/?rmore=1&prom=1",
+        "kojima": "https://www.kojima.net/ec/ranking.html?cate=fan_circulator_003&rType=BRWS&rTerm=WEEK&rPage=1"
+      },
+      "savedAt": "2026-07-15T10:25:00.000Z",
+      "note": "Amazon=14157321 サーキュレーター / 楽天=サーキュレーター週間 / Yahoo=cid26338+キーワードサーキュレーター / コジマ=cate fan_circulator_003 サーキュレーター 週間"
+    },
+    "ハンディファン": {
+      "rankingUrls": {
+        "amazon": "https://www.amazon.co.jp/gp/bestsellers/kitchen/14157271",
+        "rakuten": "https://ranking.rakuten.co.jp/weekly/208375/",
+        "yahoo": "https://shopping.yahoo.co.jp/searchranking/%E3%83%8F%E3%83%B3%E3%83%87%E3%82%A3%E3%83%95%E3%82%A1%E3%83%B3/26338/?rmore=1&prom=1",
+        "kojima": "https://www.kojima.net/ec/ranking.html?cate=fan_circulator_009&rType=BRWS&rTerm=WEEK&rPage=1"
+      },
+      "savedAt": "2026-07-15T10:35:00.000Z",
+      "note": "Amazon=14157271 携帯扇風機 / 楽天=扇風機週間（ハンディ専用なし） / Yahoo=cid26338+キーワードハンディファン / コジマ=cate fan_circulator_009 ハンディファン・携帯扇風機 週間"
+    },
+    "冷風機": {
+      "rankingUrls": {
+        "amazon": "https://www.amazon.co.jp/gp/bestsellers/kitchen/14157311",
+        "rakuten": "https://ranking.rakuten.co.jp/weekly/564368/",
+        "yahoo": "https://shopping.yahoo.co.jp/searchranking/%E5%86%B7%E9%A2%A8%E6%89%87/26338/?rmore=1&prom=1",
+        "kojima": "https://www.kojima.net/ec/ranking.html?cate=fan_circulator_010&rType=BRWS&rTerm=WEEK&rPage=1"
+      },
+      "savedAt": "2026-07-15T10:40:00.000Z",
+      "note": "Amazon=14157311 冷風扇 / 楽天=冷風扇週間 / Yahoo=cid26338+キーワード冷風扇 / コジマ=cate fan_circulator_010 冷風機・冷風扇 週間（スポット混在）"
+    },
+    "除湿機": {
+      "rankingUrls": {
+        "amazon": "https://www.amazon.co.jp/gp/bestsellers/kitchen/4083001",
+        "rakuten": "https://ranking.rakuten.co.jp/weekly/204546/",
+        "yahoo": "https://shopping.yahoo.co.jp/searchranking/%E9%99%A4%E6%B9%BF%E6%A9%9F/26324/?rmore=1&prom=1",
+        "kojima": "https://www.kojima.net/ec/ranking.html?cate=dehumidifier&rType=BRWS&rTerm=WEEK&rPage=1"
+      },
+      "savedAt": "2026-07-15T10:50:00.000Z",
+      "note": "Amazon=4083001 除湿機 / 楽天=除湿機週間 / Yahoo=cid26324 除湿機 / コジマ=cate dehumidifier 除湿機 週間"
+    },
+    "電気毛布": {
+      "rankingUrls": {
+        "amazon": "https://www.amazon.co.jp/gp/bestsellers/kitchen/4082871",
+        "rakuten": "https://ranking.rakuten.co.jp/weekly/208397/",
+        "yahoo": "https://shopping.yahoo.co.jp/searchranking/%E9%9B%BB%E6%B0%97%E6%AF%9B%E5%B8%83/4003/?rmore=1&prom=1",
+        "kojima": "https://www.kojima.net/ec/ranking.html?cate=electric_blanket_001&rType=BRWS&rTerm=WEEK&rPage=1"
+      },
+      "savedAt": "2026-07-15T10:55:00.000Z",
+      "note": "Amazon=4082871 電気毛布・ひざ掛け / 楽天=電気毛布・膝掛け週間 / Yahoo=cid4003 電気毛布 / コジマ=cate electric_blanket_001 電気毛布 週間"
+    },
+    "ホットカーペット": {
+      "rankingUrls": {
+        "amazon": "https://www.amazon.co.jp/s?k=%E3%83%9B%E3%83%83%E3%83%88%E3%82%AB%E3%83%BC%E3%83%9A%E3%83%83%E3%83%88&s=exact-aware-popularity-rank",
+        "rakuten": "https://ranking.rakuten.co.jp/weekly/208390/",
+        "yahoo": "https://shopping.yahoo.co.jp/searchranking?p=%E3%83%9B%E3%83%83%E3%83%88%E3%82%AB%E3%83%BC%E3%83%9A%E3%83%83%E3%83%88&rmore=1&prom=1",
+        "kojima": "https://www.kojima.net/ec/ranking.html?cate=hot_carpet&rType=BRWS&rTerm=WEEK&rPage=1"
+      },
+      "savedAt": "2026-07-15T06:16:46.921Z",
+      "note": "暫定URL（手動修正可）。コジマ=cate hot_carpet（L2相当: ホットカーペット・ホットカーペットカバー）。他モールは検索フォールバック。"
+    },
+    "こたつ": {
+      "rankingUrls": {
+        "amazon": "https://www.amazon.co.jp/gp/bestsellers/kitchen/4082881",
+        "rakuten": "https://ranking.rakuten.co.jp/weekly/208385/",
+        "yahoo": "https://shopping.yahoo.co.jp/searchranking/%E3%81%93%E3%81%9F%E3%81%A4/49218/?rmore=1&prom=1",
+        "kojima": "https://www.kojima.net/ec/ranking.html?cate=kotatsu_001&rType=BRWS&rTerm=WEEK&rPage=1"
+      },
+      "savedAt": "2026-07-15T11:00:00.000Z",
+      "note": "Amazon=4082881 こたつテーブル / 楽天=こたつ週間 / Yahoo=cid49218 こたつ / コジマ=cate kotatsu_001 こたつ 週間"
+    },
+    "スマートウォッチ": {
+      "rankingUrls": {
+        "amazon": "https://www.amazon.co.jp/gp/bestsellers/electronics/2725002051",
+        "rakuten": "https://ranking.rakuten.co.jp/weekly/564895/",
+        "yahoo": "https://shopping.yahoo.co.jp/searchranking/%E3%82%B9%E3%83%9E%E3%83%BC%E3%83%88%E3%82%A6%E3%82%A9%E3%83%83%E3%83%81/36497/?rmore=1&prom=1",
+        "kojima": "https://www.kojima.net/ec/ranking.html?cate=smartwatch_001&rType=BRWS&rTerm=WEEK&rPage=1"
+      },
+      "savedAt": "2026-07-15T12:45:00.000Z",
+      "note": "Amazon=2725002051 スマートウォッチ / 楽天=スマートウォッチ本体週間 / Yahoo=cid36497 スマートウォッチ本体 / コジマ=cate smartwatch_001 スマートウォッチ 週間"
+    },
+    "シェーバー": {
+      "rankingUrls": {
+        "amazon": "https://www.amazon.co.jp/gp/bestsellers/kitchen/2145940051",
+        "rakuten": "https://ranking.rakuten.co.jp/weekly/208532/",
+        "yahoo": "https://shopping.yahoo.co.jp/searchranking/%E3%82%B7%E3%82%A7%E3%83%BC%E3%83%90%E3%83%BC/46787/?rmore=1&prom=1",
+        "kojima": "https://www.kojima.net/ec/ranking.html?cate=electric_shaver_001&rType=BRWS&rTerm=WEEK&rPage=1"
+      },
+      "savedAt": "2026-07-15T12:50:00.000Z",
+      "note": "Amazon=2145940051 メンズシェーバー / 楽天=メンズシェーバー週間 / Yahoo=cid46787 メンズシェーバー電気本体 / コジマ=cate electric_shaver_001 電動シェーバー 週間"
+    },
+    "電動歯ブラシ": {
+      "rankingUrls": {
+        "amazon": "https://www.amazon.co.jp/gp/bestsellers/hpc/4084101",
+        "rakuten": "https://ranking.rakuten.co.jp/weekly/208522/",
+        "yahoo": "https://shopping.yahoo.co.jp/searchranking/%E9%9B%BB%E5%8B%95%E6%AD%AF%E3%83%96%E3%83%A9%E3%82%B7/48743/?rmore=1&prom=1",
+        "kojima": "https://www.kojima.net/ec/ranking.html?cate=electric_toothbrush_001&rType=BRWS&rTerm=WEEK&rPage=1"
+      },
+      "savedAt": "2026-07-15T12:55:00.000Z",
+      "note": "Amazon=4084101 電動歯ブラシ / 楽天=電動歯ブラシ週間 / Yahoo=cid48743 電動歯ブラシ（本体） / コジマ=cate electric_toothbrush_001 電動歯ブラシ 週間"
+    },
+    "ドライヤー": {
+      "rankingUrls": {
+        "amazon": "https://www.amazon.co.jp/gp/bestsellers/kitchen/2145992051",
+        "rakuten": "https://ranking.rakuten.co.jp/weekly/502792/",
+        "yahoo": "https://shopping.yahoo.co.jp/searchranking/%E3%83%89%E3%83%A9%E3%82%A4%E3%83%A4%E3%83%BC/1999/?rmore=1&prom=1",
+        "kojima": "https://www.kojima.net/ec/ranking.html?cate=dryer_001&rType=BRWS&rTerm=WEEK&rPage=1"
+      },
+      "savedAt": "2026-07-15T13:00:00.000Z",
+      "note": "Amazon=2145992051 ヘアドライヤー / 楽天=ヘアドライヤー週間 / Yahoo=cid1999 ヘアドライヤー / コジマ=cate dryer_001 ヘアドライヤー 週間"
+    },
+    "ヘアアイロン": {
+      "rankingUrls": {
+        "amazon": "https://www.amazon.co.jp/gp/bestsellers/kitchen/2145995051",
+        "rakuten": "https://ranking.rakuten.co.jp/weekly/509412/",
+        "yahoo": "https://shopping.yahoo.co.jp/searchranking/%E3%83%98%E3%82%A2%E3%82%A2%E3%82%A4%E3%83%AD%E3%83%B3/2000/?rmore=1&prom=1",
+        "kojima": "https://www.kojima.net/ec/ranking.html?cate=hair_iorn&rType=BRWS&rTerm=WEEK&rPage=1"
+      },
+      "savedAt": "2026-07-15T13:10:00.000Z",
+      "note": "Amazon=2145995051 ヘアアイロン / 楽天=509412 ストレートアイロン週間（親212540はドライヤー混在のため不採用） / Yahoo=cid2000 ヘアアイロン / コジマ=cate hair_iorn ヘアアイロン 週間"
+    },
+    "マッサージ機": {
+      "rankingUrls": {
+        "amazon": "https://www.amazon.co.jp/gp/bestsellers/kitchen/2145960051",
+        "rakuten": "https://ranking.rakuten.co.jp/weekly/201578/",
+        "yahoo": "https://shopping.yahoo.co.jp/searchranking/%E3%83%9E%E3%83%83%E3%82%B5%E3%83%BC%E3%82%B8%E6%A9%9F/26375/?rmore=1&prom=1",
+        "kojima": "https://www.kojima.net/ec/ranking.html?cate=massager&rType=BRWS&rTerm=WEEK&rPage=1"
+      },
+      "savedAt": "2026-07-15T13:15:00.000Z",
+      "note": "Amazon=2145960051 マッサージ機 / 楽天=201578 マッサージ機器週間（旧212509はマッサージチェアのみのため親へ変更） / Yahoo=cid26375 マッサージ器 / コジマ=cate massager マッサージ機 週間"
+    },
+    "テレビ": {
+      "rankingUrls": {
+        "amazon": "https://www.amazon.co.jp/gp/bestsellers/electronics/3477491",
+        "rakuten": "https://ranking.rakuten.co.jp/weekly/563843/",
+        "yahoo": "https://shopping.yahoo.co.jp/searchranking/%E3%83%86%E3%83%AC%E3%83%93/49514/?rmore=1&prom=1",
+        "kojima": "https://www.kojima.net/ec/ranking.html?cate=tv&rType=BRWS&rTerm=WEEK&rPage=1"
+      },
+      "savedAt": "2026-07-15T13:25:00.000Z",
+      "note": "Amazon=3477491 テレビ / 楽天=テレビ週間 / Yahoo=cid49514 テレビ / コジマ=cate tv テレビ 週間"
+    },
+    "レコーダー": {
+      "rankingUrls": {
+        "amazon": "https://www.amazon.co.jp/gp/bestsellers/electronics/137572011",
+        "rakuten": "https://ranking.rakuten.co.jp/weekly/550932/",
+        "yahoo": "https://shopping.yahoo.co.jp/searchranking/%E3%83%AC%E3%82%B3%E3%83%BC%E3%83%80%E3%83%BC/50542/?rmore=1&prom=1",
+        "kojima": "https://www.kojima.net/ec/ranking.html?cate=blu_ray_recorder&rType=BRWS&rTerm=WEEK&rPage=1"
+      },
+      "savedAt": "2026-07-15T13:30:00.000Z",
+      "note": "Amazon=137572011 ブルーレイレコーダー / 楽天=ブルーレイ・DVDレコーダー週間 / Yahoo=cid50542 ブルーレイ、DVDレコーダー / コジマ=cate blu_ray_recorder ブルーレイレコーダー 週間（親recorder_playerはプレーヤー混在）"
+    },
+    "パソコン": {
+      "rankingUrls": {
+        "amazon": "https://www.amazon.co.jp/gp/bestsellers/computers/10610315051",
+        "rakuten": "https://ranking.rakuten.co.jp/weekly/100040/",
+        "yahoo": "https://shopping.yahoo.co.jp/searchranking/%E3%83%91%E3%82%BD%E3%82%B3%E3%83%B3/14242/?rmore=1&prom=1",
+        "kojima": "https://www.kojima.net/ec/ranking.html?cate=note_pc&rType=BRWS&rTerm=WEEK&rPage=1"
+      },
+      "savedAt": "2026-07-15T13:35:00.000Z",
+      "note": "Amazon=10610315051 標準型ノートパソコン / 楽天=ノートPC週間 / Yahoo=cid14242 ノートパソコン本体 / コジマ=cate note_pc ノートパソコン 週間（「パソコン」単独ジャンルがなくノートへ寄せ）"
+    },
+    "デジタルオーディオプレーヤー": {
+      "rankingUrls": {
+        "amazon": "https://www.amazon.co.jp/gp/bestsellers/electronics/140474011",
+        "rakuten": "https://ranking.rakuten.co.jp/weekly/204467/",
+        "yahoo": "https://shopping.yahoo.co.jp/searchranking/%E3%83%87%E3%82%B8%E3%82%BF%E3%83%AB%E3%82%AA%E3%83%BC%E3%83%87%E3%82%A3%E3%82%AA%E3%83%97%E3%83%AC%E3%83%BC%E3%83%A4%E3%83%BC/49485/?rmore=1&prom=1",
+        "kojima": "https://www.kojima.net/ec/ranking.html?cate=portable_audio_player&rType=BRWS&rTerm=WEEK&rPage=1"
+      },
+      "savedAt": "2026-07-15T13:45:00.000Z",
+      "note": "Amazon=140474011 デジタルオーディオプレーヤー / 楽天=204467 デジタルオーディオプレーヤー週間 / Yahoo=cid49485 デジタルオーディオプレーヤー / コジマ=cate portable_audio_player ポータブルデジタルオーディオプレーヤー 週間（旧portable_audioは親L2）"
+    },
+    "Bluetoothスピーカー": {
+      "rankingUrls": {
+        "amazon": "https://www.amazon.co.jp/gp/bestsellers/electronics/85396051",
+        "rakuten": "https://ranking.rakuten.co.jp/weekly/208316/",
+        "yahoo": "https://shopping.yahoo.co.jp/searchranking/Bluetooth%E3%82%B9%E3%83%94%E3%83%BC%E3%82%AB%E3%83%BC/49495/?rmore=1&prom=1",
+        "kojima": "https://www.kojima.net/ec/ranking.html?cate=bluetooth_speaker&rType=BRWS&rTerm=WEEK&rPage=1"
+      },
+      "savedAt": "2026-07-15T13:50:00.000Z",
+      "note": "Amazon=85396051 ポータブルスピーカー（旧検索NG・スマートスピーカー6905036051は別カテゴリ） / 楽天=208316 スピーカー週間（BT専用ジャンルなしのため最寄り親） / Yahoo=cid49495 スマホ対応スピーカー / コジマ=cate bluetooth_speaker Bluetoothスピーカー 週間（旧speakerは親）"
     }
   }
 }

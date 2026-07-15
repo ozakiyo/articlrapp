@@ -1,0 +1,239 @@
+{
+  "matchedAt": "2026-07-14T14:34:27.530Z",
+  "report": [
+    {
+      "category": "掃除機",
+      "amazon": "https://www.amazon.co.jp/gp/bestsellers/kitchen/4083091",
+      "note": "Amazon売れ筋: ホーム＆キッチン > 家電 > 生活家電 > スチームクリーナー > 掃除機 (掃除機)",
+      "isBestsellers": true
+    },
+    {
+      "category": "スポットクーラー",
+      "amazon": "https://www.amazon.co.jp/gp/bestsellers/kitchen/2354281051",
+      "note": "Amazon売れ筋: 大型家電 > エアコン > エアコン本体 > スポットエアコン (スポットエアコン)",
+      "isBestsellers": true
+    },
+    {
+      "category": "冷蔵庫",
+      "amazon": "https://www.amazon.co.jp/gp/bestsellers/appliances/219651127051",
+      "note": "Amazon売れ筋: 大型家電 > 冷蔵庫・冷凍庫 > 冷凍室なし冷蔵庫 > 標準冷蔵庫 (標準冷蔵庫)",
+      "isBestsellers": true
+    },
+    {
+      "category": "炊飯器",
+      "amazon": "https://www.amazon.co.jp/gp/bestsellers/kitchen/4083391",
+      "note": "Amazon売れ筋: ホーム＆キッチン > 家電 > キッチン家電 > スチームクッカー > 炊飯器・精米器 (炊飯器・精米器)",
+      "isBestsellers": true
+    },
+    {
+      "category": "電気ケトル・ポット",
+      "amazon": "https://www.amazon.co.jp/gp/bestsellers/kitchen/16245081",
+      "note": "Amazon売れ筋: ホーム＆キッチン > 家電 > キッチン家電 > スチームクッカー > 電気ケトル (電気ケトル)",
+      "isBestsellers": true
+    },
+    {
+      "category": "コーヒーメーカー",
+      "amazon": "https://www.amazon.co.jp/gp/bestsellers/kitchen/2276690051",
+      "note": "Amazon売れ筋: ホーム＆キッチン > 家電 > キッチン家電 > コーヒーメーカー・コーヒーミル > コーヒーメーカー (コーヒーメーカー)",
+      "isBestsellers": true
+    },
+    {
+      "category": "ホットプレート",
+      "amazon": "https://www.amazon.co.jp/gp/bestsellers/kitchen/4083321",
+      "note": "Amazon売れ筋: ホーム＆キッチン > 家電 > キッチン家電 > スチームクッカー > ホットプレート・グリル鍋 (ホットプレート・グリル鍋)",
+      "isBestsellers": true
+    },
+    {
+      "category": "真空保温調理器",
+      "amazon": "https://www.amazon.co.jp/gp/bestsellers/kitchen/8433627051",
+      "note": "Amazon売れ筋: ホーム＆キッチン > 家電 > キッチン家電 > 低温調理器 (低温調理器)",
+      "isBestsellers": true
+    },
+    {
+      "category": "浄水器・整水器",
+      "amazon": "https://www.amazon.co.jp/gp/bestsellers/kitchen/13944851",
+      "note": "Amazon売れ筋: (follow) > 浄水器・整水器 (浄水器・整水器)",
+      "isBestsellers": true
+    },
+    {
+      "category": "食器洗い機",
+      "amazon": "https://www.amazon.co.jp/gp/bestsellers/kitchen/13770201",
+      "note": "Amazon売れ筋: ホーム＆キッチン > 家電 > キッチン家電 > スチームクッカー > 食器洗い機・食器乾燥機 (食器洗い機・食器乾燥機)",
+      "isBestsellers": true
+    },
+    {
+      "category": "スチームクリーナー",
+      "amazon": "https://www.amazon.co.jp/gp/bestsellers/kitchen/2466960051",
+      "note": "Amazon売れ筋: ホーム＆キッチン > 家電 > 生活家電 > スチームクリーナー (スチームクリーナー)",
+      "isBestsellers": true
+    },
+    {
+      "category": "アイロン",
+      "amazon": "https://www.amazon.co.jp/gp/bestsellers/kitchen/4083141",
+      "note": "Amazon売れ筋: ホーム＆キッチン > 家電 > 生活家電 > アイロン・スチーマー (アイロン・スチーマー)",
+      "isBestsellers": true
+    },
+    {
+      "category": "ミシン",
+      "amazon": "https://www.amazon.co.jp/gp/bestsellers/kitchen/13311751",
+      "note": "Amazon売れ筋: ホーム＆キッチン > 家電 > 生活家電 > スチームクリーナー > ミシン (ミシン)",
+      "isBestsellers": true
+    },
+    {
+      "category": "温水洗浄便座",
+      "amazon": "https://www.amazon.co.jp/gp/bestsellers/kitchen/16299211",
+      "note": "Amazon売れ筋: ホーム＆キッチン > 家電 > 生活家電 > スチームクリーナー > 温水洗浄便座 (温水洗浄便座)",
+      "isBestsellers": true
+    },
+    {
+      "category": "換気扇",
+      "amazon": "https://www.amazon.co.jp/gp/bestsellers/diy/2033793051",
+      "note": "Amazon売れ筋: Amazon.co.jp 売れ筋ランキング: 換気扇 の中で最も人気のある商品です",
+      "isBestsellers": true
+    },
+    {
+      "category": "エアコン",
+      "amazon": "https://www.amazon.co.jp/gp/bestsellers/kitchen/16298571",
+      "note": "Amazon売れ筋: 大型家電 > エアコン > エアコン本体 > エアコン (エアコン)",
+      "isBestsellers": true
+    },
+    {
+      "category": "加湿空気清浄機",
+      "amazon": "https://www.amazon.co.jp/gp/bestsellers/kitchen/4083011",
+      "note": "Amazon売れ筋: ホーム＆キッチン > 家電 > 空調・季節家電 > 空気清浄機 (空気清浄機)",
+      "isBestsellers": true
+    },
+    {
+      "category": "空気清浄機",
+      "amazon": "https://www.amazon.co.jp/gp/bestsellers/kitchen/4083011",
+      "note": "Amazon売れ筋: ホーム＆キッチン > 家電 > 空調・季節家電 > 空気清浄機 (空気清浄機)",
+      "isBestsellers": true
+    },
+    {
+      "category": "扇風機",
+      "amazon": "https://www.amazon.co.jp/gp/bestsellers/kitchen/4082981",
+      "note": "Amazon売れ筋: ホーム＆キッチン > 家電 > 空調・季節家電 > 扇風機 (扇風機)",
+      "isBestsellers": true
+    },
+    {
+      "category": "リビング扇風機",
+      "amazon": "https://www.amazon.co.jp/gp/bestsellers/kitchen/14157251",
+      "note": "Amazon売れ筋: ホーム＆キッチン > 家電 > 空調・季節家電 > 扇風機 > リビング扇風機 (リビング扇風機)",
+      "isBestsellers": true
+    },
+    {
+      "category": "タワーファン",
+      "amazon": "https://www.amazon.co.jp/gp/bestsellers/kitchen/14157301",
+      "note": "Amazon売れ筋: ホーム＆キッチン > 家電 > 空調・季節家電 > 扇風機 > スリム扇風機・タワーファン (スリム扇風機・タワーファン)",
+      "isBestsellers": true
+    },
+    {
+      "category": "サーキュレーター",
+      "amazon": "https://www.amazon.co.jp/gp/bestsellers/kitchen/14157321",
+      "note": "Amazon売れ筋: ホーム＆キッチン > 家電 > 空調・季節家電 > 扇風機 > サーキュレーター (サーキュレーター)",
+      "isBestsellers": true
+    },
+    {
+      "category": "ハンディファン",
+      "amazon": "https://www.amazon.co.jp/gp/bestsellers/kitchen/14157271",
+      "note": "Amazon売れ筋: ホーム＆キッチン > 家電 > 空調・季節家電 > 扇風機 > 携帯扇風機 (携帯扇風機)",
+      "isBestsellers": true
+    },
+    {
+      "category": "冷風機",
+      "amazon": "https://www.amazon.co.jp/gp/bestsellers/kitchen/10510101051",
+      "note": "Amazon売れ筋: ホーム＆キッチン > 家電 > 空調・季節家電 > 気化式冷却機 (気化式冷却機)",
+      "isBestsellers": true
+    },
+    {
+      "category": "除湿機",
+      "amazon": "https://www.amazon.co.jp/gp/bestsellers/kitchen/4083001",
+      "note": "Amazon売れ筋: ホーム＆キッチン > 家電 > 空調・季節家電 > 除湿機 (除湿機)",
+      "isBestsellers": true
+    },
+    {
+      "category": "電気毛布",
+      "amazon": "https://www.amazon.co.jp/gp/bestsellers/kitchen/4082871",
+      "note": "Amazon売れ筋: ホーム＆キッチン > 家電 > 空調・季節家電 > 除湿機 > 電気毛布・ひざ掛け (電気毛布・ひざ掛け)",
+      "isBestsellers": true
+    },
+    {
+      "category": "ホットカーペット",
+      "amazon": "https://www.amazon.co.jp/gp/bestsellers/kitchen/4082891",
+      "note": "Amazon売れ筋: ホーム＆キッチン > 家電 > 空調・季節家電 > ホットカーペット・ホットマット (ホットカーペット・ホットマット)",
+      "isBestsellers": true
+    },
+    {
+      "category": "こたつ",
+      "amazon": "https://www.amazon.co.jp/gp/bestsellers/kitchen/4082881",
+      "note": "Amazon売れ筋: Amazon.co.jp 売れ筋ランキング: こたつテーブル の中で最も人気のある商品です",
+      "isBestsellers": true
+    },
+    {
+      "category": "スマートウォッチ",
+      "amazon": "https://www.amazon.co.jp/gp/bestsellers/electronics/2725002051",
+      "note": "Amazon売れ筋: 家電＆カメラ > ウェアラブルデバイス > スマートウォッチ (スマートウォッチ)",
+      "isBestsellers": true
+    },
+    {
+      "category": "シェーバー",
+      "amazon": "https://www.amazon.co.jp/gp/bestsellers/kitchen/2145941051",
+      "note": "Amazon売れ筋: ホーム＆キッチン > 家電 > 理美容家電 > シェーバー・バリカン (シェーバー・バリカン)",
+      "isBestsellers": true
+    },
+    {
+      "category": "電動歯ブラシ",
+      "amazon": "https://www.amazon.co.jp/gp/bestsellers/hpc/4084101",
+      "note": "Amazon売れ筋: 電動歯ブラシ",
+      "isBestsellers": true
+    },
+    {
+      "category": "ドライヤー",
+      "amazon": "https://www.amazon.co.jp/gp/bestsellers/kitchen/2145992051",
+      "note": "Amazon売れ筋: ホーム＆キッチン > 家電 > 理美容家電 > ヘアケア > ヘアドライヤー (ヘアドライヤー)",
+      "isBestsellers": true
+    },
+    {
+      "category": "ヘアアイロン",
+      "amazon": "https://www.amazon.co.jp/gp/bestsellers/kitchen/2145995051",
+      "note": "Amazon売れ筋: ホーム＆キッチン > 家電 > 理美容家電 > ヘアケア > ヘアアイロン (ヘアアイロン)",
+      "isBestsellers": true
+    },
+    {
+      "category": "マッサージ機",
+      "amazon": "https://www.amazon.co.jp/gp/bestsellers/kitchen/2145960051",
+      "note": "Amazon売れ筋: ホーム＆キッチン > 家電 > 健康家電 > マッサージ機 (マッサージ機)",
+      "isBestsellers": true
+    },
+    {
+      "category": "テレビ",
+      "amazon": "https://www.amazon.co.jp/gp/bestsellers/electronics/3477491",
+      "note": "Amazon売れ筋: 家電＆カメラ > テレビ・レコーダー > テレビ (テレビ)",
+      "isBestsellers": true
+    },
+    {
+      "category": "レコーダー",
+      "amazon": "https://www.amazon.co.jp/gp/bestsellers/electronics/615955011",
+      "note": "Amazon売れ筋: 家電＆カメラ > テレビ・レコーダー > ブルーレイプレーヤー・レコーダー (ブルーレイプレーヤー・レコーダー)",
+      "isBestsellers": true
+    },
+    {
+      "category": "パソコン",
+      "amazon": "https://www.amazon.co.jp/gp/bestsellers/computers/10610315051",
+      "note": "Amazon売れ筋: パソコン・周辺機器 > ノートパソコン > 標準型ノートパソコン (標準型ノートパソコン)",
+      "isBestsellers": true
+    },
+    {
+      "category": "デジタルオーディオプレーヤー",
+      "amazon": "https://www.amazon.co.jp/gp/bestsellers/electronics/140474011",
+      "note": "Amazon売れ筋: 家電＆カメラ > ポータブルオーディオ > デジタルオーディオプレーヤー (デジタルオーディオプレーヤー)",
+      "isBestsellers": true
+    },
+    {
+      "category": "Bluetoothスピーカー",
+      "amazon": "https://www.amazon.co.jp/gp/bestsellers/electronics/6905036051",
+      "note": "Amazon売れ筋: 家電＆カメラ > オーディオ > スピーカー > イネーブルドスピーカー > スマートスピーカー (スマートスピーカー)",
+      "isBestsellers": true
+    }
+  ]
+}

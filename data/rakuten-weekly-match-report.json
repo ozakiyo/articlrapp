@@ -1,0 +1,235 @@
+{
+  "matchedAt": "2026-07-15T06:16:46.921Z",
+  "report": [
+    {
+      "cat": "掃除機",
+      "method": "already-weekly",
+      "url": "https://ranking.rakuten.co.jp/weekly/204492/"
+    },
+    {
+      "cat": "スポットクーラー",
+      "method": "daily-to-weekly",
+      "url": "https://ranking.rakuten.co.jp/weekly/565124/"
+    },
+    {
+      "cat": "冷蔵庫",
+      "method": "exact",
+      "label": "冷蔵庫",
+      "url": "https://ranking.rakuten.co.jp/weekly/204490/"
+    },
+    {
+      "cat": "炊飯器",
+      "method": "exact",
+      "label": "炊飯器",
+      "url": "https://ranking.rakuten.co.jp/weekly/204586/"
+    },
+    {
+      "cat": "ポット",
+      "method": "exact",
+      "label": "電気ポット",
+      "url": "https://ranking.rakuten.co.jp/weekly/208411/"
+    },
+    {
+      "cat": "電気ケトル",
+      "method": "exact",
+      "label": "電気ケトル",
+      "url": "https://ranking.rakuten.co.jp/weekly/562661/"
+    },
+    {
+      "cat": "コーヒーメーカー",
+      "method": "exact",
+      "label": "コーヒーメーカー",
+      "url": "https://ranking.rakuten.co.jp/weekly/208440/"
+    },
+    {
+      "cat": "ホットプレート",
+      "method": "exact",
+      "label": "ホットプレート",
+      "url": "https://ranking.rakuten.co.jp/weekly/212377/"
+    },
+    {
+      "cat": "浄水器・整水器",
+      "method": "exact",
+      "label": "浄水器・整水器",
+      "url": "https://ranking.rakuten.co.jp/weekly/212464/"
+    },
+    {
+      "cat": "食器洗い機",
+      "method": "exact",
+      "label": "食器洗い乾燥機",
+      "url": "https://ranking.rakuten.co.jp/weekly/208489/"
+    },
+    {
+      "cat": "スチームクリーナー",
+      "method": "exact",
+      "label": "スチームクリーナー",
+      "url": "https://ranking.rakuten.co.jp/weekly/565106/"
+    },
+    {
+      "cat": "アイロン",
+      "method": "exact",
+      "label": "アイロン",
+      "url": "https://ranking.rakuten.co.jp/weekly/212585/"
+    },
+    {
+      "cat": "ミシン",
+      "method": "exact",
+      "label": "ミシン",
+      "url": "https://ranking.rakuten.co.jp/weekly/208538/"
+    },
+    {
+      "cat": "温水洗浄便座",
+      "method": "exact",
+      "label": "温水洗浄便座",
+      "url": "https://ranking.rakuten.co.jp/weekly/501103/"
+    },
+    {
+      "cat": "換気扇",
+      "method": "unmatched",
+      "url": "https://search.rakuten.co.jp/search/mall/%E6%8F%9B%E6%B0%97%E6%89%87/?s=4&sv=6"
+    },
+    {
+      "cat": "エアコン",
+      "method": "exact",
+      "label": "ルームエアコン",
+      "url": "https://ranking.rakuten.co.jp/weekly/565123/"
+    },
+    {
+      "cat": "加湿空気清浄機",
+      "method": "exact",
+      "label": "空気清浄機",
+      "url": "https://ranking.rakuten.co.jp/weekly/204519/"
+    },
+    {
+      "cat": "空気清浄機",
+      "method": "exact",
+      "label": "空気清浄機",
+      "url": "https://ranking.rakuten.co.jp/weekly/204519/"
+    },
+    {
+      "cat": "扇風機",
+      "method": "exact",
+      "label": "扇風機",
+      "url": "https://ranking.rakuten.co.jp/weekly/208375/"
+    },
+    {
+      "cat": "リビング扇風機",
+      "method": "exact",
+      "label": "扇風機",
+      "url": "https://ranking.rakuten.co.jp/weekly/208375/"
+    },
+    {
+      "cat": "タワーファン",
+      "method": "unmatched",
+      "url": "https://search.rakuten.co.jp/search/mall/%E3%82%BF%E3%83%AF%E3%83%BC%E3%83%95%E3%82%A1%E3%83%B3/?s=4&sv=6"
+    },
+    {
+      "cat": "サーキュレーター",
+      "method": "exact",
+      "label": "サーキュレーター",
+      "url": "https://ranking.rakuten.co.jp/weekly/409927/"
+    },
+    {
+      "cat": "ハンディファン",
+      "method": "includes",
+      "label": "扇風機",
+      "url": "https://ranking.rakuten.co.jp/weekly/208375/"
+    },
+    {
+      "cat": "冷風機",
+      "method": "exact",
+      "label": "冷風扇",
+      "url": "https://ranking.rakuten.co.jp/weekly/564368/"
+    },
+    {
+      "cat": "除湿機",
+      "method": "exact",
+      "label": "除湿機",
+      "url": "https://ranking.rakuten.co.jp/weekly/204546/"
+    },
+    {
+      "cat": "電気毛布",
+      "method": "includes",
+      "label": "電気毛布・膝掛け",
+      "url": "https://ranking.rakuten.co.jp/weekly/208397/"
+    },
+    {
+      "cat": "ホットカーペット",
+      "method": "exact",
+      "label": "ホットカーペット",
+      "url": "https://ranking.rakuten.co.jp/weekly/208390/"
+    },
+    {
+      "cat": "こたつ",
+      "method": "exact",
+      "label": "こたつ",
+      "url": "https://ranking.rakuten.co.jp/weekly/208385/"
+    },
+    {
+      "cat": "スマートウォッチ",
+      "method": "includes",
+      "label": "スマートウォッチ本体",
+      "url": "https://ranking.rakuten.co.jp/weekly/564895/"
+    },
+    {
+      "cat": "シェーバー",
+      "method": "exact",
+      "label": "メンズシェーバー",
+      "url": "https://ranking.rakuten.co.jp/weekly/208532/"
+    },
+    {
+      "cat": "電動歯ブラシ",
+      "method": "exact",
+      "label": "電動歯ブラシ",
+      "url": "https://ranking.rakuten.co.jp/weekly/208522/"
+    },
+    {
+      "cat": "ドライヤー",
+      "method": "exact",
+      "label": "ヘアドライヤー",
+      "url": "https://ranking.rakuten.co.jp/weekly/502792/"
+    },
+    {
+      "cat": "ヘアアイロン",
+      "method": "includes",
+      "label": "アイロン",
+      "url": "https://ranking.rakuten.co.jp/weekly/212585/"
+    },
+    {
+      "cat": "マッサージ機",
+      "method": "exact",
+      "label": "マッサージチェア",
+      "url": "https://ranking.rakuten.co.jp/weekly/212509/"
+    },
+    {
+      "cat": "テレビ",
+      "method": "exact",
+      "label": "テレビ",
+      "url": "https://ranking.rakuten.co.jp/weekly/563843/"
+    },
+    {
+      "cat": "レコーダー",
+      "method": "includes",
+      "label": "ブルーレイ・DVDレコーダー",
+      "url": "https://ranking.rakuten.co.jp/weekly/550932/"
+    },
+    {
+      "cat": "パソコン",
+      "method": "exact",
+      "label": "ノートPC",
+      "url": "https://ranking.rakuten.co.jp/weekly/100040/"
+    },
+    {
+      "cat": "デジタルオーディオプレーヤー",
+      "method": "exact",
+      "label": "デジタルオーディオプレーヤー",
+      "url": "https://ranking.rakuten.co.jp/weekly/204467/"
+    },
+    {
+      "cat": "Bluetoothスピーカー",
+      "method": "exact",
+      "label": "スピーカー",
+      "url": "https://ranking.rakuten.co.jp/weekly/208316/"
+    }
+  ]
+}

@@ -3,7 +3,11 @@ node_modules/
 public/pixta_*.png
 exports/
 
-# data/ は原則 ignore。ランキングURL・競合記事URLのみリポジトリ管理
+# data/ は原則 ignore。ランキングURL・競合記事・カテゴリツリーのみリポジトリ管理
 data/*
 !data/ranking-urls.json
 !data/competitor-articles.json
+!data/kojima-categories-l1.json
+!data/amazon-bestsellers-tree.json
+!data/amazon-bestsellers-match-report.json
+!data/rakuten-weekly-match-report.json

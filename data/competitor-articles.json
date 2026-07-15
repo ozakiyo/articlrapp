@@ -1,16 +1,9 @@
 {
   "version": 1,
-  "updatedAt": "2026-07-13T23:33:05.560Z",
+  "updatedAt": "2026-07-15T06:00:55.040Z",
   "categories": {
     "掃除機": {
       "articles": [
-        {
-          "id": "f25418bd7461",
-          "site": "ビックカメラ",
-          "title": "ビックカメラ",
-          "url": "https://www.biccamera.com/bc/i/topics/cleaner/index.jsp?srsltid=AfmBOor1GIdTeXPxgcG1GffV_OxzGfSuvBMSwy02_W49aLOXZpX_ckB4",
-          "note": null
-        },
         {
           "id": "0da1db98e9d5",
           "site": "ヨドバシ",
@@ -41,6 +34,1298 @@
         }
       ],
       "savedAt": "2026-07-13T23:33:05.560Z"
+    },
+    "冷蔵庫": {
+      "articles": [
+        {
+          "id": "c46e1064c792",
+          "site": "ヨドバシ",
+          "title": "ヨドバシ",
+          "url": "https://www.yodobashi.com/category/word/%E5%86%B7%E8%94%B5%E5%BA%AB/",
+          "note": "暫定URL（カテゴリ検索／メディア導線）。特集記事URLが判明したら手動差し替え。"
+        },
+        {
+          "id": "b05531205f9c",
+          "site": "ジョーシン",
+          "title": "ジョーシン",
+          "url": "https://joshinweb.jp/search/?word=%E5%86%B7%E8%94%B5%E5%BA%AB",
+          "note": "暫定URL（カテゴリ検索／メディア導線）。特集記事URLが判明したら手動差し替え。"
+        },
+        {
+          "id": "801b90a8bb5e",
+          "site": "ヤマダ",
+          "title": "ヤマダ",
+          "url": "https://www.yamada-denkiweb.com/media/?s=%E5%86%B7%E8%94%B5%E5%BA%AB",
+          "note": "暫定URL（カテゴリ検索／メディア導線）。特集記事URLが判明したら手動差し替え。"
+        },
+        {
+          "id": "4b3a0ab38aa7",
+          "site": "エディオン",
+          "title": "エディオン",
+          "url": "https://www.edion.com/item_cst_sch.html?KEYWORD=%E5%86%B7%E8%94%B5%E5%BA%AB",
+          "note": "暫定URL（カテゴリ検索／メディア導線）。特集記事URLが判明したら手動差し替え。"
+        }
+      ],
+      "savedAt": "2026-07-14T12:35:52.047Z",
+      "note": "掃除機と同じ5社構成。暫定URLのため後ほど手動修正可。"
+    },
+    "炊飯器": {
+      "articles": [
+        {
+          "id": "71f7e161440b",
+          "site": "ヨドバシ",
+          "title": "ヨドバシ",
+          "url": "https://www.yodobashi.com/category/word/%E7%82%8A%E9%A3%AF%E5%99%A8/",
+          "note": "暫定URL（カテゴリ検索／メディア導線）。特集記事URLが判明したら手動差し替え。"
+        },
+        {
+          "id": "5f3e02d58028",
+          "site": "ジョーシン",
+          "title": "ジョーシン",
+          "url": "https://joshinweb.jp/search/?word=%E7%82%8A%E9%A3%AF%E5%99%A8",
+          "note": "暫定URL（カテゴリ検索／メディア導線）。特集記事URLが判明したら手動差し替え。"
+        },
+        {
+          "id": "9908df41b5ed",
+          "site": "ヤマダ",
+          "title": "ヤマダ",
+          "url": "https://www.yamada-denkiweb.com/media/?s=%E7%82%8A%E9%A3%AF%E5%99%A8",
+          "note": "暫定URL（カテゴリ検索／メディア導線）。特集記事URLが判明したら手動差し替え。"
+        },
+        {
+          "id": "172de729340c",
+          "site": "エディオン",
+          "title": "エディオン",
+          "url": "https://www.edion.com/item_cst_sch.html?KEYWORD=%E7%82%8A%E9%A3%AF%E5%99%A8",
+          "note": "暫定URL（カテゴリ検索／メディア導線）。特集記事URLが判明したら手動差し替え。"
+        }
+      ],
+      "savedAt": "2026-07-14T12:35:52.047Z",
+      "note": "掃除機と同じ5社構成。暫定URLのため後ほど手動修正可。"
+    },
+    "電気ケトル・ポット": {
+      "articles": [
+        {
+          "id": "c96e26901c75",
+          "site": "ヨドバシ",
+          "title": "ヨドバシ",
+          "url": "https://www.yodobashi.com/category/word/%E9%9B%BB%E6%B0%97%E3%82%B1%E3%83%88%E3%83%AB%E3%83%BB%E3%83%9D%E3%83%83%E3%83%88/",
+          "note": "暫定URL（カテゴリ検索／メディア導線）。特集記事URLが判明したら手動差し替え。"
+        },
+        {
+          "id": "3cca3e691eb4",
+          "site": "ジョーシン",
+          "title": "ジョーシン",
+          "url": "https://joshinweb.jp/search/?word=%E9%9B%BB%E6%B0%97%E3%82%B1%E3%83%88%E3%83%AB%E3%83%BB%E3%83%9D%E3%83%83%E3%83%88",
+          "note": "暫定URL（カテゴリ検索／メディア導線）。特集記事URLが判明したら手動差し替え。"
+        },
+        {
+          "id": "f7128c72a7f1",
+          "site": "ヤマダ",
+          "title": "ヤマダ",
+          "url": "https://www.yamada-denkiweb.com/media/?s=%E9%9B%BB%E6%B0%97%E3%82%B1%E3%83%88%E3%83%AB%E3%83%BB%E3%83%9D%E3%83%83%E3%83%88",
+          "note": "暫定URL（カテゴリ検索／メディア導線）。特集記事URLが判明したら手動差し替え。"
+        },
+        {
+          "id": "7e2c87c5e99e",
+          "site": "エディオン",
+          "title": "エディオン",
+          "url": "https://www.edion.com/item_cst_sch.html?KEYWORD=%E9%9B%BB%E6%B0%97%E3%82%B1%E3%83%88%E3%83%AB%E3%83%BB%E3%83%9D%E3%83%83%E3%83%88",
+          "note": "暫定URL（カテゴリ検索／メディア導線）。特集記事URLが判明したら手動差し替え。"
+        }
+      ],
+      "savedAt": "2026-07-14T12:35:52.047Z",
+      "note": "掃除機と同じ5社構成。暫定URLのため後ほど手動修正可。"
+    },
+    "コーヒーメーカー": {
+      "articles": [
+        {
+          "id": "c1263be0c9e3",
+          "site": "ヨドバシ",
+          "title": "ヨドバシ",
+          "url": "https://www.yodobashi.com/category/word/%E3%82%B3%E3%83%BC%E3%83%92%E3%83%BC%E3%83%A1%E3%83%BC%E3%82%AB%E3%83%BC/",
+          "note": "暫定URL（カテゴリ検索／メディア導線）。特集記事URLが判明したら手動差し替え。"
+        },
+        {
+          "id": "95760b9791b1",
+          "site": "ジョーシン",
+          "title": "ジョーシン",
+          "url": "https://joshinweb.jp/search/?word=%E3%82%B3%E3%83%BC%E3%83%92%E3%83%BC%E3%83%A1%E3%83%BC%E3%82%AB%E3%83%BC",
+          "note": "暫定URL（カテゴリ検索／メディア導線）。特集記事URLが判明したら手動差し替え。"
+        },
+        {
+          "id": "1b07b76d9f6e",
+          "site": "ヤマダ",
+          "title": "ヤマダ",
+          "url": "https://www.yamada-denkiweb.com/media/?s=%E3%82%B3%E3%83%BC%E3%83%92%E3%83%BC%E3%83%A1%E3%83%BC%E3%82%AB%E3%83%BC",
+          "note": "暫定URL（カテゴリ検索／メディア導線）。特集記事URLが判明したら手動差し替え。"
+        },
+        {
+          "id": "b53ff94f3a6a",
+          "site": "エディオン",
+          "title": "エディオン",
+          "url": "https://www.edion.com/item_cst_sch.html?KEYWORD=%E3%82%B3%E3%83%BC%E3%83%92%E3%83%BC%E3%83%A1%E3%83%BC%E3%82%AB%E3%83%BC",
+          "note": "暫定URL（カテゴリ検索／メディア導線）。特集記事URLが判明したら手動差し替え。"
+        }
+      ],
+      "savedAt": "2026-07-14T12:35:52.047Z",
+      "note": "掃除機と同じ5社構成。暫定URLのため後ほど手動修正可。"
+    },
+    "ホットプレート": {
+      "articles": [
+        {
+          "id": "e932d00b5ef3",
+          "site": "ヨドバシ",
+          "title": "ヨドバシ",
+          "url": "https://www.yodobashi.com/category/word/%E3%83%9B%E3%83%83%E3%83%88%E3%83%97%E3%83%AC%E3%83%BC%E3%83%88/",
+          "note": "暫定URL（カテゴリ検索／メディア導線）。特集記事URLが判明したら手動差し替え。"
+        },
+        {
+          "id": "f270b9018fa1",
+          "site": "ジョーシン",
+          "title": "ジョーシン",
+          "url": "https://joshinweb.jp/search/?word=%E3%83%9B%E3%83%83%E3%83%88%E3%83%97%E3%83%AC%E3%83%BC%E3%83%88",
+          "note": "暫定URL（カテゴリ検索／メディア導線）。特集記事URLが判明したら手動差し替え。"
+        },
+        {
+          "id": "48fbea5a41a5",
+          "site": "ヤマダ",
+          "title": "ヤマダ",
+          "url": "https://www.yamada-denkiweb.com/media/?s=%E3%83%9B%E3%83%83%E3%83%88%E3%83%97%E3%83%AC%E3%83%BC%E3%83%88",
+          "note": "暫定URL（カテゴリ検索／メディア導線）。特集記事URLが判明したら手動差し替え。"
+        },
+        {
+          "id": "9e560da0280f",
+          "site": "エディオン",
+          "title": "エディオン",
+          "url": "https://www.edion.com/item_cst_sch.html?KEYWORD=%E3%83%9B%E3%83%83%E3%83%88%E3%83%97%E3%83%AC%E3%83%BC%E3%83%88",
+          "note": "暫定URL（カテゴリ検索／メディア導線）。特集記事URLが判明したら手動差し替え。"
+        }
+      ],
+      "savedAt": "2026-07-14T12:35:52.047Z",
+      "note": "掃除機と同じ5社構成。暫定URLのため後ほど手動修正可。"
+    },
+    "真空保温調理器": {
+      "articles": [
+        {
+          "id": "7123705276d8",
+          "site": "ヨドバシ",
+          "title": "ヨドバシ",
+          "url": "https://www.yodobashi.com/category/word/%E7%9C%9F%E7%A9%BA%E4%BF%9D%E6%B8%A9%E8%AA%BF%E7%90%86%E5%99%A8/",
+          "note": "暫定URL（カテゴリ検索／メディア導線）。特集記事URLが判明したら手動差し替え。"
+        },
+        {
+          "id": "e4924b828a88",
+          "site": "ジョーシン",
+          "title": "ジョーシン",
+          "url": "https://joshinweb.jp/search/?word=%E7%9C%9F%E7%A9%BA%E4%BF%9D%E6%B8%A9%E8%AA%BF%E7%90%86%E5%99%A8",
+          "note": "暫定URL（カテゴリ検索／メディア導線）。特集記事URLが判明したら手動差し替え。"
+        },
+        {
+          "id": "d52bd7192d46",
+          "site": "ヤマダ",
+          "title": "ヤマダ",
+          "url": "https://www.yamada-denkiweb.com/media/?s=%E7%9C%9F%E7%A9%BA%E4%BF%9D%E6%B8%A9%E8%AA%BF%E7%90%86%E5%99%A8",
+          "note": "暫定URL（カテゴリ検索／メディア導線）。特集記事URLが判明したら手動差し替え。"
+        },
+        {
+          "id": "4b758702a645",
+          "site": "エディオン",
+          "title": "エディオン",
+          "url": "https://www.edion.com/item_cst_sch.html?KEYWORD=%E7%9C%9F%E7%A9%BA%E4%BF%9D%E6%B8%A9%E8%AA%BF%E7%90%86%E5%99%A8",
+          "note": "暫定URL（カテゴリ検索／メディア導線）。特集記事URLが判明したら手動差し替え。"
+        }
+      ],
+      "savedAt": "2026-07-14T12:35:52.047Z",
+      "note": "掃除機と同じ5社構成。暫定URLのため後ほど手動修正可。"
+    },
+    "浄水器・整水器": {
+      "articles": [
+        {
+          "id": "103198d8e930",
+          "site": "ヨドバシ",
+          "title": "ヨドバシ",
+          "url": "https://www.yodobashi.com/category/word/%E6%B5%84%E6%B0%B4%E5%99%A8%E3%83%BB%E6%95%B4%E6%B0%B4%E5%99%A8/",
+          "note": "暫定URL（カテゴリ検索／メディア導線）。特集記事URLが判明したら手動差し替え。"
+        },
+        {
+          "id": "4523b94db075",
+          "site": "ジョーシン",
+          "title": "ジョーシン",
+          "url": "https://joshinweb.jp/search/?word=%E6%B5%84%E6%B0%B4%E5%99%A8%E3%83%BB%E6%95%B4%E6%B0%B4%E5%99%A8",
+          "note": "暫定URL（カテゴリ検索／メディア導線）。特集記事URLが判明したら手動差し替え。"
+        },
+        {
+          "id": "ce16c6352f70",
+          "site": "ヤマダ",
+          "title": "ヤマダ",
+          "url": "https://www.yamada-denkiweb.com/media/?s=%E6%B5%84%E6%B0%B4%E5%99%A8%E3%83%BB%E6%95%B4%E6%B0%B4%E5%99%A8",
+          "note": "暫定URL（カテゴリ検索／メディア導線）。特集記事URLが判明したら手動差し替え。"
+        },
+        {
+          "id": "d4a93e825c30",
+          "site": "エディオン",
+          "title": "エディオン",
+          "url": "https://www.edion.com/item_cst_sch.html?KEYWORD=%E6%B5%84%E6%B0%B4%E5%99%A8%E3%83%BB%E6%95%B4%E6%B0%B4%E5%99%A8",
+          "note": "暫定URL（カテゴリ検索／メディア導線）。特集記事URLが判明したら手動差し替え。"
+        }
+      ],
+      "savedAt": "2026-07-14T12:35:52.047Z",
+      "note": "掃除機と同じ5社構成。暫定URLのため後ほど手動修正可。"
+    },
+    "食器洗い機": {
+      "articles": [
+        {
+          "id": "34e327061ecd",
+          "site": "ヨドバシ",
+          "title": "ヨドバシ",
+          "url": "https://www.yodobashi.com/category/word/%E9%A3%9F%E5%99%A8%E6%B4%97%E3%81%84%E6%A9%9F/",
+          "note": "暫定URL（カテゴリ検索／メディア導線）。特集記事URLが判明したら手動差し替え。"
+        },
+        {
+          "id": "9a07629d3d7b",
+          "site": "ジョーシン",
+          "title": "ジョーシン",
+          "url": "https://joshinweb.jp/search/?word=%E9%A3%9F%E5%99%A8%E6%B4%97%E3%81%84%E6%A9%9F",
+          "note": "暫定URL（カテゴリ検索／メディア導線）。特集記事URLが判明したら手動差し替え。"
+        },
+        {
+          "id": "bd5df364f247",
+          "site": "ヤマダ",
+          "title": "ヤマダ",
+          "url": "https://www.yamada-denkiweb.com/media/?s=%E9%A3%9F%E5%99%A8%E6%B4%97%E3%81%84%E6%A9%9F",
+          "note": "暫定URL（カテゴリ検索／メディア導線）。特集記事URLが判明したら手動差し替え。"
+        },
+        {
+          "id": "0a42f5f20e38",
+          "site": "エディオン",
+          "title": "エディオン",
+          "url": "https://www.edion.com/item_cst_sch.html?KEYWORD=%E9%A3%9F%E5%99%A8%E6%B4%97%E3%81%84%E6%A9%9F",
+          "note": "暫定URL（カテゴリ検索／メディア導線）。特集記事URLが判明したら手動差し替え。"
+        }
+      ],
+      "savedAt": "2026-07-14T12:35:52.047Z",
+      "note": "掃除機と同じ5社構成。暫定URLのため後ほど手動修正可。"
+    },
+    "スチームクリーナー": {
+      "articles": [
+        {
+          "id": "3cdaa19d067f",
+          "site": "ヨドバシ",
+          "title": "ヨドバシ",
+          "url": "https://www.yodobashi.com/category/word/%E3%82%B9%E3%83%81%E3%83%BC%E3%83%A0%E3%82%AF%E3%83%AA%E3%83%BC%E3%83%8A%E3%83%BC/",
+          "note": "暫定URL（カテゴリ検索／メディア導線）。特集記事URLが判明したら手動差し替え。"
+        },
+        {
+          "id": "d575c7362dd1",
+          "site": "ジョーシン",
+          "title": "ジョーシン",
+          "url": "https://joshinweb.jp/search/?word=%E3%82%B9%E3%83%81%E3%83%BC%E3%83%A0%E3%82%AF%E3%83%AA%E3%83%BC%E3%83%8A%E3%83%BC",
+          "note": "暫定URL（カテゴリ検索／メディア導線）。特集記事URLが判明したら手動差し替え。"
+        },
+        {
+          "id": "397f469fb9a3",
+          "site": "ヤマダ",
+          "title": "ヤマダ",
+          "url": "https://www.yamada-denkiweb.com/media/?s=%E3%82%B9%E3%83%81%E3%83%BC%E3%83%A0%E3%82%AF%E3%83%AA%E3%83%BC%E3%83%8A%E3%83%BC",
+          "note": "暫定URL（カテゴリ検索／メディア導線）。特集記事URLが判明したら手動差し替え。"
+        },
+        {
+          "id": "3b4cc60805d8",
+          "site": "エディオン",
+          "title": "エディオン",
+          "url": "https://www.edion.com/item_cst_sch.html?KEYWORD=%E3%82%B9%E3%83%81%E3%83%BC%E3%83%A0%E3%82%AF%E3%83%AA%E3%83%BC%E3%83%8A%E3%83%BC",
+          "note": "暫定URL（カテゴリ検索／メディア導線）。特集記事URLが判明したら手動差し替え。"
+        }
+      ],
+      "savedAt": "2026-07-14T12:35:52.047Z",
+      "note": "掃除機と同じ5社構成。暫定URLのため後ほど手動修正可。"
+    },
+    "アイロン": {
+      "articles": [
+        {
+          "id": "c1de8c7a2eaf",
+          "site": "ヨドバシ",
+          "title": "ヨドバシ",
+          "url": "https://www.yodobashi.com/category/word/%E3%82%A2%E3%82%A4%E3%83%AD%E3%83%B3/",
+          "note": "暫定URL（カテゴリ検索／メディア導線）。特集記事URLが判明したら手動差し替え。"
+        },
+        {
+          "id": "5682c63166a3",
+          "site": "ジョーシン",
+          "title": "ジョーシン",
+          "url": "https://joshinweb.jp/search/?word=%E3%82%A2%E3%82%A4%E3%83%AD%E3%83%B3",
+          "note": "暫定URL（カテゴリ検索／メディア導線）。特集記事URLが判明したら手動差し替え。"
+        },
+        {
+          "id": "7f40c10349fd",
+          "site": "ヤマダ",
+          "title": "ヤマダ",
+          "url": "https://www.yamada-denkiweb.com/media/?s=%E3%82%A2%E3%82%A4%E3%83%AD%E3%83%B3",
+          "note": "暫定URL（カテゴリ検索／メディア導線）。特集記事URLが判明したら手動差し替え。"
+        },
+        {
+          "id": "e73243357366",
+          "site": "エディオン",
+          "title": "エディオン",
+          "url": "https://www.edion.com/item_cst_sch.html?KEYWORD=%E3%82%A2%E3%82%A4%E3%83%AD%E3%83%B3",
+          "note": "暫定URL（カテゴリ検索／メディア導線）。特集記事URLが判明したら手動差し替え。"
+        }
+      ],
+      "savedAt": "2026-07-14T12:35:52.047Z",
+      "note": "掃除機と同じ5社構成。暫定URLのため後ほど手動修正可。"
+    },
+    "ミシン": {
+      "articles": [
+        {
+          "id": "e3cf286029ec",
+          "site": "ヨドバシ",
+          "title": "ヨドバシ",
+          "url": "https://www.yodobashi.com/category/word/%E3%83%9F%E3%82%B7%E3%83%B3/",
+          "note": "暫定URL（カテゴリ検索／メディア導線）。特集記事URLが判明したら手動差し替え。"
+        },
+        {
+          "id": "889d3aec753c",
+          "site": "ジョーシン",
+          "title": "ジョーシン",
+          "url": "https://joshinweb.jp/search/?word=%E3%83%9F%E3%82%B7%E3%83%B3",
+          "note": "暫定URL（カテゴリ検索／メディア導線）。特集記事URLが判明したら手動差し替え。"
+        },
+        {
+          "id": "8e357511b909",
+          "site": "ヤマダ",
+          "title": "ヤマダ",
+          "url": "https://www.yamada-denkiweb.com/media/?s=%E3%83%9F%E3%82%B7%E3%83%B3",
+          "note": "暫定URL（カテゴリ検索／メディア導線）。特集記事URLが判明したら手動差し替え。"
+        },
+        {
+          "id": "80268a037fbb",
+          "site": "エディオン",
+          "title": "エディオン",
+          "url": "https://www.edion.com/item_cst_sch.html?KEYWORD=%E3%83%9F%E3%82%B7%E3%83%B3",
+          "note": "暫定URL（カテゴリ検索／メディア導線）。特集記事URLが判明したら手動差し替え。"
+        }
+      ],
+      "savedAt": "2026-07-14T12:35:52.047Z",
+      "note": "掃除機と同じ5社構成。暫定URLのため後ほど手動修正可。"
+    },
+    "温水洗浄便座": {
+      "articles": [
+        {
+          "id": "93b721d622f8",
+          "site": "ヨドバシ",
+          "title": "ヨドバシ",
+          "url": "https://www.yodobashi.com/category/word/%E6%B8%A9%E6%B0%B4%E6%B4%97%E6%B5%84%E4%BE%BF%E5%BA%A7/",
+          "note": "暫定URL（カテゴリ検索／メディア導線）。特集記事URLが判明したら手動差し替え。"
+        },
+        {
+          "id": "dc8e9dfa5511",
+          "site": "ジョーシン",
+          "title": "ジョーシン",
+          "url": "https://joshinweb.jp/search/?word=%E6%B8%A9%E6%B0%B4%E6%B4%97%E6%B5%84%E4%BE%BF%E5%BA%A7",
+          "note": "暫定URL（カテゴリ検索／メディア導線）。特集記事URLが判明したら手動差し替え。"
+        },
+        {
+          "id": "a001f662bb02",
+          "site": "ヤマダ",
+          "title": "ヤマダ",
+          "url": "https://www.yamada-denkiweb.com/media/?s=%E6%B8%A9%E6%B0%B4%E6%B4%97%E6%B5%84%E4%BE%BF%E5%BA%A7",
+          "note": "暫定URL（カテゴリ検索／メディア導線）。特集記事URLが判明したら手動差し替え。"
+        },
+        {
+          "id": "edacda510b3e",
+          "site": "エディオン",
+          "title": "エディオン",
+          "url": "https://www.edion.com/item_cst_sch.html?KEYWORD=%E6%B8%A9%E6%B0%B4%E6%B4%97%E6%B5%84%E4%BE%BF%E5%BA%A7",
+          "note": "暫定URL（カテゴリ検索／メディア導線）。特集記事URLが判明したら手動差し替え。"
+        }
+      ],
+      "savedAt": "2026-07-14T12:35:52.047Z",
+      "note": "掃除機と同じ5社構成。暫定URLのため後ほど手動修正可。"
+    },
+    "換気扇": {
+      "articles": [
+        {
+          "id": "2a923ef8c266",
+          "site": "ヨドバシ",
+          "title": "ヨドバシ",
+          "url": "https://www.yodobashi.com/category/word/%E6%8F%9B%E6%B0%97%E6%89%87/",
+          "note": "暫定URL（カテゴリ検索／メディア導線）。特集記事URLが判明したら手動差し替え。"
+        },
+        {
+          "id": "1bb4a54cd7f5",
+          "site": "ジョーシン",
+          "title": "ジョーシン",
+          "url": "https://joshinweb.jp/search/?word=%E6%8F%9B%E6%B0%97%E6%89%87",
+          "note": "暫定URL（カテゴリ検索／メディア導線）。特集記事URLが判明したら手動差し替え。"
+        },
+        {
+          "id": "87351106d857",
+          "site": "ヤマダ",
+          "title": "ヤマダ",
+          "url": "https://www.yamada-denkiweb.com/media/?s=%E6%8F%9B%E6%B0%97%E6%89%87",
+          "note": "暫定URL（カテゴリ検索／メディア導線）。特集記事URLが判明したら手動差し替え。"
+        },
+        {
+          "id": "f26f7af79ddc",
+          "site": "エディオン",
+          "title": "エディオン",
+          "url": "https://www.edion.com/item_cst_sch.html?KEYWORD=%E6%8F%9B%E6%B0%97%E6%89%87",
+          "note": "暫定URL（カテゴリ検索／メディア導線）。特集記事URLが判明したら手動差し替え。"
+        }
+      ],
+      "savedAt": "2026-07-14T12:35:52.047Z",
+      "note": "掃除機と同じ5社構成。暫定URLのため後ほど手動修正可。"
+    },
+    "エアコン": {
+      "articles": [
+        {
+          "id": "8f34401556e1",
+          "site": "ヨドバシ",
+          "title": "ヨドバシ",
+          "url": "https://www.yodobashi.com/category/word/%E3%82%A8%E3%82%A2%E3%82%B3%E3%83%B3/",
+          "note": "暫定URL（カテゴリ検索／メディア導線）。特集記事URLが判明したら手動差し替え。"
+        },
+        {
+          "id": "4646d4befb90",
+          "site": "ジョーシン",
+          "title": "ジョーシン",
+          "url": "https://joshinweb.jp/search/?word=%E3%82%A8%E3%82%A2%E3%82%B3%E3%83%B3",
+          "note": "暫定URL（カテゴリ検索／メディア導線）。特集記事URLが判明したら手動差し替え。"
+        },
+        {
+          "id": "0e43ebb08bd9",
+          "site": "ヤマダ",
+          "title": "ヤマダ",
+          "url": "https://www.yamada-denkiweb.com/media/?s=%E3%82%A8%E3%82%A2%E3%82%B3%E3%83%B3",
+          "note": "暫定URL（カテゴリ検索／メディア導線）。特集記事URLが判明したら手動差し替え。"
+        },
+        {
+          "id": "507047eab6fd",
+          "site": "エディオン",
+          "title": "エディオン",
+          "url": "https://www.edion.com/item_cst_sch.html?KEYWORD=%E3%82%A8%E3%82%A2%E3%82%B3%E3%83%B3",
+          "note": "暫定URL（カテゴリ検索／メディア導線）。特集記事URLが判明したら手動差し替え。"
+        }
+      ],
+      "savedAt": "2026-07-14T12:35:52.047Z",
+      "note": "掃除機と同じ5社構成。暫定URLのため後ほど手動修正可。"
+    },
+    "加湿空気清浄機": {
+      "articles": [
+        {
+          "id": "8438d39d534d",
+          "site": "ヨドバシ",
+          "title": "ヨドバシ",
+          "url": "https://www.yodobashi.com/category/word/%E5%8A%A0%E6%B9%BF%E7%A9%BA%E6%B0%97%E6%B8%85%E6%B5%84%E6%A9%9F/",
+          "note": "暫定URL（カテゴリ検索／メディア導線）。特集記事URLが判明したら手動差し替え。"
+        },
+        {
+          "id": "1c95733e7f92",
+          "site": "ジョーシン",
+          "title": "ジョーシン",
+          "url": "https://joshinweb.jp/search/?word=%E5%8A%A0%E6%B9%BF%E7%A9%BA%E6%B0%97%E6%B8%85%E6%B5%84%E6%A9%9F",
+          "note": "暫定URL（カテゴリ検索／メディア導線）。特集記事URLが判明したら手動差し替え。"
+        },
+        {
+          "id": "d33738c9286a",
+          "site": "ヤマダ",
+          "title": "ヤマダ",
+          "url": "https://www.yamada-denkiweb.com/media/?s=%E5%8A%A0%E6%B9%BF%E7%A9%BA%E6%B0%97%E6%B8%85%E6%B5%84%E6%A9%9F",
+          "note": "暫定URL（カテゴリ検索／メディア導線）。特集記事URLが判明したら手動差し替え。"
+        },
+        {
+          "id": "7a9260e6f03e",
+          "site": "エディオン",
+          "title": "エディオン",
+          "url": "https://www.edion.com/item_cst_sch.html?KEYWORD=%E5%8A%A0%E6%B9%BF%E7%A9%BA%E6%B0%97%E6%B8%85%E6%B5%84%E6%A9%9F",
+          "note": "暫定URL（カテゴリ検索／メディア導線）。特集記事URLが判明したら手動差し替え。"
+        }
+      ],
+      "savedAt": "2026-07-14T12:35:52.047Z",
+      "note": "掃除機と同じ5社構成。暫定URLのため後ほど手動修正可。"
+    },
+    "空気清浄機": {
+      "articles": [
+        {
+          "id": "575c11b112f5",
+          "site": "ヨドバシ",
+          "title": "ヨドバシ",
+          "url": "https://www.yodobashi.com/category/word/%E7%A9%BA%E6%B0%97%E6%B8%85%E6%B5%84%E6%A9%9F/",
+          "note": "暫定URL（カテゴリ検索／メディア導線）。特集記事URLが判明したら手動差し替え。"
+        },
+        {
+          "id": "a81ef988320a",
+          "site": "ジョーシン",
+          "title": "ジョーシン",
+          "url": "https://joshinweb.jp/search/?word=%E7%A9%BA%E6%B0%97%E6%B8%85%E6%B5%84%E6%A9%9F",
+          "note": "暫定URL（カテゴリ検索／メディア導線）。特集記事URLが判明したら手動差し替え。"
+        },
+        {
+          "id": "88ecb2ca80d4",
+          "site": "ヤマダ",
+          "title": "ヤマダ",
+          "url": "https://www.yamada-denkiweb.com/media/?s=%E7%A9%BA%E6%B0%97%E6%B8%85%E6%B5%84%E6%A9%9F",
+          "note": "暫定URL（カテゴリ検索／メディア導線）。特集記事URLが判明したら手動差し替え。"
+        },
+        {
+          "id": "57fc963ec435",
+          "site": "エディオン",
+          "title": "エディオン",
+          "url": "https://www.edion.com/item_cst_sch.html?KEYWORD=%E7%A9%BA%E6%B0%97%E6%B8%85%E6%B5%84%E6%A9%9F",
+          "note": "暫定URL（カテゴリ検索／メディア導線）。特集記事URLが判明したら手動差し替え。"
+        }
+      ],
+      "savedAt": "2026-07-14T12:35:52.047Z",
+      "note": "掃除機と同じ5社構成。暫定URLのため後ほど手動修正可。"
+    },
+    "扇風機": {
+      "articles": [
+        {
+          "id": "14a804f8ee1a",
+          "site": "ヨドバシ",
+          "title": "ヨドバシ",
+          "url": "https://www.yodobashi.com/category/word/%E6%89%87%E9%A2%A8%E6%A9%9F/",
+          "note": "暫定URL（カテゴリ検索／メディア導線）。特集記事URLが判明したら手動差し替え。"
+        },
+        {
+          "id": "002170b1bd3d",
+          "site": "ジョーシン",
+          "title": "ジョーシン",
+          "url": "https://joshinweb.jp/search/?word=%E6%89%87%E9%A2%A8%E6%A9%9F",
+          "note": "暫定URL（カテゴリ検索／メディア導線）。特集記事URLが判明したら手動差し替え。"
+        },
+        {
+          "id": "6d614e9896a4",
+          "site": "ヤマダ",
+          "title": "ヤマダ",
+          "url": "https://www.yamada-denkiweb.com/media/?s=%E6%89%87%E9%A2%A8%E6%A9%9F",
+          "note": "暫定URL（カテゴリ検索／メディア導線）。特集記事URLが判明したら手動差し替え。"
+        },
+        {
+          "id": "bf4c9fd51075",
+          "site": "エディオン",
+          "title": "エディオン",
+          "url": "https://www.edion.com/item_cst_sch.html?KEYWORD=%E6%89%87%E9%A2%A8%E6%A9%9F",
+          "note": "暫定URL（カテゴリ検索／メディア導線）。特集記事URLが判明したら手動差し替え。"
+        }
+      ],
+      "savedAt": "2026-07-14T12:35:52.047Z",
+      "note": "掃除機と同じ5社構成。暫定URLのため後ほど手動修正可。"
+    },
+    "リビング扇風機": {
+      "articles": [
+        {
+          "id": "56cdfbbf1886",
+          "site": "ヨドバシ",
+          "title": "ヨドバシ",
+          "url": "https://www.yodobashi.com/category/word/%E3%83%AA%E3%83%93%E3%83%B3%E3%82%B0%E6%89%87%E9%A2%A8%E6%A9%9F/",
+          "note": "暫定URL（カテゴリ検索／メディア導線）。特集記事URLが判明したら手動差し替え。"
+        },
+        {
+          "id": "df1207fb2339",
+          "site": "ジョーシン",
+          "title": "ジョーシン",
+          "url": "https://joshinweb.jp/search/?word=%E3%83%AA%E3%83%93%E3%83%B3%E3%82%B0%E6%89%87%E9%A2%A8%E6%A9%9F",
+          "note": "暫定URL（カテゴリ検索／メディア導線）。特集記事URLが判明したら手動差し替え。"
+        },
+        {
+          "id": "ff8a108b3ef9",
+          "site": "ヤマダ",
+          "title": "ヤマダ",
+          "url": "https://www.yamada-denkiweb.com/media/?s=%E3%83%AA%E3%83%93%E3%83%B3%E3%82%B0%E6%89%87%E9%A2%A8%E6%A9%9F",
+          "note": "暫定URL（カテゴリ検索／メディア導線）。特集記事URLが判明したら手動差し替え。"
+        },
+        {
+          "id": "8c027432001c",
+          "site": "エディオン",
+          "title": "エディオン",
+          "url": "https://www.edion.com/item_cst_sch.html?KEYWORD=%E3%83%AA%E3%83%93%E3%83%B3%E3%82%B0%E6%89%87%E9%A2%A8%E6%A9%9F",
+          "note": "暫定URL（カテゴリ検索／メディア導線）。特集記事URLが判明したら手動差し替え。"
+        }
+      ],
+      "savedAt": "2026-07-14T12:35:52.047Z",
+      "note": "掃除機と同じ5社構成。暫定URLのため後ほど手動修正可。"
+    },
+    "タワーファン": {
+      "articles": [
+        {
+          "id": "98cb9a5d5c63",
+          "site": "ヨドバシ",
+          "title": "ヨドバシ",
+          "url": "https://www.yodobashi.com/category/word/%E3%82%BF%E3%83%AF%E3%83%BC%E3%83%95%E3%82%A1%E3%83%B3/",
+          "note": "暫定URL（カテゴリ検索／メディア導線）。特集記事URLが判明したら手動差し替え。"
+        },
+        {
+          "id": "43cf648b9ad3",
+          "site": "ジョーシン",
+          "title": "ジョーシン",
+          "url": "https://joshinweb.jp/search/?word=%E3%82%BF%E3%83%AF%E3%83%BC%E3%83%95%E3%82%A1%E3%83%B3",
+          "note": "暫定URL（カテゴリ検索／メディア導線）。特集記事URLが判明したら手動差し替え。"
+        },
+        {
+          "id": "c11355ab769f",
+          "site": "ヤマダ",
+          "title": "ヤマダ",
+          "url": "https://www.yamada-denkiweb.com/media/?s=%E3%82%BF%E3%83%AF%E3%83%BC%E3%83%95%E3%82%A1%E3%83%B3",
+          "note": "暫定URL（カテゴリ検索／メディア導線）。特集記事URLが判明したら手動差し替え。"
+        },
+        {
+          "id": "bc3ee1c5c52d",
+          "site": "エディオン",
+          "title": "エディオン",
+          "url": "https://www.edion.com/item_cst_sch.html?KEYWORD=%E3%82%BF%E3%83%AF%E3%83%BC%E3%83%95%E3%82%A1%E3%83%B3",
+          "note": "暫定URL（カテゴリ検索／メディア導線）。特集記事URLが判明したら手動差し替え。"
+        }
+      ],
+      "savedAt": "2026-07-14T12:35:52.047Z",
+      "note": "掃除機と同じ5社構成。暫定URLのため後ほど手動修正可。"
+    },
+    "サーキュレーター": {
+      "articles": [
+        {
+          "id": "7b306e025d15",
+          "site": "ヨドバシ",
+          "title": "ヨドバシ",
+          "url": "https://www.yodobashi.com/category/word/%E3%82%B5%E3%83%BC%E3%82%AD%E3%83%A5%E3%83%AC%E3%83%BC%E3%82%BF%E3%83%BC/",
+          "note": "暫定URL（カテゴリ検索／メディア導線）。特集記事URLが判明したら手動差し替え。"
+        },
+        {
+          "id": "43334599f53e",
+          "site": "ジョーシン",
+          "title": "ジョーシン",
+          "url": "https://joshinweb.jp/search/?word=%E3%82%B5%E3%83%BC%E3%82%AD%E3%83%A5%E3%83%AC%E3%83%BC%E3%82%BF%E3%83%BC",
+          "note": "暫定URL（カテゴリ検索／メディア導線）。特集記事URLが判明したら手動差し替え。"
+        },
+        {
+          "id": "42b28e56cd7a",
+          "site": "ヤマダ",
+          "title": "ヤマダ",
+          "url": "https://www.yamada-denkiweb.com/media/?s=%E3%82%B5%E3%83%BC%E3%82%AD%E3%83%A5%E3%83%AC%E3%83%BC%E3%82%BF%E3%83%BC",
+          "note": "暫定URL（カテゴリ検索／メディア導線）。特集記事URLが判明したら手動差し替え。"
+        },
+        {
+          "id": "283bfb697707",
+          "site": "エディオン",
+          "title": "エディオン",
+          "url": "https://www.edion.com/item_cst_sch.html?KEYWORD=%E3%82%B5%E3%83%BC%E3%82%AD%E3%83%A5%E3%83%AC%E3%83%BC%E3%82%BF%E3%83%BC",
+          "note": "暫定URL（カテゴリ検索／メディア導線）。特集記事URLが判明したら手動差し替え。"
+        }
+      ],
+      "savedAt": "2026-07-14T12:35:52.047Z",
+      "note": "掃除機と同じ5社構成。暫定URLのため後ほど手動修正可。"
+    },
+    "ハンディファン": {
+      "articles": [
+        {
+          "id": "1cee0375f1cd",
+          "site": "ヨドバシ",
+          "title": "ヨドバシ",
+          "url": "https://www.yodobashi.com/category/word/%E3%83%8F%E3%83%B3%E3%83%87%E3%82%A3%E3%83%95%E3%82%A1%E3%83%B3/",
+          "note": "暫定URL（カテゴリ検索／メディア導線）。特集記事URLが判明したら手動差し替え。"
+        },
+        {
+          "id": "73327cf101b8",
+          "site": "ジョーシン",
+          "title": "ジョーシン",
+          "url": "https://joshinweb.jp/search/?word=%E3%83%8F%E3%83%B3%E3%83%87%E3%82%A3%E3%83%95%E3%82%A1%E3%83%B3",
+          "note": "暫定URL（カテゴリ検索／メディア導線）。特集記事URLが判明したら手動差し替え。"
+        },
+        {
+          "id": "2d7dd2cccf9d",
+          "site": "ヤマダ",
+          "title": "ヤマダ",
+          "url": "https://www.yamada-denkiweb.com/media/?s=%E3%83%8F%E3%83%B3%E3%83%87%E3%82%A3%E3%83%95%E3%82%A1%E3%83%B3",
+          "note": "暫定URL（カテゴリ検索／メディア導線）。特集記事URLが判明したら手動差し替え。"
+        },
+        {
+          "id": "94a4bd5f3b62",
+          "site": "エディオン",
+          "title": "エディオン",
+          "url": "https://www.edion.com/item_cst_sch.html?KEYWORD=%E3%83%8F%E3%83%B3%E3%83%87%E3%82%A3%E3%83%95%E3%82%A1%E3%83%B3",
+          "note": "暫定URL（カテゴリ検索／メディア導線）。特集記事URLが判明したら手動差し替え。"
+        }
+      ],
+      "savedAt": "2026-07-14T12:35:52.047Z",
+      "note": "掃除機と同じ5社構成。暫定URLのため後ほど手動修正可。"
+    },
+    "冷風機": {
+      "articles": [
+        {
+          "id": "93f9a9a6fc01",
+          "site": "ヨドバシ",
+          "title": "ヨドバシ",
+          "url": "https://www.yodobashi.com/category/word/%E5%86%B7%E9%A2%A8%E6%A9%9F/",
+          "note": "暫定URL（カテゴリ検索／メディア導線）。特集記事URLが判明したら手動差し替え。"
+        },
+        {
+          "id": "57412dacd552",
+          "site": "ジョーシン",
+          "title": "ジョーシン",
+          "url": "https://joshinweb.jp/search/?word=%E5%86%B7%E9%A2%A8%E6%A9%9F",
+          "note": "暫定URL（カテゴリ検索／メディア導線）。特集記事URLが判明したら手動差し替え。"
+        },
+        {
+          "id": "4635aabde6e6",
+          "site": "ヤマダ",
+          "title": "ヤマダ",
+          "url": "https://www.yamada-denkiweb.com/media/?s=%E5%86%B7%E9%A2%A8%E6%A9%9F",
+          "note": "暫定URL（カテゴリ検索／メディア導線）。特集記事URLが判明したら手動差し替え。"
+        },
+        {
+          "id": "9578c35518c9",
+          "site": "エディオン",
+          "title": "エディオン",
+          "url": "https://www.edion.com/item_cst_sch.html?KEYWORD=%E5%86%B7%E9%A2%A8%E6%A9%9F",
+          "note": "暫定URL（カテゴリ検索／メディア導線）。特集記事URLが判明したら手動差し替え。"
+        }
+      ],
+      "savedAt": "2026-07-14T12:35:52.047Z",
+      "note": "掃除機と同じ5社構成。暫定URLのため後ほど手動修正可。"
+    },
+    "除湿機": {
+      "articles": [
+        {
+          "id": "68e14c4fd9c5",
+          "site": "ヨドバシ",
+          "title": "ヨドバシ",
+          "url": "https://www.yodobashi.com/category/word/%E9%99%A4%E6%B9%BF%E6%A9%9F/",
+          "note": "暫定URL（カテゴリ検索／メディア導線）。特集記事URLが判明したら手動差し替え。"
+        },
+        {
+          "id": "187a169bee92",
+          "site": "ジョーシン",
+          "title": "ジョーシン",
+          "url": "https://joshinweb.jp/search/?word=%E9%99%A4%E6%B9%BF%E6%A9%9F",
+          "note": "暫定URL（カテゴリ検索／メディア導線）。特集記事URLが判明したら手動差し替え。"
+        },
+        {
+          "id": "fba584213c0f",
+          "site": "ヤマダ",
+          "title": "ヤマダ",
+          "url": "https://www.yamada-denkiweb.com/media/?s=%E9%99%A4%E6%B9%BF%E6%A9%9F",
+          "note": "暫定URL（カテゴリ検索／メディア導線）。特集記事URLが判明したら手動差し替え。"
+        },
+        {
+          "id": "397a58f55c1a",
+          "site": "エディオン",
+          "title": "エディオン",
+          "url": "https://www.edion.com/item_cst_sch.html?KEYWORD=%E9%99%A4%E6%B9%BF%E6%A9%9F",
+          "note": "暫定URL（カテゴリ検索／メディア導線）。特集記事URLが判明したら手動差し替え。"
+        }
+      ],
+      "savedAt": "2026-07-14T12:35:52.047Z",
+      "note": "掃除機と同じ5社構成。暫定URLのため後ほど手動修正可。"
+    },
+    "電気毛布": {
+      "articles": [
+        {
+          "id": "35c2bbf76d0e",
+          "site": "ヨドバシ",
+          "title": "ヨドバシ",
+          "url": "https://www.yodobashi.com/category/word/%E9%9B%BB%E6%B0%97%E6%AF%9B%E5%B8%83/",
+          "note": "暫定URL（カテゴリ検索／メディア導線）。特集記事URLが判明したら手動差し替え。"
+        },
+        {
+          "id": "8b0d10c26bc4",
+          "site": "ジョーシン",
+          "title": "ジョーシン",
+          "url": "https://joshinweb.jp/search/?word=%E9%9B%BB%E6%B0%97%E6%AF%9B%E5%B8%83",
+          "note": "暫定URL（カテゴリ検索／メディア導線）。特集記事URLが判明したら手動差し替え。"
+        },
+        {
+          "id": "a573163ba936",
+          "site": "ヤマダ",
+          "title": "ヤマダ",
+          "url": "https://www.yamada-denkiweb.com/media/?s=%E9%9B%BB%E6%B0%97%E6%AF%9B%E5%B8%83",
+          "note": "暫定URL（カテゴリ検索／メディア導線）。特集記事URLが判明したら手動差し替え。"
+        },
+        {
+          "id": "ed575d0903db",
+          "site": "エディオン",
+          "title": "エディオン",
+          "url": "https://www.edion.com/item_cst_sch.html?KEYWORD=%E9%9B%BB%E6%B0%97%E6%AF%9B%E5%B8%83",
+          "note": "暫定URL（カテゴリ検索／メディア導線）。特集記事URLが判明したら手動差し替え。"
+        }
+      ],
+      "savedAt": "2026-07-14T12:35:52.047Z",
+      "note": "掃除機と同じ5社構成。暫定URLのため後ほど手動修正可。"
+    },
+    "ホットカーペット": {
+      "articles": [
+        {
+          "id": "7963bcc56b89",
+          "site": "ヨドバシ",
+          "title": "ヨドバシ",
+          "url": "https://www.yodobashi.com/category/word/%E3%83%9B%E3%83%83%E3%83%88%E3%82%AB%E3%83%BC%E3%83%9A%E3%83%83%E3%83%88/",
+          "note": "暫定URL（カテゴリ検索／メディア導線）。特集記事URLが判明したら手動差し替え。"
+        },
+        {
+          "id": "85052c055b59",
+          "site": "ジョーシン",
+          "title": "ジョーシン",
+          "url": "https://joshinweb.jp/search/?word=%E3%83%9B%E3%83%83%E3%83%88%E3%82%AB%E3%83%BC%E3%83%9A%E3%83%83%E3%83%88",
+          "note": "暫定URL（カテゴリ検索／メディア導線）。特集記事URLが判明したら手動差し替え。"
+        },
+        {
+          "id": "670601a3f4ed",
+          "site": "ヤマダ",
+          "title": "ヤマダ",
+          "url": "https://www.yamada-denkiweb.com/media/?s=%E3%83%9B%E3%83%83%E3%83%88%E3%82%AB%E3%83%BC%E3%83%9A%E3%83%83%E3%83%88",
+          "note": "暫定URL（カテゴリ検索／メディア導線）。特集記事URLが判明したら手動差し替え。"
+        },
+        {
+          "id": "c5c5ce4e9fd3",
+          "site": "エディオン",
+          "title": "エディオン",
+          "url": "https://www.edion.com/item_cst_sch.html?KEYWORD=%E3%83%9B%E3%83%83%E3%83%88%E3%82%AB%E3%83%BC%E3%83%9A%E3%83%83%E3%83%88",
+          "note": "暫定URL（カテゴリ検索／メディア導線）。特集記事URLが判明したら手動差し替え。"
+        }
+      ],
+      "savedAt": "2026-07-14T12:35:52.047Z",
+      "note": "掃除機と同じ5社構成。暫定URLのため後ほど手動修正可。"
+    },
+    "こたつ": {
+      "articles": [
+        {
+          "id": "e40bec38eee7",
+          "site": "ヨドバシ",
+          "title": "ヨドバシ",
+          "url": "https://www.yodobashi.com/category/word/%E3%81%93%E3%81%9F%E3%81%A4/",
+          "note": "暫定URL（カテゴリ検索／メディア導線）。特集記事URLが判明したら手動差し替え。"
+        },
+        {
+          "id": "3fd089c2c0ac",
+          "site": "ジョーシン",
+          "title": "ジョーシン",
+          "url": "https://joshinweb.jp/search/?word=%E3%81%93%E3%81%9F%E3%81%A4",
+          "note": "暫定URL（カテゴリ検索／メディア導線）。特集記事URLが判明したら手動差し替え。"
+        },
+        {
+          "id": "c94b123629a3",
+          "site": "ヤマダ",
+          "title": "ヤマダ",
+          "url": "https://www.yamada-denkiweb.com/media/?s=%E3%81%93%E3%81%9F%E3%81%A4",
+          "note": "暫定URL（カテゴリ検索／メディア導線）。特集記事URLが判明したら手動差し替え。"
+        },
+        {
+          "id": "e027a9d82b1d",
+          "site": "エディオン",
+          "title": "エディオン",
+          "url": "https://www.edion.com/item_cst_sch.html?KEYWORD=%E3%81%93%E3%81%9F%E3%81%A4",
+          "note": "暫定URL（カテゴリ検索／メディア導線）。特集記事URLが判明したら手動差し替え。"
+        }
+      ],
+      "savedAt": "2026-07-14T12:35:52.047Z",
+      "note": "掃除機と同じ5社構成。暫定URLのため後ほど手動修正可。"
+    },
+    "スマートウォッチ": {
+      "articles": [
+        {
+          "id": "d1c92a8ba3dc",
+          "site": "ヨドバシ",
+          "title": "ヨドバシ",
+          "url": "https://www.yodobashi.com/category/word/%E3%82%B9%E3%83%9E%E3%83%BC%E3%83%88%E3%82%A6%E3%82%A9%E3%83%83%E3%83%81/",
+          "note": "暫定URL（カテゴリ検索／メディア導線）。特集記事URLが判明したら手動差し替え。"
+        },
+        {
+          "id": "3f5bdf294e0f",
+          "site": "ジョーシン",
+          "title": "ジョーシン",
+          "url": "https://joshinweb.jp/search/?word=%E3%82%B9%E3%83%9E%E3%83%BC%E3%83%88%E3%82%A6%E3%82%A9%E3%83%83%E3%83%81",
+          "note": "暫定URL（カテゴリ検索／メディア導線）。特集記事URLが判明したら手動差し替え。"
+        },
+        {
+          "id": "d045a78cf224",
+          "site": "ヤマダ",
+          "title": "ヤマダ",
+          "url": "https://www.yamada-denkiweb.com/media/?s=%E3%82%B9%E3%83%9E%E3%83%BC%E3%83%88%E3%82%A6%E3%82%A9%E3%83%83%E3%83%81",
+          "note": "暫定URL（カテゴリ検索／メディア導線）。特集記事URLが判明したら手動差し替え。"
+        },
+        {
+          "id": "af2849a98bf4",
+          "site": "エディオン",
+          "title": "エディオン",
+          "url": "https://www.edion.com/item_cst_sch.html?KEYWORD=%E3%82%B9%E3%83%9E%E3%83%BC%E3%83%88%E3%82%A6%E3%82%A9%E3%83%83%E3%83%81",
+          "note": "暫定URL（カテゴリ検索／メディア導線）。特集記事URLが判明したら手動差し替え。"
+        }
+      ],
+      "savedAt": "2026-07-14T12:35:52.047Z",
+      "note": "掃除機と同じ5社構成。暫定URLのため後ほど手動修正可。"
+    },
+    "シェーバー": {
+      "articles": [
+        {
+          "id": "10838c1d3398",
+          "site": "ヨドバシ",
+          "title": "ヨドバシ",
+          "url": "https://www.yodobashi.com/category/word/%E3%82%B7%E3%82%A7%E3%83%BC%E3%83%90%E3%83%BC/",
+          "note": "暫定URL（カテゴリ検索／メディア導線）。特集記事URLが判明したら手動差し替え。"
+        },
+        {
+          "id": "dbd10de4b534",
+          "site": "ジョーシン",
+          "title": "ジョーシン",
+          "url": "https://joshinweb.jp/search/?word=%E3%82%B7%E3%82%A7%E3%83%BC%E3%83%90%E3%83%BC",
+          "note": "暫定URL（カテゴリ検索／メディア導線）。特集記事URLが判明したら手動差し替え。"
+        },
+        {
+          "id": "9880617b29fe",
+          "site": "ヤマダ",
+          "title": "ヤマダ",
+          "url": "https://www.yamada-denkiweb.com/media/?s=%E3%82%B7%E3%82%A7%E3%83%BC%E3%83%90%E3%83%BC",
+          "note": "暫定URL（カテゴリ検索／メディア導線）。特集記事URLが判明したら手動差し替え。"
+        },
+        {
+          "id": "389ae4367147",
+          "site": "エディオン",
+          "title": "エディオン",
+          "url": "https://www.edion.com/item_cst_sch.html?KEYWORD=%E3%82%B7%E3%82%A7%E3%83%BC%E3%83%90%E3%83%BC",
+          "note": "暫定URL（カテゴリ検索／メディア導線）。特集記事URLが判明したら手動差し替え。"
+        }
+      ],
+      "savedAt": "2026-07-14T12:35:52.047Z",
+      "note": "掃除機と同じ5社構成。暫定URLのため後ほど手動修正可。"
+    },
+    "電動歯ブラシ": {
+      "articles": [
+        {
+          "id": "353f7a641810",
+          "site": "ヨドバシ",
+          "title": "ヨドバシ",
+          "url": "https://www.yodobashi.com/category/word/%E9%9B%BB%E5%8B%95%E6%AD%AF%E3%83%96%E3%83%A9%E3%82%B7/",
+          "note": "暫定URL（カテゴリ検索／メディア導線）。特集記事URLが判明したら手動差し替え。"
+        },
+        {
+          "id": "2ab9493c049f",
+          "site": "ジョーシン",
+          "title": "ジョーシン",
+          "url": "https://joshinweb.jp/search/?word=%E9%9B%BB%E5%8B%95%E6%AD%AF%E3%83%96%E3%83%A9%E3%82%B7",
+          "note": "暫定URL（カテゴリ検索／メディア導線）。特集記事URLが判明したら手動差し替え。"
+        },
+        {
+          "id": "66a1c9f2262b",
+          "site": "ヤマダ",
+          "title": "ヤマダ",
+          "url": "https://www.yamada-denkiweb.com/media/?s=%E9%9B%BB%E5%8B%95%E6%AD%AF%E3%83%96%E3%83%A9%E3%82%B7",
+          "note": "暫定URL（カテゴリ検索／メディア導線）。特集記事URLが判明したら手動差し替え。"
+        },
+        {
+          "id": "ecba76ead831",
+          "site": "エディオン",
+          "title": "エディオン",
+          "url": "https://www.edion.com/item_cst_sch.html?KEYWORD=%E9%9B%BB%E5%8B%95%E6%AD%AF%E3%83%96%E3%83%A9%E3%82%B7",
+          "note": "暫定URL（カテゴリ検索／メディア導線）。特集記事URLが判明したら手動差し替え。"
+        }
+      ],
+      "savedAt": "2026-07-14T12:35:52.047Z",
+      "note": "掃除機と同じ5社構成。暫定URLのため後ほど手動修正可。"
+    },
+    "ドライヤー": {
+      "articles": [
+        {
+          "id": "ff9036d17289",
+          "site": "ヨドバシ",
+          "title": "ヨドバシ",
+          "url": "https://www.yodobashi.com/category/word/%E3%83%89%E3%83%A9%E3%82%A4%E3%83%A4%E3%83%BC/",
+          "note": "暫定URL（カテゴリ検索／メディア導線）。特集記事URLが判明したら手動差し替え。"
+        },
+        {
+          "id": "4a10a4ca7647",
+          "site": "ジョーシン",
+          "title": "ジョーシン",
+          "url": "https://joshinweb.jp/search/?word=%E3%83%89%E3%83%A9%E3%82%A4%E3%83%A4%E3%83%BC",
+          "note": "暫定URL（カテゴリ検索／メディア導線）。特集記事URLが判明したら手動差し替え。"
+        },
+        {
+          "id": "dc1dff0e7d0a",
+          "site": "ヤマダ",
+          "title": "ヤマダ",
+          "url": "https://www.yamada-denkiweb.com/media/?s=%E3%83%89%E3%83%A9%E3%82%A4%E3%83%A4%E3%83%BC",
+          "note": "暫定URL（カテゴリ検索／メディア導線）。特集記事URLが判明したら手動差し替え。"
+        },
+        {
+          "id": "9a623fa81e83",
+          "site": "エディオン",
+          "title": "エディオン",
+          "url": "https://www.edion.com/item_cst_sch.html?KEYWORD=%E3%83%89%E3%83%A9%E3%82%A4%E3%83%A4%E3%83%BC",
+          "note": "暫定URL（カテゴリ検索／メディア導線）。特集記事URLが判明したら手動差し替え。"
+        }
+      ],
+      "savedAt": "2026-07-14T12:35:52.047Z",
+      "note": "掃除機と同じ5社構成。暫定URLのため後ほど手動修正可。"
+    },
+    "ヘアアイロン": {
+      "articles": [
+        {
+          "id": "7145e4da6046",
+          "site": "ヨドバシ",
+          "title": "ヨドバシ",
+          "url": "https://www.yodobashi.com/category/word/%E3%83%98%E3%82%A2%E3%82%A2%E3%82%A4%E3%83%AD%E3%83%B3/",
+          "note": "暫定URL（カテゴリ検索／メディア導線）。特集記事URLが判明したら手動差し替え。"
+        },
+        {
+          "id": "9530417e9505",
+          "site": "ジョーシン",
+          "title": "ジョーシン",
+          "url": "https://joshinweb.jp/search/?word=%E3%83%98%E3%82%A2%E3%82%A2%E3%82%A4%E3%83%AD%E3%83%B3",
+          "note": "暫定URL（カテゴリ検索／メディア導線）。特集記事URLが判明したら手動差し替え。"
+        },
+        {
+          "id": "1e2756a14def",
+          "site": "ヤマダ",
+          "title": "ヤマダ",
+          "url": "https://www.yamada-denkiweb.com/media/?s=%E3%83%98%E3%82%A2%E3%82%A2%E3%82%A4%E3%83%AD%E3%83%B3",
+          "note": "暫定URL（カテゴリ検索／メディア導線）。特集記事URLが判明したら手動差し替え。"
+        },
+        {
+          "id": "e5bb54e3a803",
+          "site": "エディオン",
+          "title": "エディオン",
+          "url": "https://www.edion.com/item_cst_sch.html?KEYWORD=%E3%83%98%E3%82%A2%E3%82%A2%E3%82%A4%E3%83%AD%E3%83%B3",
+          "note": "暫定URL（カテゴリ検索／メディア導線）。特集記事URLが判明したら手動差し替え。"
+        }
+      ],
+      "savedAt": "2026-07-14T12:35:52.047Z",
+      "note": "掃除機と同じ5社構成。暫定URLのため後ほど手動修正可。"
+    },
+    "マッサージ機": {
+      "articles": [
+        {
+          "id": "471cf5557a12",
+          "site": "ヨドバシ",
+          "title": "ヨドバシ",
+          "url": "https://www.yodobashi.com/category/word/%E3%83%9E%E3%83%83%E3%82%B5%E3%83%BC%E3%82%B8%E6%A9%9F/",
+          "note": "暫定URL（カテゴリ検索／メディア導線）。特集記事URLが判明したら手動差し替え。"
+        },
+        {
+          "id": "70096128ec57",
+          "site": "ジョーシン",
+          "title": "ジョーシン",
+          "url": "https://joshinweb.jp/search/?word=%E3%83%9E%E3%83%83%E3%82%B5%E3%83%BC%E3%82%B8%E6%A9%9F",
+          "note": "暫定URL（カテゴリ検索／メディア導線）。特集記事URLが判明したら手動差し替え。"
+        },
+        {
+          "id": "2a3a65f8b0d6",
+          "site": "ヤマダ",
+          "title": "ヤマダ",
+          "url": "https://www.yamada-denkiweb.com/media/?s=%E3%83%9E%E3%83%83%E3%82%B5%E3%83%BC%E3%82%B8%E6%A9%9F",
+          "note": "暫定URL（カテゴリ検索／メディア導線）。特集記事URLが判明したら手動差し替え。"
+        },
+        {
+          "id": "5d6aa4cccab1",
+          "site": "エディオン",
+          "title": "エディオン",
+          "url": "https://www.edion.com/item_cst_sch.html?KEYWORD=%E3%83%9E%E3%83%83%E3%82%B5%E3%83%BC%E3%82%B8%E6%A9%9F",
+          "note": "暫定URL（カテゴリ検索／メディア導線）。特集記事URLが判明したら手動差し替え。"
+        }
+      ],
+      "savedAt": "2026-07-14T12:35:52.047Z",
+      "note": "掃除機と同じ5社構成。暫定URLのため後ほど手動修正可。"
+    },
+    "テレビ": {
+      "articles": [
+        {
+          "id": "37d551dfac77",
+          "site": "ヨドバシ",
+          "title": "ヨドバシ",
+          "url": "https://www.yodobashi.com/category/word/%E3%83%86%E3%83%AC%E3%83%93/",
+          "note": "暫定URL（カテゴリ検索／メディア導線）。特集記事URLが判明したら手動差し替え。"
+        },
+        {
+          "id": "1b2c19f6d4c4",
+          "site": "ジョーシン",
+          "title": "ジョーシン",
+          "url": "https://joshinweb.jp/search/?word=%E3%83%86%E3%83%AC%E3%83%93",
+          "note": "暫定URL（カテゴリ検索／メディア導線）。特集記事URLが判明したら手動差し替え。"
+        },
+        {
+          "id": "c7025265876e",
+          "site": "ヤマダ",
+          "title": "ヤマダ",
+          "url": "https://www.yamada-denkiweb.com/media/?s=%E3%83%86%E3%83%AC%E3%83%93",
+          "note": "暫定URL（カテゴリ検索／メディア導線）。特集記事URLが判明したら手動差し替え。"
+        },
+        {
+          "id": "0e3d1b8c6a44",
+          "site": "エディオン",
+          "title": "エディオン",
+          "url": "https://www.edion.com/item_cst_sch.html?KEYWORD=%E3%83%86%E3%83%AC%E3%83%93",
+          "note": "暫定URL（カテゴリ検索／メディア導線）。特集記事URLが判明したら手動差し替え。"
+        }
+      ],
+      "savedAt": "2026-07-14T12:35:52.047Z",
+      "note": "掃除機と同じ5社構成。暫定URLのため後ほど手動修正可。"
+    },
+    "レコーダー": {
+      "articles": [
+        {
+          "id": "c012ffe39144",
+          "site": "ヨドバシ",
+          "title": "ヨドバシ",
+          "url": "https://www.yodobashi.com/category/word/%E3%83%AC%E3%82%B3%E3%83%BC%E3%83%80%E3%83%BC/",
+          "note": "暫定URL（カテゴリ検索／メディア導線）。特集記事URLが判明したら手動差し替え。"
+        },
+        {
+          "id": "e37d85860e04",
+          "site": "ジョーシン",
+          "title": "ジョーシン",
+          "url": "https://joshinweb.jp/search/?word=%E3%83%AC%E3%82%B3%E3%83%BC%E3%83%80%E3%83%BC",
+          "note": "暫定URL（カテゴリ検索／メディア導線）。特集記事URLが判明したら手動差し替え。"
+        },
+        {
+          "id": "6ff8053c2913",
+          "site": "ヤマダ",
+          "title": "ヤマダ",
+          "url": "https://www.yamada-denkiweb.com/media/?s=%E3%83%AC%E3%82%B3%E3%83%BC%E3%83%80%E3%83%BC",
+          "note": "暫定URL（カテゴリ検索／メディア導線）。特集記事URLが判明したら手動差し替え。"
+        },
+        {
+          "id": "d1a6d24fd50c",
+          "site": "エディオン",
+          "title": "エディオン",
+          "url": "https://www.edion.com/item_cst_sch.html?KEYWORD=%E3%83%AC%E3%82%B3%E3%83%BC%E3%83%80%E3%83%BC",
+          "note": "暫定URL（カテゴリ検索／メディア導線）。特集記事URLが判明したら手動差し替え。"
+        }
+      ],
+      "savedAt": "2026-07-14T12:35:52.047Z",
+      "note": "掃除機と同じ5社構成。暫定URLのため後ほど手動修正可。"
+    },
+    "パソコン": {
+      "articles": [
+        {
+          "id": "ee3899ebb9ba",
+          "site": "ヨドバシ",
+          "title": "ヨドバシ",
+          "url": "https://www.yodobashi.com/category/word/%E3%83%91%E3%82%BD%E3%82%B3%E3%83%B3/",
+          "note": "暫定URL（カテゴリ検索／メディア導線）。特集記事URLが判明したら手動差し替え。"
+        },
+        {
+          "id": "164c2d373810",
+          "site": "ジョーシン",
+          "title": "ジョーシン",
+          "url": "https://joshinweb.jp/search/?word=%E3%83%91%E3%82%BD%E3%82%B3%E3%83%B3",
+          "note": "暫定URL（カテゴリ検索／メディア導線）。特集記事URLが判明したら手動差し替え。"
+        },
+        {
+          "id": "12032cf5ab50",
+          "site": "ヤマダ",
+          "title": "ヤマダ",
+          "url": "https://www.yamada-denkiweb.com/media/?s=%E3%83%91%E3%82%BD%E3%82%B3%E3%83%B3",
+          "note": "暫定URL（カテゴリ検索／メディア導線）。特集記事URLが判明したら手動差し替え。"
+        },
+        {
+          "id": "4397e233581b",
+          "site": "エディオン",
+          "title": "エディオン",
+          "url": "https://www.edion.com/item_cst_sch.html?KEYWORD=%E3%83%91%E3%82%BD%E3%82%B3%E3%83%B3",
+          "note": "暫定URL（カテゴリ検索／メディア導線）。特集記事URLが判明したら手動差し替え。"
+        }
+      ],
+      "savedAt": "2026-07-14T12:35:52.047Z",
+      "note": "掃除機と同じ5社構成。暫定URLのため後ほど手動修正可。"
+    },
+    "デジタルオーディオプレーヤー": {
+      "articles": [
+        {
+          "id": "f849947d6362",
+          "site": "ヨドバシ",
+          "title": "ヨドバシ",
+          "url": "https://www.yodobashi.com/category/word/%E3%83%87%E3%82%B8%E3%82%BF%E3%83%AB%E3%82%AA%E3%83%BC%E3%83%87%E3%82%A3%E3%82%AA%E3%83%97%E3%83%AC%E3%83%BC%E3%83%A4%E3%83%BC/",
+          "note": "暫定URL（カテゴリ検索／メディア導線）。特集記事URLが判明したら手動差し替え。"
+        },
+        {
+          "id": "bf028248ec3d",
+          "site": "ジョーシン",
+          "title": "ジョーシン",
+          "url": "https://joshinweb.jp/search/?word=%E3%83%87%E3%82%B8%E3%82%BF%E3%83%AB%E3%82%AA%E3%83%BC%E3%83%87%E3%82%A3%E3%82%AA%E3%83%97%E3%83%AC%E3%83%BC%E3%83%A4%E3%83%BC",
+          "note": "暫定URL（カテゴリ検索／メディア導線）。特集記事URLが判明したら手動差し替え。"
+        },
+        {
+          "id": "c9f5f93846c5",
+          "site": "ヤマダ",
+          "title": "ヤマダ",
+          "url": "https://www.yamada-denkiweb.com/media/?s=%E3%83%87%E3%82%B8%E3%82%BF%E3%83%AB%E3%82%AA%E3%83%BC%E3%83%87%E3%82%A3%E3%82%AA%E3%83%97%E3%83%AC%E3%83%BC%E3%83%A4%E3%83%BC",
+          "note": "暫定URL（カテゴリ検索／メディア導線）。特集記事URLが判明したら手動差し替え。"
+        },
+        {
+          "id": "c0d442156667",
+          "site": "エディオン",
+          "title": "エディオン",
+          "url": "https://www.edion.com/item_cst_sch.html?KEYWORD=%E3%83%87%E3%82%B8%E3%82%BF%E3%83%AB%E3%82%AA%E3%83%BC%E3%83%87%E3%82%A3%E3%82%AA%E3%83%97%E3%83%AC%E3%83%BC%E3%83%A4%E3%83%BC",
+          "note": "暫定URL（カテゴリ検索／メディア導線）。特集記事URLが判明したら手動差し替え。"
+        }
+      ],
+      "savedAt": "2026-07-14T12:35:52.047Z",
+      "note": "掃除機と同じ5社構成。暫定URLのため後ほど手動修正可。"
+    },
+    "Bluetoothスピーカー": {
+      "articles": [
+        {
+          "id": "23192d1811da",
+          "site": "ヨドバシ",
+          "title": "ヨドバシ",
+          "url": "https://www.yodobashi.com/category/word/Bluetooth%E3%82%B9%E3%83%94%E3%83%BC%E3%82%AB%E3%83%BC/",
+          "note": "暫定URL（カテゴリ検索／メディア導線）。特集記事URLが判明したら手動差し替え。"
+        },
+        {
+          "id": "8f1a77e33629",
+          "site": "ジョーシン",
+          "title": "ジョーシン",
+          "url": "https://joshinweb.jp/search/?word=Bluetooth%E3%82%B9%E3%83%94%E3%83%BC%E3%82%AB%E3%83%BC",
+          "note": "暫定URL（カテゴリ検索／メディア導線）。特集記事URLが判明したら手動差し替え。"
+        },
+        {
+          "id": "2eb58e5ebefc",
+          "site": "ヤマダ",
+          "title": "ヤマダ",
+          "url": "https://www.yamada-denkiweb.com/media/?s=Bluetooth%E3%82%B9%E3%83%94%E3%83%BC%E3%82%AB%E3%83%BC",
+          "note": "暫定URL（カテゴリ検索／メディア導線）。特集記事URLが判明したら手動差し替え。"
+        },
+        {
+          "id": "fd7f971978ed",
+          "site": "エディオン",
+          "title": "エディオン",
+          "url": "https://www.edion.com/item_cst_sch.html?KEYWORD=Bluetooth%E3%82%B9%E3%83%94%E3%83%BC%E3%82%AB%E3%83%BC",
+          "note": "暫定URL（カテゴリ検索／メディア導線）。特集記事URLが判明したら手動差し替え。"
+        }
+      ],
+      "savedAt": "2026-07-14T12:35:52.047Z",
+      "note": "掃除機と同じ5社構成。暫定URLのため後ほど手動修正可。"
+    },
+    "スポットクーラー": {
+      "articles": [
+        {
+          "id": "544fcd6af494",
+          "site": "ヨドバシ",
+          "title": "ヨドバシ",
+          "url": "https://www.yodobashi.com/category/word/%E3%82%B9%E3%83%9D%E3%83%83%E3%83%88%E3%82%AF%E3%83%BC%E3%83%A9%E3%83%BC/",
+          "note": "暫定URL（カテゴリ検索／メディア導線）。特集記事URLが判明したら手動差し替え。"
+        },
+        {
+          "id": "0c057e8b9c23",
+          "site": "ジョーシン",
+          "title": "ジョーシン",
+          "url": "https://joshinweb.jp/search/?word=%E3%82%B9%E3%83%9D%E3%83%83%E3%83%88%E3%82%AF%E3%83%BC%E3%83%A9%E3%83%BC",
+          "note": "暫定URL（カテゴリ検索／メディア導線）。特集記事URLが判明したら手動差し替え。"
+        },
+        {
+          "id": "93daa60b8353",
+          "site": "ヤマダ",
+          "title": "ヤマダ",
+          "url": "https://www.yamada-denkiweb.com/media/?s=%E3%82%B9%E3%83%9D%E3%83%83%E3%83%88%E3%82%AF%E3%83%BC%E3%83%A9%E3%83%BC",
+          "note": "暫定URL（カテゴリ検索／メディア導線）。特集記事URLが判明したら手動差し替え。"
+        },
+        {
+          "id": "b218d5e6d545",
+          "site": "エディオン",
+          "title": "エディオン",
+          "url": "https://www.edion.com/item_cst_sch.html?KEYWORD=%E3%82%B9%E3%83%9D%E3%83%83%E3%83%88%E3%82%AF%E3%83%BC%E3%83%A9%E3%83%BC",
+          "note": "暫定URL（カテゴリ検索／メディア導線）。特集記事URLが判明したら手動差し替え。"
+        }
+      ],
+      "savedAt": "2026-07-14T12:35:52.047Z",
+      "note": "掃除機と同じ5社構成。暫定URLのため後ほど手動修正可。"
     }
   }
 }
