@@ -1,1331 +1,1254 @@
 {
   "version": 1,
-  "updatedAt": "2026-07-15T06:00:55.040Z",
+  "updatedAt": "2026-07-17T13:14:29Z",
   "categories": {
     "掃除機": {
       "articles": [
         {
-          "id": "0da1db98e9d5",
           "site": "ヨドバシ",
-          "title": "ヨドバシ",
-          "url": "https://www.yodobashi.com/category/6353/6354/6365/6463/h001/",
-          "note": null
+          "category": "掃除機",
+          "url": "https://www.yodobashi.com/category/6353/6354/6365/h001/"
         },
         {
-          "id": "6254e72167ae",
           "site": "ジョーシン",
-          "title": "ジョーシン",
-          "url": "https://joshinweb.jp/kaden/clnr.html?srsltid=AfmBOoo4h9XWF7mx90byErH-ZjuEEvNlNvfrFwTptg9loVuSw8hWcDOs",
-          "note": null
+          "category": "掃除機",
+          "url": "https://joshinweb.jp/kaden/clnr.html"
         },
         {
-          "id": "4a018ffa8f6d",
           "site": "ヤマダ",
-          "title": "ヤマダ",
-          "url": "https://www.yamada-denkiweb.com/media/29021/?srsltid=AfmBOoqhYdZxcjoc7ZCbstf_Acpi_aYXInDy_OFkfBJDHuvHxy6s195q",
-          "note": null
+          "category": "掃除機",
+          "url": "https://www.yamada-denkiweb.com/media/29021/"
         },
         {
-          "id": "ad0e093ded49",
           "site": "エディオン",
-          "title": "エディオン",
-          "url": "https://www.edion.com/special.html?identificationid=osusumecleaner",
-          "note": null
+          "category": "掃除機",
+          "url": "https://www.edion.com/special.html?identificationid=osusumecleaner"
+        },
+        {
+          "site": "ビックカメラ",
+          "category": "掃除機",
+          "url": "https://www.biccamera.com/bc/i/topics/cleaner/index.jsp"
+        },
+        {
+          "site": "ノジマ",
+          "category": "掃除機",
+          "url": "https://www.nojima.co.jp/support/koneta/114592/"
+        },
+        {
+          "site": "価格.comマガジン",
+          "category": "掃除機",
+          "url": "https://kakakumag.com/seikatsu-kaden/?id=22213"
+        },
+        {
+          "site": "SAKIDORI",
+          "category": "掃除機",
+          "url": "https://sakidori.co/article/127108"
         }
       ],
-      "savedAt": "2026-07-13T23:33:05.560Z"
-    },
-    "冷蔵庫": {
-      "articles": [
-        {
-          "id": "c46e1064c792",
-          "site": "ヨドバシ",
-          "title": "ヨドバシ",
-          "url": "https://www.yodobashi.com/category/word/%E5%86%B7%E8%94%B5%E5%BA%AB/",
-          "note": "暫定URL（カテゴリ検索／メディア導線）。特集記事URLが判明したら手動差し替え。"
-        },
-        {
-          "id": "b05531205f9c",
-          "site": "ジョーシン",
-          "title": "ジョーシン",
-          "url": "https://joshinweb.jp/search/?word=%E5%86%B7%E8%94%B5%E5%BA%AB",
-          "note": "暫定URL（カテゴリ検索／メディア導線）。特集記事URLが判明したら手動差し替え。"
-        },
-        {
-          "id": "801b90a8bb5e",
-          "site": "ヤマダ",
-          "title": "ヤマダ",
-          "url": "https://www.yamada-denkiweb.com/media/?s=%E5%86%B7%E8%94%B5%E5%BA%AB",
-          "note": "暫定URL（カテゴリ検索／メディア導線）。特集記事URLが判明したら手動差し替え。"
-        },
-        {
-          "id": "4b3a0ab38aa7",
-          "site": "エディオン",
-          "title": "エディオン",
-          "url": "https://www.edion.com/item_cst_sch.html?KEYWORD=%E5%86%B7%E8%94%B5%E5%BA%AB",
-          "note": "暫定URL（カテゴリ検索／メディア導線）。特集記事URLが判明したら手動差し替え。"
-        }
-      ],
-      "savedAt": "2026-07-14T12:35:52.047Z",
-      "note": "掃除機と同じ5社構成。暫定URLのため後ほど手動修正可。"
-    },
-    "炊飯器": {
-      "articles": [
-        {
-          "id": "71f7e161440b",
-          "site": "ヨドバシ",
-          "title": "ヨドバシ",
-          "url": "https://www.yodobashi.com/category/word/%E7%82%8A%E9%A3%AF%E5%99%A8/",
-          "note": "暫定URL（カテゴリ検索／メディア導線）。特集記事URLが判明したら手動差し替え。"
-        },
-        {
-          "id": "5f3e02d58028",
-          "site": "ジョーシン",
-          "title": "ジョーシン",
-          "url": "https://joshinweb.jp/search/?word=%E7%82%8A%E9%A3%AF%E5%99%A8",
-          "note": "暫定URL（カテゴリ検索／メディア導線）。特集記事URLが判明したら手動差し替え。"
-        },
-        {
-          "id": "9908df41b5ed",
-          "site": "ヤマダ",
-          "title": "ヤマダ",
-          "url": "https://www.yamada-denkiweb.com/media/?s=%E7%82%8A%E9%A3%AF%E5%99%A8",
-          "note": "暫定URL（カテゴリ検索／メディア導線）。特集記事URLが判明したら手動差し替え。"
-        },
-        {
-          "id": "172de729340c",
-          "site": "エディオン",
-          "title": "エディオン",
-          "url": "https://www.edion.com/item_cst_sch.html?KEYWORD=%E7%82%8A%E9%A3%AF%E5%99%A8",
-          "note": "暫定URL（カテゴリ検索／メディア導線）。特集記事URLが判明したら手動差し替え。"
-        }
-      ],
-      "savedAt": "2026-07-14T12:35:52.047Z",
-      "note": "掃除機と同じ5社構成。暫定URLのため後ほど手動修正可。"
-    },
-    "電気ケトル・ポット": {
-      "articles": [
-        {
-          "id": "c96e26901c75",
-          "site": "ヨドバシ",
-          "title": "ヨドバシ",
-          "url": "https://www.yodobashi.com/category/word/%E9%9B%BB%E6%B0%97%E3%82%B1%E3%83%88%E3%83%AB%E3%83%BB%E3%83%9D%E3%83%83%E3%83%88/",
-          "note": "暫定URL（カテゴリ検索／メディア導線）。特集記事URLが判明したら手動差し替え。"
-        },
-        {
-          "id": "3cca3e691eb4",
-          "site": "ジョーシン",
-          "title": "ジョーシン",
-          "url": "https://joshinweb.jp/search/?word=%E9%9B%BB%E6%B0%97%E3%82%B1%E3%83%88%E3%83%AB%E3%83%BB%E3%83%9D%E3%83%83%E3%83%88",
-          "note": "暫定URL（カテゴリ検索／メディア導線）。特集記事URLが判明したら手動差し替え。"
-        },
-        {
-          "id": "f7128c72a7f1",
-          "site": "ヤマダ",
-          "title": "ヤマダ",
-          "url": "https://www.yamada-denkiweb.com/media/?s=%E9%9B%BB%E6%B0%97%E3%82%B1%E3%83%88%E3%83%AB%E3%83%BB%E3%83%9D%E3%83%83%E3%83%88",
-          "note": "暫定URL（カテゴリ検索／メディア導線）。特集記事URLが判明したら手動差し替え。"
-        },
-        {
-          "id": "7e2c87c5e99e",
-          "site": "エディオン",
-          "title": "エディオン",
-          "url": "https://www.edion.com/item_cst_sch.html?KEYWORD=%E9%9B%BB%E6%B0%97%E3%82%B1%E3%83%88%E3%83%AB%E3%83%BB%E3%83%9D%E3%83%83%E3%83%88",
-          "note": "暫定URL（カテゴリ検索／メディア導線）。特集記事URLが判明したら手動差し替え。"
-        }
-      ],
-      "savedAt": "2026-07-14T12:35:52.047Z",
-      "note": "掃除機と同じ5社構成。暫定URLのため後ほど手動修正可。"
-    },
-    "コーヒーメーカー": {
-      "articles": [
-        {
-          "id": "c1263be0c9e3",
-          "site": "ヨドバシ",
-          "title": "ヨドバシ",
-          "url": "https://www.yodobashi.com/category/word/%E3%82%B3%E3%83%BC%E3%83%92%E3%83%BC%E3%83%A1%E3%83%BC%E3%82%AB%E3%83%BC/",
-          "note": "暫定URL（カテゴリ検索／メディア導線）。特集記事URLが判明したら手動差し替え。"
-        },
-        {
-          "id": "95760b9791b1",
-          "site": "ジョーシン",
-          "title": "ジョーシン",
-          "url": "https://joshinweb.jp/search/?word=%E3%82%B3%E3%83%BC%E3%83%92%E3%83%BC%E3%83%A1%E3%83%BC%E3%82%AB%E3%83%BC",
-          "note": "暫定URL（カテゴリ検索／メディア導線）。特集記事URLが判明したら手動差し替え。"
-        },
-        {
-          "id": "1b07b76d9f6e",
-          "site": "ヤマダ",
-          "title": "ヤマダ",
-          "url": "https://www.yamada-denkiweb.com/media/?s=%E3%82%B3%E3%83%BC%E3%83%92%E3%83%BC%E3%83%A1%E3%83%BC%E3%82%AB%E3%83%BC",
-          "note": "暫定URL（カテゴリ検索／メディア導線）。特集記事URLが判明したら手動差し替え。"
-        },
-        {
-          "id": "b53ff94f3a6a",
-          "site": "エディオン",
-          "title": "エディオン",
-          "url": "https://www.edion.com/item_cst_sch.html?KEYWORD=%E3%82%B3%E3%83%BC%E3%83%92%E3%83%BC%E3%83%A1%E3%83%BC%E3%82%AB%E3%83%BC",
-          "note": "暫定URL（カテゴリ検索／メディア導線）。特集記事URLが判明したら手動差し替え。"
-        }
-      ],
-      "savedAt": "2026-07-14T12:35:52.047Z",
-      "note": "掃除機と同じ5社構成。暫定URLのため後ほど手動修正可。"
-    },
-    "ホットプレート": {
-      "articles": [
-        {
-          "id": "e932d00b5ef3",
-          "site": "ヨドバシ",
-          "title": "ヨドバシ",
-          "url": "https://www.yodobashi.com/category/word/%E3%83%9B%E3%83%83%E3%83%88%E3%83%97%E3%83%AC%E3%83%BC%E3%83%88/",
-          "note": "暫定URL（カテゴリ検索／メディア導線）。特集記事URLが判明したら手動差し替え。"
-        },
-        {
-          "id": "f270b9018fa1",
-          "site": "ジョーシン",
-          "title": "ジョーシン",
-          "url": "https://joshinweb.jp/search/?word=%E3%83%9B%E3%83%83%E3%83%88%E3%83%97%E3%83%AC%E3%83%BC%E3%83%88",
-          "note": "暫定URL（カテゴリ検索／メディア導線）。特集記事URLが判明したら手動差し替え。"
-        },
-        {
-          "id": "48fbea5a41a5",
-          "site": "ヤマダ",
-          "title": "ヤマダ",
-          "url": "https://www.yamada-denkiweb.com/media/?s=%E3%83%9B%E3%83%83%E3%83%88%E3%83%97%E3%83%AC%E3%83%BC%E3%83%88",
-          "note": "暫定URL（カテゴリ検索／メディア導線）。特集記事URLが判明したら手動差し替え。"
-        },
-        {
-          "id": "9e560da0280f",
-          "site": "エディオン",
-          "title": "エディオン",
-          "url": "https://www.edion.com/item_cst_sch.html?KEYWORD=%E3%83%9B%E3%83%83%E3%83%88%E3%83%97%E3%83%AC%E3%83%BC%E3%83%88",
-          "note": "暫定URL（カテゴリ検索／メディア導線）。特集記事URLが判明したら手動差し替え。"
-        }
-      ],
-      "savedAt": "2026-07-14T12:35:52.047Z",
-      "note": "掃除機と同じ5社構成。暫定URLのため後ほど手動修正可。"
-    },
-    "真空保温調理器": {
-      "articles": [
-        {
-          "id": "7123705276d8",
-          "site": "ヨドバシ",
-          "title": "ヨドバシ",
-          "url": "https://www.yodobashi.com/category/word/%E7%9C%9F%E7%A9%BA%E4%BF%9D%E6%B8%A9%E8%AA%BF%E7%90%86%E5%99%A8/",
-          "note": "暫定URL（カテゴリ検索／メディア導線）。特集記事URLが判明したら手動差し替え。"
-        },
-        {
-          "id": "e4924b828a88",
-          "site": "ジョーシン",
-          "title": "ジョーシン",
-          "url": "https://joshinweb.jp/search/?word=%E7%9C%9F%E7%A9%BA%E4%BF%9D%E6%B8%A9%E8%AA%BF%E7%90%86%E5%99%A8",
-          "note": "暫定URL（カテゴリ検索／メディア導線）。特集記事URLが判明したら手動差し替え。"
-        },
-        {
-          "id": "d52bd7192d46",
-          "site": "ヤマダ",
-          "title": "ヤマダ",
-          "url": "https://www.yamada-denkiweb.com/media/?s=%E7%9C%9F%E7%A9%BA%E4%BF%9D%E6%B8%A9%E8%AA%BF%E7%90%86%E5%99%A8",
-          "note": "暫定URL（カテゴリ検索／メディア導線）。特集記事URLが判明したら手動差し替え。"
-        },
-        {
-          "id": "4b758702a645",
-          "site": "エディオン",
-          "title": "エディオン",
-          "url": "https://www.edion.com/item_cst_sch.html?KEYWORD=%E7%9C%9F%E7%A9%BA%E4%BF%9D%E6%B8%A9%E8%AA%BF%E7%90%86%E5%99%A8",
-          "note": "暫定URL（カテゴリ検索／メディア導線）。特集記事URLが判明したら手動差し替え。"
-        }
-      ],
-      "savedAt": "2026-07-14T12:35:52.047Z",
-      "note": "掃除機と同じ5社構成。暫定URLのため後ほど手動修正可。"
-    },
-    "浄水器・整水器": {
-      "articles": [
-        {
-          "id": "103198d8e930",
-          "site": "ヨドバシ",
-          "title": "ヨドバシ",
-          "url": "https://www.yodobashi.com/category/word/%E6%B5%84%E6%B0%B4%E5%99%A8%E3%83%BB%E6%95%B4%E6%B0%B4%E5%99%A8/",
-          "note": "暫定URL（カテゴリ検索／メディア導線）。特集記事URLが判明したら手動差し替え。"
-        },
-        {
-          "id": "4523b94db075",
-          "site": "ジョーシン",
-          "title": "ジョーシン",
-          "url": "https://joshinweb.jp/search/?word=%E6%B5%84%E6%B0%B4%E5%99%A8%E3%83%BB%E6%95%B4%E6%B0%B4%E5%99%A8",
-          "note": "暫定URL（カテゴリ検索／メディア導線）。特集記事URLが判明したら手動差し替え。"
-        },
-        {
-          "id": "ce16c6352f70",
-          "site": "ヤマダ",
-          "title": "ヤマダ",
-          "url": "https://www.yamada-denkiweb.com/media/?s=%E6%B5%84%E6%B0%B4%E5%99%A8%E3%83%BB%E6%95%B4%E6%B0%B4%E5%99%A8",
-          "note": "暫定URL（カテゴリ検索／メディア導線）。特集記事URLが判明したら手動差し替え。"
-        },
-        {
-          "id": "d4a93e825c30",
-          "site": "エディオン",
-          "title": "エディオン",
-          "url": "https://www.edion.com/item_cst_sch.html?KEYWORD=%E6%B5%84%E6%B0%B4%E5%99%A8%E3%83%BB%E6%95%B4%E6%B0%B4%E5%99%A8",
-          "note": "暫定URL（カテゴリ検索／メディア導線）。特集記事URLが判明したら手動差し替え。"
-        }
-      ],
-      "savedAt": "2026-07-14T12:35:52.047Z",
-      "note": "掃除機と同じ5社構成。暫定URLのため後ほど手動修正可。"
-    },
-    "食器洗い機": {
-      "articles": [
-        {
-          "id": "34e327061ecd",
-          "site": "ヨドバシ",
-          "title": "ヨドバシ",
-          "url": "https://www.yodobashi.com/category/word/%E9%A3%9F%E5%99%A8%E6%B4%97%E3%81%84%E6%A9%9F/",
-          "note": "暫定URL（カテゴリ検索／メディア導線）。特集記事URLが判明したら手動差し替え。"
-        },
-        {
-          "id": "9a07629d3d7b",
-          "site": "ジョーシン",
-          "title": "ジョーシン",
-          "url": "https://joshinweb.jp/search/?word=%E9%A3%9F%E5%99%A8%E6%B4%97%E3%81%84%E6%A9%9F",
-          "note": "暫定URL（カテゴリ検索／メディア導線）。特集記事URLが判明したら手動差し替え。"
-        },
-        {
-          "id": "bd5df364f247",
-          "site": "ヤマダ",
-          "title": "ヤマダ",
-          "url": "https://www.yamada-denkiweb.com/media/?s=%E9%A3%9F%E5%99%A8%E6%B4%97%E3%81%84%E6%A9%9F",
-          "note": "暫定URL（カテゴリ検索／メディア導線）。特集記事URLが判明したら手動差し替え。"
-        },
-        {
-          "id": "0a42f5f20e38",
-          "site": "エディオン",
-          "title": "エディオン",
-          "url": "https://www.edion.com/item_cst_sch.html?KEYWORD=%E9%A3%9F%E5%99%A8%E6%B4%97%E3%81%84%E6%A9%9F",
-          "note": "暫定URL（カテゴリ検索／メディア導線）。特集記事URLが判明したら手動差し替え。"
-        }
-      ],
-      "savedAt": "2026-07-14T12:35:52.047Z",
-      "note": "掃除機と同じ5社構成。暫定URLのため後ほど手動修正可。"
-    },
-    "スチームクリーナー": {
-      "articles": [
-        {
-          "id": "3cdaa19d067f",
-          "site": "ヨドバシ",
-          "title": "ヨドバシ",
-          "url": "https://www.yodobashi.com/category/word/%E3%82%B9%E3%83%81%E3%83%BC%E3%83%A0%E3%82%AF%E3%83%AA%E3%83%BC%E3%83%8A%E3%83%BC/",
-          "note": "暫定URL（カテゴリ検索／メディア導線）。特集記事URLが判明したら手動差し替え。"
-        },
-        {
-          "id": "d575c7362dd1",
-          "site": "ジョーシン",
-          "title": "ジョーシン",
-          "url": "https://joshinweb.jp/search/?word=%E3%82%B9%E3%83%81%E3%83%BC%E3%83%A0%E3%82%AF%E3%83%AA%E3%83%BC%E3%83%8A%E3%83%BC",
-          "note": "暫定URL（カテゴリ検索／メディア導線）。特集記事URLが判明したら手動差し替え。"
-        },
-        {
-          "id": "397f469fb9a3",
-          "site": "ヤマダ",
-          "title": "ヤマダ",
-          "url": "https://www.yamada-denkiweb.com/media/?s=%E3%82%B9%E3%83%81%E3%83%BC%E3%83%A0%E3%82%AF%E3%83%AA%E3%83%BC%E3%83%8A%E3%83%BC",
-          "note": "暫定URL（カテゴリ検索／メディア導線）。特集記事URLが判明したら手動差し替え。"
-        },
-        {
-          "id": "3b4cc60805d8",
-          "site": "エディオン",
-          "title": "エディオン",
-          "url": "https://www.edion.com/item_cst_sch.html?KEYWORD=%E3%82%B9%E3%83%81%E3%83%BC%E3%83%A0%E3%82%AF%E3%83%AA%E3%83%BC%E3%83%8A%E3%83%BC",
-          "note": "暫定URL（カテゴリ検索／メディア導線）。特集記事URLが判明したら手動差し替え。"
-        }
-      ],
-      "savedAt": "2026-07-14T12:35:52.047Z",
-      "note": "掃除機と同じ5社構成。暫定URLのため後ほど手動修正可。"
-    },
-    "アイロン": {
-      "articles": [
-        {
-          "id": "c1de8c7a2eaf",
-          "site": "ヨドバシ",
-          "title": "ヨドバシ",
-          "url": "https://www.yodobashi.com/category/word/%E3%82%A2%E3%82%A4%E3%83%AD%E3%83%B3/",
-          "note": "暫定URL（カテゴリ検索／メディア導線）。特集記事URLが判明したら手動差し替え。"
-        },
-        {
-          "id": "5682c63166a3",
-          "site": "ジョーシン",
-          "title": "ジョーシン",
-          "url": "https://joshinweb.jp/search/?word=%E3%82%A2%E3%82%A4%E3%83%AD%E3%83%B3",
-          "note": "暫定URL（カテゴリ検索／メディア導線）。特集記事URLが判明したら手動差し替え。"
-        },
-        {
-          "id": "7f40c10349fd",
-          "site": "ヤマダ",
-          "title": "ヤマダ",
-          "url": "https://www.yamada-denkiweb.com/media/?s=%E3%82%A2%E3%82%A4%E3%83%AD%E3%83%B3",
-          "note": "暫定URL（カテゴリ検索／メディア導線）。特集記事URLが判明したら手動差し替え。"
-        },
-        {
-          "id": "e73243357366",
-          "site": "エディオン",
-          "title": "エディオン",
-          "url": "https://www.edion.com/item_cst_sch.html?KEYWORD=%E3%82%A2%E3%82%A4%E3%83%AD%E3%83%B3",
-          "note": "暫定URL（カテゴリ検索／メディア導線）。特集記事URLが判明したら手動差し替え。"
-        }
-      ],
-      "savedAt": "2026-07-14T12:35:52.047Z",
-      "note": "掃除機と同じ5社構成。暫定URLのため後ほど手動修正可。"
-    },
-    "ミシン": {
-      "articles": [
-        {
-          "id": "e3cf286029ec",
-          "site": "ヨドバシ",
-          "title": "ヨドバシ",
-          "url": "https://www.yodobashi.com/category/word/%E3%83%9F%E3%82%B7%E3%83%B3/",
-          "note": "暫定URL（カテゴリ検索／メディア導線）。特集記事URLが判明したら手動差し替え。"
-        },
-        {
-          "id": "889d3aec753c",
-          "site": "ジョーシン",
-          "title": "ジョーシン",
-          "url": "https://joshinweb.jp/search/?word=%E3%83%9F%E3%82%B7%E3%83%B3",
-          "note": "暫定URL（カテゴリ検索／メディア導線）。特集記事URLが判明したら手動差し替え。"
-        },
-        {
-          "id": "8e357511b909",
-          "site": "ヤマダ",
-          "title": "ヤマダ",
-          "url": "https://www.yamada-denkiweb.com/media/?s=%E3%83%9F%E3%82%B7%E3%83%B3",
-          "note": "暫定URL（カテゴリ検索／メディア導線）。特集記事URLが判明したら手動差し替え。"
-        },
-        {
-          "id": "80268a037fbb",
-          "site": "エディオン",
-          "title": "エディオン",
-          "url": "https://www.edion.com/item_cst_sch.html?KEYWORD=%E3%83%9F%E3%82%B7%E3%83%B3",
-          "note": "暫定URL（カテゴリ検索／メディア導線）。特集記事URLが判明したら手動差し替え。"
-        }
-      ],
-      "savedAt": "2026-07-14T12:35:52.047Z",
-      "note": "掃除機と同じ5社構成。暫定URLのため後ほど手動修正可。"
-    },
-    "温水洗浄便座": {
-      "articles": [
-        {
-          "id": "93b721d622f8",
-          "site": "ヨドバシ",
-          "title": "ヨドバシ",
-          "url": "https://www.yodobashi.com/category/word/%E6%B8%A9%E6%B0%B4%E6%B4%97%E6%B5%84%E4%BE%BF%E5%BA%A7/",
-          "note": "暫定URL（カテゴリ検索／メディア導線）。特集記事URLが判明したら手動差し替え。"
-        },
-        {
-          "id": "dc8e9dfa5511",
-          "site": "ジョーシン",
-          "title": "ジョーシン",
-          "url": "https://joshinweb.jp/search/?word=%E6%B8%A9%E6%B0%B4%E6%B4%97%E6%B5%84%E4%BE%BF%E5%BA%A7",
-          "note": "暫定URL（カテゴリ検索／メディア導線）。特集記事URLが判明したら手動差し替え。"
-        },
-        {
-          "id": "a001f662bb02",
-          "site": "ヤマダ",
-          "title": "ヤマダ",
-          "url": "https://www.yamada-denkiweb.com/media/?s=%E6%B8%A9%E6%B0%B4%E6%B4%97%E6%B5%84%E4%BE%BF%E5%BA%A7",
-          "note": "暫定URL（カテゴリ検索／メディア導線）。特集記事URLが判明したら手動差し替え。"
-        },
-        {
-          "id": "edacda510b3e",
-          "site": "エディオン",
-          "title": "エディオン",
-          "url": "https://www.edion.com/item_cst_sch.html?KEYWORD=%E6%B8%A9%E6%B0%B4%E6%B4%97%E6%B5%84%E4%BE%BF%E5%BA%A7",
-          "note": "暫定URL（カテゴリ検索／メディア導線）。特集記事URLが判明したら手動差し替え。"
-        }
-      ],
-      "savedAt": "2026-07-14T12:35:52.047Z",
-      "note": "掃除機と同じ5社構成。暫定URLのため後ほど手動修正可。"
-    },
-    "換気扇": {
-      "articles": [
-        {
-          "id": "2a923ef8c266",
-          "site": "ヨドバシ",
-          "title": "ヨドバシ",
-          "url": "https://www.yodobashi.com/category/word/%E6%8F%9B%E6%B0%97%E6%89%87/",
-          "note": "暫定URL（カテゴリ検索／メディア導線）。特集記事URLが判明したら手動差し替え。"
-        },
-        {
-          "id": "1bb4a54cd7f5",
-          "site": "ジョーシン",
-          "title": "ジョーシン",
-          "url": "https://joshinweb.jp/search/?word=%E6%8F%9B%E6%B0%97%E6%89%87",
-          "note": "暫定URL（カテゴリ検索／メディア導線）。特集記事URLが判明したら手動差し替え。"
-        },
-        {
-          "id": "87351106d857",
-          "site": "ヤマダ",
-          "title": "ヤマダ",
-          "url": "https://www.yamada-denkiweb.com/media/?s=%E6%8F%9B%E6%B0%97%E6%89%87",
-          "note": "暫定URL（カテゴリ検索／メディア導線）。特集記事URLが判明したら手動差し替え。"
-        },
-        {
-          "id": "f26f7af79ddc",
-          "site": "エディオン",
-          "title": "エディオン",
-          "url": "https://www.edion.com/item_cst_sch.html?KEYWORD=%E6%8F%9B%E6%B0%97%E6%89%87",
-          "note": "暫定URL（カテゴリ検索／メディア導線）。特集記事URLが判明したら手動差し替え。"
-        }
-      ],
-      "savedAt": "2026-07-14T12:35:52.047Z",
-      "note": "掃除機と同じ5社構成。暫定URLのため後ほど手動修正可。"
-    },
-    "エアコン": {
-      "articles": [
-        {
-          "id": "8f34401556e1",
-          "site": "ヨドバシ",
-          "title": "ヨドバシ",
-          "url": "https://www.yodobashi.com/category/word/%E3%82%A8%E3%82%A2%E3%82%B3%E3%83%B3/",
-          "note": "暫定URL（カテゴリ検索／メディア導線）。特集記事URLが判明したら手動差し替え。"
-        },
-        {
-          "id": "4646d4befb90",
-          "site": "ジョーシン",
-          "title": "ジョーシン",
-          "url": "https://joshinweb.jp/search/?word=%E3%82%A8%E3%82%A2%E3%82%B3%E3%83%B3",
-          "note": "暫定URL（カテゴリ検索／メディア導線）。特集記事URLが判明したら手動差し替え。"
-        },
-        {
-          "id": "0e43ebb08bd9",
-          "site": "ヤマダ",
-          "title": "ヤマダ",
-          "url": "https://www.yamada-denkiweb.com/media/?s=%E3%82%A8%E3%82%A2%E3%82%B3%E3%83%B3",
-          "note": "暫定URL（カテゴリ検索／メディア導線）。特集記事URLが判明したら手動差し替え。"
-        },
-        {
-          "id": "507047eab6fd",
-          "site": "エディオン",
-          "title": "エディオン",
-          "url": "https://www.edion.com/item_cst_sch.html?KEYWORD=%E3%82%A8%E3%82%A2%E3%82%B3%E3%83%B3",
-          "note": "暫定URL（カテゴリ検索／メディア導線）。特集記事URLが判明したら手動差し替え。"
-        }
-      ],
-      "savedAt": "2026-07-14T12:35:52.047Z",
-      "note": "掃除機と同じ5社構成。暫定URLのため後ほど手動修正可。"
-    },
-    "加湿空気清浄機": {
-      "articles": [
-        {
-          "id": "8438d39d534d",
-          "site": "ヨドバシ",
-          "title": "ヨドバシ",
-          "url": "https://www.yodobashi.com/category/word/%E5%8A%A0%E6%B9%BF%E7%A9%BA%E6%B0%97%E6%B8%85%E6%B5%84%E6%A9%9F/",
-          "note": "暫定URL（カテゴリ検索／メディア導線）。特集記事URLが判明したら手動差し替え。"
-        },
-        {
-          "id": "1c95733e7f92",
-          "site": "ジョーシン",
-          "title": "ジョーシン",
-          "url": "https://joshinweb.jp/search/?word=%E5%8A%A0%E6%B9%BF%E7%A9%BA%E6%B0%97%E6%B8%85%E6%B5%84%E6%A9%9F",
-          "note": "暫定URL（カテゴリ検索／メディア導線）。特集記事URLが判明したら手動差し替え。"
-        },
-        {
-          "id": "d33738c9286a",
-          "site": "ヤマダ",
-          "title": "ヤマダ",
-          "url": "https://www.yamada-denkiweb.com/media/?s=%E5%8A%A0%E6%B9%BF%E7%A9%BA%E6%B0%97%E6%B8%85%E6%B5%84%E6%A9%9F",
-          "note": "暫定URL（カテゴリ検索／メディア導線）。特集記事URLが判明したら手動差し替え。"
-        },
-        {
-          "id": "7a9260e6f03e",
-          "site": "エディオン",
-          "title": "エディオン",
-          "url": "https://www.edion.com/item_cst_sch.html?KEYWORD=%E5%8A%A0%E6%B9%BF%E7%A9%BA%E6%B0%97%E6%B8%85%E6%B5%84%E6%A9%9F",
-          "note": "暫定URL（カテゴリ検索／メディア導線）。特集記事URLが判明したら手動差し替え。"
-        }
-      ],
-      "savedAt": "2026-07-14T12:35:52.047Z",
-      "note": "掃除機と同じ5社構成。暫定URLのため後ほど手動修正可。"
-    },
-    "空気清浄機": {
-      "articles": [
-        {
-          "id": "575c11b112f5",
-          "site": "ヨドバシ",
-          "title": "ヨドバシ",
-          "url": "https://www.yodobashi.com/category/word/%E7%A9%BA%E6%B0%97%E6%B8%85%E6%B5%84%E6%A9%9F/",
-          "note": "暫定URL（カテゴリ検索／メディア導線）。特集記事URLが判明したら手動差し替え。"
-        },
-        {
-          "id": "a81ef988320a",
-          "site": "ジョーシン",
-          "title": "ジョーシン",
-          "url": "https://joshinweb.jp/search/?word=%E7%A9%BA%E6%B0%97%E6%B8%85%E6%B5%84%E6%A9%9F",
-          "note": "暫定URL（カテゴリ検索／メディア導線）。特集記事URLが判明したら手動差し替え。"
-        },
-        {
-          "id": "88ecb2ca80d4",
-          "site": "ヤマダ",
-          "title": "ヤマダ",
-          "url": "https://www.yamada-denkiweb.com/media/?s=%E7%A9%BA%E6%B0%97%E6%B8%85%E6%B5%84%E6%A9%9F",
-          "note": "暫定URL（カテゴリ検索／メディア導線）。特集記事URLが判明したら手動差し替え。"
-        },
-        {
-          "id": "57fc963ec435",
-          "site": "エディオン",
-          "title": "エディオン",
-          "url": "https://www.edion.com/item_cst_sch.html?KEYWORD=%E7%A9%BA%E6%B0%97%E6%B8%85%E6%B5%84%E6%A9%9F",
-          "note": "暫定URL（カテゴリ検索／メディア導線）。特集記事URLが判明したら手動差し替え。"
-        }
-      ],
-      "savedAt": "2026-07-14T12:35:52.047Z",
-      "note": "掃除機と同じ5社構成。暫定URLのため後ほど手動修正可。"
-    },
-    "扇風機": {
-      "articles": [
-        {
-          "id": "14a804f8ee1a",
-          "site": "ヨドバシ",
-          "title": "ヨドバシ",
-          "url": "https://www.yodobashi.com/category/word/%E6%89%87%E9%A2%A8%E6%A9%9F/",
-          "note": "暫定URL（カテゴリ検索／メディア導線）。特集記事URLが判明したら手動差し替え。"
-        },
-        {
-          "id": "002170b1bd3d",
-          "site": "ジョーシン",
-          "title": "ジョーシン",
-          "url": "https://joshinweb.jp/search/?word=%E6%89%87%E9%A2%A8%E6%A9%9F",
-          "note": "暫定URL（カテゴリ検索／メディア導線）。特集記事URLが判明したら手動差し替え。"
-        },
-        {
-          "id": "6d614e9896a4",
-          "site": "ヤマダ",
-          "title": "ヤマダ",
-          "url": "https://www.yamada-denkiweb.com/media/?s=%E6%89%87%E9%A2%A8%E6%A9%9F",
-          "note": "暫定URL（カテゴリ検索／メディア導線）。特集記事URLが判明したら手動差し替え。"
-        },
-        {
-          "id": "bf4c9fd51075",
-          "site": "エディオン",
-          "title": "エディオン",
-          "url": "https://www.edion.com/item_cst_sch.html?KEYWORD=%E6%89%87%E9%A2%A8%E6%A9%9F",
-          "note": "暫定URL（カテゴリ検索／メディア導線）。特集記事URLが判明したら手動差し替え。"
-        }
-      ],
-      "savedAt": "2026-07-14T12:35:52.047Z",
-      "note": "掃除機と同じ5社構成。暫定URLのため後ほど手動修正可。"
-    },
-    "リビング扇風機": {
-      "articles": [
-        {
-          "id": "56cdfbbf1886",
-          "site": "ヨドバシ",
-          "title": "ヨドバシ",
-          "url": "https://www.yodobashi.com/category/word/%E3%83%AA%E3%83%93%E3%83%B3%E3%82%B0%E6%89%87%E9%A2%A8%E6%A9%9F/",
-          "note": "暫定URL（カテゴリ検索／メディア導線）。特集記事URLが判明したら手動差し替え。"
-        },
-        {
-          "id": "df1207fb2339",
-          "site": "ジョーシン",
-          "title": "ジョーシン",
-          "url": "https://joshinweb.jp/search/?word=%E3%83%AA%E3%83%93%E3%83%B3%E3%82%B0%E6%89%87%E9%A2%A8%E6%A9%9F",
-          "note": "暫定URL（カテゴリ検索／メディア導線）。特集記事URLが判明したら手動差し替え。"
-        },
-        {
-          "id": "ff8a108b3ef9",
-          "site": "ヤマダ",
-          "title": "ヤマダ",
-          "url": "https://www.yamada-denkiweb.com/media/?s=%E3%83%AA%E3%83%93%E3%83%B3%E3%82%B0%E6%89%87%E9%A2%A8%E6%A9%9F",
-          "note": "暫定URL（カテゴリ検索／メディア導線）。特集記事URLが判明したら手動差し替え。"
-        },
-        {
-          "id": "8c027432001c",
-          "site": "エディオン",
-          "title": "エディオン",
-          "url": "https://www.edion.com/item_cst_sch.html?KEYWORD=%E3%83%AA%E3%83%93%E3%83%B3%E3%82%B0%E6%89%87%E9%A2%A8%E6%A9%9F",
-          "note": "暫定URL（カテゴリ検索／メディア導線）。特集記事URLが判明したら手動差し替え。"
-        }
-      ],
-      "savedAt": "2026-07-14T12:35:52.047Z",
-      "note": "掃除機と同じ5社構成。暫定URLのため後ほど手動修正可。"
-    },
-    "タワーファン": {
-      "articles": [
-        {
-          "id": "98cb9a5d5c63",
-          "site": "ヨドバシ",
-          "title": "ヨドバシ",
-          "url": "https://www.yodobashi.com/category/word/%E3%82%BF%E3%83%AF%E3%83%BC%E3%83%95%E3%82%A1%E3%83%B3/",
-          "note": "暫定URL（カテゴリ検索／メディア導線）。特集記事URLが判明したら手動差し替え。"
-        },
-        {
-          "id": "43cf648b9ad3",
-          "site": "ジョーシン",
-          "title": "ジョーシン",
-          "url": "https://joshinweb.jp/search/?word=%E3%82%BF%E3%83%AF%E3%83%BC%E3%83%95%E3%82%A1%E3%83%B3",
-          "note": "暫定URL（カテゴリ検索／メディア導線）。特集記事URLが判明したら手動差し替え。"
-        },
-        {
-          "id": "c11355ab769f",
-          "site": "ヤマダ",
-          "title": "ヤマダ",
-          "url": "https://www.yamada-denkiweb.com/media/?s=%E3%82%BF%E3%83%AF%E3%83%BC%E3%83%95%E3%82%A1%E3%83%B3",
-          "note": "暫定URL（カテゴリ検索／メディア導線）。特集記事URLが判明したら手動差し替え。"
-        },
-        {
-          "id": "bc3ee1c5c52d",
-          "site": "エディオン",
-          "title": "エディオン",
-          "url": "https://www.edion.com/item_cst_sch.html?KEYWORD=%E3%82%BF%E3%83%AF%E3%83%BC%E3%83%95%E3%82%A1%E3%83%B3",
-          "note": "暫定URL（カテゴリ検索／メディア導線）。特集記事URLが判明したら手動差し替え。"
-        }
-      ],
-      "savedAt": "2026-07-14T12:35:52.047Z",
-      "note": "掃除機と同じ5社構成。暫定URLのため後ほど手動修正可。"
-    },
-    "サーキュレーター": {
-      "articles": [
-        {
-          "id": "7b306e025d15",
-          "site": "ヨドバシ",
-          "title": "ヨドバシ",
-          "url": "https://www.yodobashi.com/category/word/%E3%82%B5%E3%83%BC%E3%82%AD%E3%83%A5%E3%83%AC%E3%83%BC%E3%82%BF%E3%83%BC/",
-          "note": "暫定URL（カテゴリ検索／メディア導線）。特集記事URLが判明したら手動差し替え。"
-        },
-        {
-          "id": "43334599f53e",
-          "site": "ジョーシン",
-          "title": "ジョーシン",
-          "url": "https://joshinweb.jp/search/?word=%E3%82%B5%E3%83%BC%E3%82%AD%E3%83%A5%E3%83%AC%E3%83%BC%E3%82%BF%E3%83%BC",
-          "note": "暫定URL（カテゴリ検索／メディア導線）。特集記事URLが判明したら手動差し替え。"
-        },
-        {
-          "id": "42b28e56cd7a",
-          "site": "ヤマダ",
-          "title": "ヤマダ",
-          "url": "https://www.yamada-denkiweb.com/media/?s=%E3%82%B5%E3%83%BC%E3%82%AD%E3%83%A5%E3%83%AC%E3%83%BC%E3%82%BF%E3%83%BC",
-          "note": "暫定URL（カテゴリ検索／メディア導線）。特集記事URLが判明したら手動差し替え。"
-        },
-        {
-          "id": "283bfb697707",
-          "site": "エディオン",
-          "title": "エディオン",
-          "url": "https://www.edion.com/item_cst_sch.html?KEYWORD=%E3%82%B5%E3%83%BC%E3%82%AD%E3%83%A5%E3%83%AC%E3%83%BC%E3%82%BF%E3%83%BC",
-          "note": "暫定URL（カテゴリ検索／メディア導線）。特集記事URLが判明したら手動差し替え。"
-        }
-      ],
-      "savedAt": "2026-07-14T12:35:52.047Z",
-      "note": "掃除機と同じ5社構成。暫定URLのため後ほど手動修正可。"
-    },
-    "ハンディファン": {
-      "articles": [
-        {
-          "id": "1cee0375f1cd",
-          "site": "ヨドバシ",
-          "title": "ヨドバシ",
-          "url": "https://www.yodobashi.com/category/word/%E3%83%8F%E3%83%B3%E3%83%87%E3%82%A3%E3%83%95%E3%82%A1%E3%83%B3/",
-          "note": "暫定URL（カテゴリ検索／メディア導線）。特集記事URLが判明したら手動差し替え。"
-        },
-        {
-          "id": "73327cf101b8",
-          "site": "ジョーシン",
-          "title": "ジョーシン",
-          "url": "https://joshinweb.jp/search/?word=%E3%83%8F%E3%83%B3%E3%83%87%E3%82%A3%E3%83%95%E3%82%A1%E3%83%B3",
-          "note": "暫定URL（カテゴリ検索／メディア導線）。特集記事URLが判明したら手動差し替え。"
-        },
-        {
-          "id": "2d7dd2cccf9d",
-          "site": "ヤマダ",
-          "title": "ヤマダ",
-          "url": "https://www.yamada-denkiweb.com/media/?s=%E3%83%8F%E3%83%B3%E3%83%87%E3%82%A3%E3%83%95%E3%82%A1%E3%83%B3",
-          "note": "暫定URL（カテゴリ検索／メディア導線）。特集記事URLが判明したら手動差し替え。"
-        },
-        {
-          "id": "94a4bd5f3b62",
-          "site": "エディオン",
-          "title": "エディオン",
-          "url": "https://www.edion.com/item_cst_sch.html?KEYWORD=%E3%83%8F%E3%83%B3%E3%83%87%E3%82%A3%E3%83%95%E3%82%A1%E3%83%B3",
-          "note": "暫定URL（カテゴリ検索／メディア導線）。特集記事URLが判明したら手動差し替え。"
-        }
-      ],
-      "savedAt": "2026-07-14T12:35:52.047Z",
-      "note": "掃除機と同じ5社構成。暫定URLのため後ほど手動修正可。"
-    },
-    "冷風機": {
-      "articles": [
-        {
-          "id": "93f9a9a6fc01",
-          "site": "ヨドバシ",
-          "title": "ヨドバシ",
-          "url": "https://www.yodobashi.com/category/word/%E5%86%B7%E9%A2%A8%E6%A9%9F/",
-          "note": "暫定URL（カテゴリ検索／メディア導線）。特集記事URLが判明したら手動差し替え。"
-        },
-        {
-          "id": "57412dacd552",
-          "site": "ジョーシン",
-          "title": "ジョーシン",
-          "url": "https://joshinweb.jp/search/?word=%E5%86%B7%E9%A2%A8%E6%A9%9F",
-          "note": "暫定URL（カテゴリ検索／メディア導線）。特集記事URLが判明したら手動差し替え。"
-        },
-        {
-          "id": "4635aabde6e6",
-          "site": "ヤマダ",
-          "title": "ヤマダ",
-          "url": "https://www.yamada-denkiweb.com/media/?s=%E5%86%B7%E9%A2%A8%E6%A9%9F",
-          "note": "暫定URL（カテゴリ検索／メディア導線）。特集記事URLが判明したら手動差し替え。"
-        },
-        {
-          "id": "9578c35518c9",
-          "site": "エディオン",
-          "title": "エディオン",
-          "url": "https://www.edion.com/item_cst_sch.html?KEYWORD=%E5%86%B7%E9%A2%A8%E6%A9%9F",
-          "note": "暫定URL（カテゴリ検索／メディア導線）。特集記事URLが判明したら手動差し替え。"
-        }
-      ],
-      "savedAt": "2026-07-14T12:35:52.047Z",
-      "note": "掃除機と同じ5社構成。暫定URLのため後ほど手動修正可。"
-    },
-    "除湿機": {
-      "articles": [
-        {
-          "id": "68e14c4fd9c5",
-          "site": "ヨドバシ",
-          "title": "ヨドバシ",
-          "url": "https://www.yodobashi.com/category/word/%E9%99%A4%E6%B9%BF%E6%A9%9F/",
-          "note": "暫定URL（カテゴリ検索／メディア導線）。特集記事URLが判明したら手動差し替え。"
-        },
-        {
-          "id": "187a169bee92",
-          "site": "ジョーシン",
-          "title": "ジョーシン",
-          "url": "https://joshinweb.jp/search/?word=%E9%99%A4%E6%B9%BF%E6%A9%9F",
-          "note": "暫定URL（カテゴリ検索／メディア導線）。特集記事URLが判明したら手動差し替え。"
-        },
-        {
-          "id": "fba584213c0f",
-          "site": "ヤマダ",
-          "title": "ヤマダ",
-          "url": "https://www.yamada-denkiweb.com/media/?s=%E9%99%A4%E6%B9%BF%E6%A9%9F",
-          "note": "暫定URL（カテゴリ検索／メディア導線）。特集記事URLが判明したら手動差し替え。"
-        },
-        {
-          "id": "397a58f55c1a",
-          "site": "エディオン",
-          "title": "エディオン",
-          "url": "https://www.edion.com/item_cst_sch.html?KEYWORD=%E9%99%A4%E6%B9%BF%E6%A9%9F",
-          "note": "暫定URL（カテゴリ検索／メディア導線）。特集記事URLが判明したら手動差し替え。"
-        }
-      ],
-      "savedAt": "2026-07-14T12:35:52.047Z",
-      "note": "掃除機と同じ5社構成。暫定URLのため後ほど手動修正可。"
-    },
-    "電気毛布": {
-      "articles": [
-        {
-          "id": "35c2bbf76d0e",
-          "site": "ヨドバシ",
-          "title": "ヨドバシ",
-          "url": "https://www.yodobashi.com/category/word/%E9%9B%BB%E6%B0%97%E6%AF%9B%E5%B8%83/",
-          "note": "暫定URL（カテゴリ検索／メディア導線）。特集記事URLが判明したら手動差し替え。"
-        },
-        {
-          "id": "8b0d10c26bc4",
-          "site": "ジョーシン",
-          "title": "ジョーシン",
-          "url": "https://joshinweb.jp/search/?word=%E9%9B%BB%E6%B0%97%E6%AF%9B%E5%B8%83",
-          "note": "暫定URL（カテゴリ検索／メディア導線）。特集記事URLが判明したら手動差し替え。"
-        },
-        {
-          "id": "a573163ba936",
-          "site": "ヤマダ",
-          "title": "ヤマダ",
-          "url": "https://www.yamada-denkiweb.com/media/?s=%E9%9B%BB%E6%B0%97%E6%AF%9B%E5%B8%83",
-          "note": "暫定URL（カテゴリ検索／メディア導線）。特集記事URLが判明したら手動差し替え。"
-        },
-        {
-          "id": "ed575d0903db",
-          "site": "エディオン",
-          "title": "エディオン",
-          "url": "https://www.edion.com/item_cst_sch.html?KEYWORD=%E9%9B%BB%E6%B0%97%E6%AF%9B%E5%B8%83",
-          "note": "暫定URL（カテゴリ検索／メディア導線）。特集記事URLが判明したら手動差し替え。"
-        }
-      ],
-      "savedAt": "2026-07-14T12:35:52.047Z",
-      "note": "掃除機と同じ5社構成。暫定URLのため後ほど手動修正可。"
-    },
-    "ホットカーペット": {
-      "articles": [
-        {
-          "id": "7963bcc56b89",
-          "site": "ヨドバシ",
-          "title": "ヨドバシ",
-          "url": "https://www.yodobashi.com/category/word/%E3%83%9B%E3%83%83%E3%83%88%E3%82%AB%E3%83%BC%E3%83%9A%E3%83%83%E3%83%88/",
-          "note": "暫定URL（カテゴリ検索／メディア導線）。特集記事URLが判明したら手動差し替え。"
-        },
-        {
-          "id": "85052c055b59",
-          "site": "ジョーシン",
-          "title": "ジョーシン",
-          "url": "https://joshinweb.jp/search/?word=%E3%83%9B%E3%83%83%E3%83%88%E3%82%AB%E3%83%BC%E3%83%9A%E3%83%83%E3%83%88",
-          "note": "暫定URL（カテゴリ検索／メディア導線）。特集記事URLが判明したら手動差し替え。"
-        },
-        {
-          "id": "670601a3f4ed",
-          "site": "ヤマダ",
-          "title": "ヤマダ",
-          "url": "https://www.yamada-denkiweb.com/media/?s=%E3%83%9B%E3%83%83%E3%83%88%E3%82%AB%E3%83%BC%E3%83%9A%E3%83%83%E3%83%88",
-          "note": "暫定URL（カテゴリ検索／メディア導線）。特集記事URLが判明したら手動差し替え。"
-        },
-        {
-          "id": "c5c5ce4e9fd3",
-          "site": "エディオン",
-          "title": "エディオン",
-          "url": "https://www.edion.com/item_cst_sch.html?KEYWORD=%E3%83%9B%E3%83%83%E3%83%88%E3%82%AB%E3%83%BC%E3%83%9A%E3%83%83%E3%83%88",
-          "note": "暫定URL（カテゴリ検索／メディア導線）。特集記事URLが判明したら手動差し替え。"
-        }
-      ],
-      "savedAt": "2026-07-14T12:35:52.047Z",
-      "note": "掃除機と同じ5社構成。暫定URLのため後ほど手動修正可。"
-    },
-    "こたつ": {
-      "articles": [
-        {
-          "id": "e40bec38eee7",
-          "site": "ヨドバシ",
-          "title": "ヨドバシ",
-          "url": "https://www.yodobashi.com/category/word/%E3%81%93%E3%81%9F%E3%81%A4/",
-          "note": "暫定URL（カテゴリ検索／メディア導線）。特集記事URLが判明したら手動差し替え。"
-        },
-        {
-          "id": "3fd089c2c0ac",
-          "site": "ジョーシン",
-          "title": "ジョーシン",
-          "url": "https://joshinweb.jp/search/?word=%E3%81%93%E3%81%9F%E3%81%A4",
-          "note": "暫定URL（カテゴリ検索／メディア導線）。特集記事URLが判明したら手動差し替え。"
-        },
-        {
-          "id": "c94b123629a3",
-          "site": "ヤマダ",
-          "title": "ヤマダ",
-          "url": "https://www.yamada-denkiweb.com/media/?s=%E3%81%93%E3%81%9F%E3%81%A4",
-          "note": "暫定URL（カテゴリ検索／メディア導線）。特集記事URLが判明したら手動差し替え。"
-        },
-        {
-          "id": "e027a9d82b1d",
-          "site": "エディオン",
-          "title": "エディオン",
-          "url": "https://www.edion.com/item_cst_sch.html?KEYWORD=%E3%81%93%E3%81%9F%E3%81%A4",
-          "note": "暫定URL（カテゴリ検索／メディア導線）。特集記事URLが判明したら手動差し替え。"
-        }
-      ],
-      "savedAt": "2026-07-14T12:35:52.047Z",
-      "note": "掃除機と同じ5社構成。暫定URLのため後ほど手動修正可。"
-    },
-    "スマートウォッチ": {
-      "articles": [
-        {
-          "id": "d1c92a8ba3dc",
-          "site": "ヨドバシ",
-          "title": "ヨドバシ",
-          "url": "https://www.yodobashi.com/category/word/%E3%82%B9%E3%83%9E%E3%83%BC%E3%83%88%E3%82%A6%E3%82%A9%E3%83%83%E3%83%81/",
-          "note": "暫定URL（カテゴリ検索／メディア導線）。特集記事URLが判明したら手動差し替え。"
-        },
-        {
-          "id": "3f5bdf294e0f",
-          "site": "ジョーシン",
-          "title": "ジョーシン",
-          "url": "https://joshinweb.jp/search/?word=%E3%82%B9%E3%83%9E%E3%83%BC%E3%83%88%E3%82%A6%E3%82%A9%E3%83%83%E3%83%81",
-          "note": "暫定URL（カテゴリ検索／メディア導線）。特集記事URLが判明したら手動差し替え。"
-        },
-        {
-          "id": "d045a78cf224",
-          "site": "ヤマダ",
-          "title": "ヤマダ",
-          "url": "https://www.yamada-denkiweb.com/media/?s=%E3%82%B9%E3%83%9E%E3%83%BC%E3%83%88%E3%82%A6%E3%82%A9%E3%83%83%E3%83%81",
-          "note": "暫定URL（カテゴリ検索／メディア導線）。特集記事URLが判明したら手動差し替え。"
-        },
-        {
-          "id": "af2849a98bf4",
-          "site": "エディオン",
-          "title": "エディオン",
-          "url": "https://www.edion.com/item_cst_sch.html?KEYWORD=%E3%82%B9%E3%83%9E%E3%83%BC%E3%83%88%E3%82%A6%E3%82%A9%E3%83%83%E3%83%81",
-          "note": "暫定URL（カテゴリ検索／メディア導線）。特集記事URLが判明したら手動差し替え。"
-        }
-      ],
-      "savedAt": "2026-07-14T12:35:52.047Z",
-      "note": "掃除機と同じ5社構成。暫定URLのため後ほど手動修正可。"
-    },
-    "シェーバー": {
-      "articles": [
-        {
-          "id": "10838c1d3398",
-          "site": "ヨドバシ",
-          "title": "ヨドバシ",
-          "url": "https://www.yodobashi.com/category/word/%E3%82%B7%E3%82%A7%E3%83%BC%E3%83%90%E3%83%BC/",
-          "note": "暫定URL（カテゴリ検索／メディア導線）。特集記事URLが判明したら手動差し替え。"
-        },
-        {
-          "id": "dbd10de4b534",
-          "site": "ジョーシン",
-          "title": "ジョーシン",
-          "url": "https://joshinweb.jp/search/?word=%E3%82%B7%E3%82%A7%E3%83%BC%E3%83%90%E3%83%BC",
-          "note": "暫定URL（カテゴリ検索／メディア導線）。特集記事URLが判明したら手動差し替え。"
-        },
-        {
-          "id": "9880617b29fe",
-          "site": "ヤマダ",
-          "title": "ヤマダ",
-          "url": "https://www.yamada-denkiweb.com/media/?s=%E3%82%B7%E3%82%A7%E3%83%BC%E3%83%90%E3%83%BC",
-          "note": "暫定URL（カテゴリ検索／メディア導線）。特集記事URLが判明したら手動差し替え。"
-        },
-        {
-          "id": "389ae4367147",
-          "site": "エディオン",
-          "title": "エディオン",
-          "url": "https://www.edion.com/item_cst_sch.html?KEYWORD=%E3%82%B7%E3%82%A7%E3%83%BC%E3%83%90%E3%83%BC",
-          "note": "暫定URL（カテゴリ検索／メディア導線）。特集記事URLが判明したら手動差し替え。"
-        }
-      ],
-      "savedAt": "2026-07-14T12:35:52.047Z",
-      "note": "掃除機と同じ5社構成。暫定URLのため後ほど手動修正可。"
-    },
-    "電動歯ブラシ": {
-      "articles": [
-        {
-          "id": "353f7a641810",
-          "site": "ヨドバシ",
-          "title": "ヨドバシ",
-          "url": "https://www.yodobashi.com/category/word/%E9%9B%BB%E5%8B%95%E6%AD%AF%E3%83%96%E3%83%A9%E3%82%B7/",
-          "note": "暫定URL（カテゴリ検索／メディア導線）。特集記事URLが判明したら手動差し替え。"
-        },
-        {
-          "id": "2ab9493c049f",
-          "site": "ジョーシン",
-          "title": "ジョーシン",
-          "url": "https://joshinweb.jp/search/?word=%E9%9B%BB%E5%8B%95%E6%AD%AF%E3%83%96%E3%83%A9%E3%82%B7",
-          "note": "暫定URL（カテゴリ検索／メディア導線）。特集記事URLが判明したら手動差し替え。"
-        },
-        {
-          "id": "66a1c9f2262b",
-          "site": "ヤマダ",
-          "title": "ヤマダ",
-          "url": "https://www.yamada-denkiweb.com/media/?s=%E9%9B%BB%E5%8B%95%E6%AD%AF%E3%83%96%E3%83%A9%E3%82%B7",
-          "note": "暫定URL（カテゴリ検索／メディア導線）。特集記事URLが判明したら手動差し替え。"
-        },
-        {
-          "id": "ecba76ead831",
-          "site": "エディオン",
-          "title": "エディオン",
-          "url": "https://www.edion.com/item_cst_sch.html?KEYWORD=%E9%9B%BB%E5%8B%95%E6%AD%AF%E3%83%96%E3%83%A9%E3%82%B7",
-          "note": "暫定URL（カテゴリ検索／メディア導線）。特集記事URLが判明したら手動差し替え。"
-        }
-      ],
-      "savedAt": "2026-07-14T12:35:52.047Z",
-      "note": "掃除機と同じ5社構成。暫定URLのため後ほど手動修正可。"
-    },
-    "ドライヤー": {
-      "articles": [
-        {
-          "id": "ff9036d17289",
-          "site": "ヨドバシ",
-          "title": "ヨドバシ",
-          "url": "https://www.yodobashi.com/category/word/%E3%83%89%E3%83%A9%E3%82%A4%E3%83%A4%E3%83%BC/",
-          "note": "暫定URL（カテゴリ検索／メディア導線）。特集記事URLが判明したら手動差し替え。"
-        },
-        {
-          "id": "4a10a4ca7647",
-          "site": "ジョーシン",
-          "title": "ジョーシン",
-          "url": "https://joshinweb.jp/search/?word=%E3%83%89%E3%83%A9%E3%82%A4%E3%83%A4%E3%83%BC",
-          "note": "暫定URL（カテゴリ検索／メディア導線）。特集記事URLが判明したら手動差し替え。"
-        },
-        {
-          "id": "dc1dff0e7d0a",
-          "site": "ヤマダ",
-          "title": "ヤマダ",
-          "url": "https://www.yamada-denkiweb.com/media/?s=%E3%83%89%E3%83%A9%E3%82%A4%E3%83%A4%E3%83%BC",
-          "note": "暫定URL（カテゴリ検索／メディア導線）。特集記事URLが判明したら手動差し替え。"
-        },
-        {
-          "id": "9a623fa81e83",
-          "site": "エディオン",
-          "title": "エディオン",
-          "url": "https://www.edion.com/item_cst_sch.html?KEYWORD=%E3%83%89%E3%83%A9%E3%82%A4%E3%83%A4%E3%83%BC",
-          "note": "暫定URL（カテゴリ検索／メディア導線）。特集記事URLが判明したら手動差し替え。"
-        }
-      ],
-      "savedAt": "2026-07-14T12:35:52.047Z",
-      "note": "掃除機と同じ5社構成。暫定URLのため後ほど手動修正可。"
-    },
-    "ヘアアイロン": {
-      "articles": [
-        {
-          "id": "7145e4da6046",
-          "site": "ヨドバシ",
-          "title": "ヨドバシ",
-          "url": "https://www.yodobashi.com/category/word/%E3%83%98%E3%82%A2%E3%82%A2%E3%82%A4%E3%83%AD%E3%83%B3/",
-          "note": "暫定URL（カテゴリ検索／メディア導線）。特集記事URLが判明したら手動差し替え。"
-        },
-        {
-          "id": "9530417e9505",
-          "site": "ジョーシン",
-          "title": "ジョーシン",
-          "url": "https://joshinweb.jp/search/?word=%E3%83%98%E3%82%A2%E3%82%A2%E3%82%A4%E3%83%AD%E3%83%B3",
-          "note": "暫定URL（カテゴリ検索／メディア導線）。特集記事URLが判明したら手動差し替え。"
-        },
-        {
-          "id": "1e2756a14def",
-          "site": "ヤマダ",
-          "title": "ヤマダ",
-          "url": "https://www.yamada-denkiweb.com/media/?s=%E3%83%98%E3%82%A2%E3%82%A2%E3%82%A4%E3%83%AD%E3%83%B3",
-          "note": "暫定URL（カテゴリ検索／メディア導線）。特集記事URLが判明したら手動差し替え。"
-        },
-        {
-          "id": "e5bb54e3a803",
-          "site": "エディオン",
-          "title": "エディオン",
-          "url": "https://www.edion.com/item_cst_sch.html?KEYWORD=%E3%83%98%E3%82%A2%E3%82%A2%E3%82%A4%E3%83%AD%E3%83%B3",
-          "note": "暫定URL（カテゴリ検索／メディア導線）。特集記事URLが判明したら手動差し替え。"
-        }
-      ],
-      "savedAt": "2026-07-14T12:35:52.047Z",
-      "note": "掃除機と同じ5社構成。暫定URLのため後ほど手動修正可。"
-    },
-    "マッサージ機": {
-      "articles": [
-        {
-          "id": "471cf5557a12",
-          "site": "ヨドバシ",
-          "title": "ヨドバシ",
-          "url": "https://www.yodobashi.com/category/word/%E3%83%9E%E3%83%83%E3%82%B5%E3%83%BC%E3%82%B8%E6%A9%9F/",
-          "note": "暫定URL（カテゴリ検索／メディア導線）。特集記事URLが判明したら手動差し替え。"
-        },
-        {
-          "id": "70096128ec57",
-          "site": "ジョーシン",
-          "title": "ジョーシン",
-          "url": "https://joshinweb.jp/search/?word=%E3%83%9E%E3%83%83%E3%82%B5%E3%83%BC%E3%82%B8%E6%A9%9F",
-          "note": "暫定URL（カテゴリ検索／メディア導線）。特集記事URLが判明したら手動差し替え。"
-        },
-        {
-          "id": "2a3a65f8b0d6",
-          "site": "ヤマダ",
-          "title": "ヤマダ",
-          "url": "https://www.yamada-denkiweb.com/media/?s=%E3%83%9E%E3%83%83%E3%82%B5%E3%83%BC%E3%82%B8%E6%A9%9F",
-          "note": "暫定URL（カテゴリ検索／メディア導線）。特集記事URLが判明したら手動差し替え。"
-        },
-        {
-          "id": "5d6aa4cccab1",
-          "site": "エディオン",
-          "title": "エディオン",
-          "url": "https://www.edion.com/item_cst_sch.html?KEYWORD=%E3%83%9E%E3%83%83%E3%82%B5%E3%83%BC%E3%82%B8%E6%A9%9F",
-          "note": "暫定URL（カテゴリ検索／メディア導線）。特集記事URLが判明したら手動差し替え。"
-        }
-      ],
-      "savedAt": "2026-07-14T12:35:52.047Z",
-      "note": "掃除機と同じ5社構成。暫定URLのため後ほど手動修正可。"
-    },
-    "テレビ": {
-      "articles": [
-        {
-          "id": "37d551dfac77",
-          "site": "ヨドバシ",
-          "title": "ヨドバシ",
-          "url": "https://www.yodobashi.com/category/word/%E3%83%86%E3%83%AC%E3%83%93/",
-          "note": "暫定URL（カテゴリ検索／メディア導線）。特集記事URLが判明したら手動差し替え。"
-        },
-        {
-          "id": "1b2c19f6d4c4",
-          "site": "ジョーシン",
-          "title": "ジョーシン",
-          "url": "https://joshinweb.jp/search/?word=%E3%83%86%E3%83%AC%E3%83%93",
-          "note": "暫定URL（カテゴリ検索／メディア導線）。特集記事URLが判明したら手動差し替え。"
-        },
-        {
-          "id": "c7025265876e",
-          "site": "ヤマダ",
-          "title": "ヤマダ",
-          "url": "https://www.yamada-denkiweb.com/media/?s=%E3%83%86%E3%83%AC%E3%83%93",
-          "note": "暫定URL（カテゴリ検索／メディア導線）。特集記事URLが判明したら手動差し替え。"
-        },
-        {
-          "id": "0e3d1b8c6a44",
-          "site": "エディオン",
-          "title": "エディオン",
-          "url": "https://www.edion.com/item_cst_sch.html?KEYWORD=%E3%83%86%E3%83%AC%E3%83%93",
-          "note": "暫定URL（カテゴリ検索／メディア導線）。特集記事URLが判明したら手動差し替え。"
-        }
-      ],
-      "savedAt": "2026-07-14T12:35:52.047Z",
-      "note": "掃除機と同じ5社構成。暫定URLのため後ほど手動修正可。"
-    },
-    "レコーダー": {
-      "articles": [
-        {
-          "id": "c012ffe39144",
-          "site": "ヨドバシ",
-          "title": "ヨドバシ",
-          "url": "https://www.yodobashi.com/category/word/%E3%83%AC%E3%82%B3%E3%83%BC%E3%83%80%E3%83%BC/",
-          "note": "暫定URL（カテゴリ検索／メディア導線）。特集記事URLが判明したら手動差し替え。"
-        },
-        {
-          "id": "e37d85860e04",
-          "site": "ジョーシン",
-          "title": "ジョーシン",
-          "url": "https://joshinweb.jp/search/?word=%E3%83%AC%E3%82%B3%E3%83%BC%E3%83%80%E3%83%BC",
-          "note": "暫定URL（カテゴリ検索／メディア導線）。特集記事URLが判明したら手動差し替え。"
-        },
-        {
-          "id": "6ff8053c2913",
-          "site": "ヤマダ",
-          "title": "ヤマダ",
-          "url": "https://www.yamada-denkiweb.com/media/?s=%E3%83%AC%E3%82%B3%E3%83%BC%E3%83%80%E3%83%BC",
-          "note": "暫定URL（カテゴリ検索／メディア導線）。特集記事URLが判明したら手動差し替え。"
-        },
-        {
-          "id": "d1a6d24fd50c",
-          "site": "エディオン",
-          "title": "エディオン",
-          "url": "https://www.edion.com/item_cst_sch.html?KEYWORD=%E3%83%AC%E3%82%B3%E3%83%BC%E3%83%80%E3%83%BC",
-          "note": "暫定URL（カテゴリ検索／メディア導線）。特集記事URLが判明したら手動差し替え。"
-        }
-      ],
-      "savedAt": "2026-07-14T12:35:52.047Z",
-      "note": "掃除機と同じ5社構成。暫定URLのため後ほど手動修正可。"
-    },
-    "パソコン": {
-      "articles": [
-        {
-          "id": "ee3899ebb9ba",
-          "site": "ヨドバシ",
-          "title": "ヨドバシ",
-          "url": "https://www.yodobashi.com/category/word/%E3%83%91%E3%82%BD%E3%82%B3%E3%83%B3/",
-          "note": "暫定URL（カテゴリ検索／メディア導線）。特集記事URLが判明したら手動差し替え。"
-        },
-        {
-          "id": "164c2d373810",
-          "site": "ジョーシン",
-          "title": "ジョーシン",
-          "url": "https://joshinweb.jp/search/?word=%E3%83%91%E3%82%BD%E3%82%B3%E3%83%B3",
-          "note": "暫定URL（カテゴリ検索／メディア導線）。特集記事URLが判明したら手動差し替え。"
-        },
-        {
-          "id": "12032cf5ab50",
-          "site": "ヤマダ",
-          "title": "ヤマダ",
-          "url": "https://www.yamada-denkiweb.com/media/?s=%E3%83%91%E3%82%BD%E3%82%B3%E3%83%B3",
-          "note": "暫定URL（カテゴリ検索／メディア導線）。特集記事URLが判明したら手動差し替え。"
-        },
-        {
-          "id": "4397e233581b",
-          "site": "エディオン",
-          "title": "エディオン",
-          "url": "https://www.edion.com/item_cst_sch.html?KEYWORD=%E3%83%91%E3%82%BD%E3%82%B3%E3%83%B3",
-          "note": "暫定URL（カテゴリ検索／メディア導線）。特集記事URLが判明したら手動差し替え。"
-        }
-      ],
-      "savedAt": "2026-07-14T12:35:52.047Z",
-      "note": "掃除機と同じ5社構成。暫定URLのため後ほど手動修正可。"
-    },
-    "デジタルオーディオプレーヤー": {
-      "articles": [
-        {
-          "id": "f849947d6362",
-          "site": "ヨドバシ",
-          "title": "ヨドバシ",
-          "url": "https://www.yodobashi.com/category/word/%E3%83%87%E3%82%B8%E3%82%BF%E3%83%AB%E3%82%AA%E3%83%BC%E3%83%87%E3%82%A3%E3%82%AA%E3%83%97%E3%83%AC%E3%83%BC%E3%83%A4%E3%83%BC/",
-          "note": "暫定URL（カテゴリ検索／メディア導線）。特集記事URLが判明したら手動差し替え。"
-        },
-        {
-          "id": "bf028248ec3d",
-          "site": "ジョーシン",
-          "title": "ジョーシン",
-          "url": "https://joshinweb.jp/search/?word=%E3%83%87%E3%82%B8%E3%82%BF%E3%83%AB%E3%82%AA%E3%83%BC%E3%83%87%E3%82%A3%E3%82%AA%E3%83%97%E3%83%AC%E3%83%BC%E3%83%A4%E3%83%BC",
-          "note": "暫定URL（カテゴリ検索／メディア導線）。特集記事URLが判明したら手動差し替え。"
-        },
-        {
-          "id": "c9f5f93846c5",
-          "site": "ヤマダ",
-          "title": "ヤマダ",
-          "url": "https://www.yamada-denkiweb.com/media/?s=%E3%83%87%E3%82%B8%E3%82%BF%E3%83%AB%E3%82%AA%E3%83%BC%E3%83%87%E3%82%A3%E3%82%AA%E3%83%97%E3%83%AC%E3%83%BC%E3%83%A4%E3%83%BC",
-          "note": "暫定URL（カテゴリ検索／メディア導線）。特集記事URLが判明したら手動差し替え。"
-        },
-        {
-          "id": "c0d442156667",
-          "site": "エディオン",
-          "title": "エディオン",
-          "url": "https://www.edion.com/item_cst_sch.html?KEYWORD=%E3%83%87%E3%82%B8%E3%82%BF%E3%83%AB%E3%82%AA%E3%83%BC%E3%83%87%E3%82%A3%E3%82%AA%E3%83%97%E3%83%AC%E3%83%BC%E3%83%A4%E3%83%BC",
-          "note": "暫定URL（カテゴリ検索／メディア導線）。特集記事URLが判明したら手動差し替え。"
-        }
-      ],
-      "savedAt": "2026-07-14T12:35:52.047Z",
-      "note": "掃除機と同じ5社構成。暫定URLのため後ほど手動修正可。"
-    },
-    "Bluetoothスピーカー": {
-      "articles": [
-        {
-          "id": "23192d1811da",
-          "site": "ヨドバシ",
-          "title": "ヨドバシ",
-          "url": "https://www.yodobashi.com/category/word/Bluetooth%E3%82%B9%E3%83%94%E3%83%BC%E3%82%AB%E3%83%BC/",
-          "note": "暫定URL（カテゴリ検索／メディア導線）。特集記事URLが判明したら手動差し替え。"
-        },
-        {
-          "id": "8f1a77e33629",
-          "site": "ジョーシン",
-          "title": "ジョーシン",
-          "url": "https://joshinweb.jp/search/?word=Bluetooth%E3%82%B9%E3%83%94%E3%83%BC%E3%82%AB%E3%83%BC",
-          "note": "暫定URL（カテゴリ検索／メディア導線）。特集記事URLが判明したら手動差し替え。"
-        },
-        {
-          "id": "2eb58e5ebefc",
-          "site": "ヤマダ",
-          "title": "ヤマダ",
-          "url": "https://www.yamada-denkiweb.com/media/?s=Bluetooth%E3%82%B9%E3%83%94%E3%83%BC%E3%82%AB%E3%83%BC",
-          "note": "暫定URL（カテゴリ検索／メディア導線）。特集記事URLが判明したら手動差し替え。"
-        },
-        {
-          "id": "fd7f971978ed",
-          "site": "エディオン",
-          "title": "エディオン",
-          "url": "https://www.edion.com/item_cst_sch.html?KEYWORD=Bluetooth%E3%82%B9%E3%83%94%E3%83%BC%E3%82%AB%E3%83%BC",
-          "note": "暫定URL（カテゴリ検索／メディア導線）。特集記事URLが判明したら手動差し替え。"
-        }
-      ],
-      "savedAt": "2026-07-14T12:35:52.047Z",
-      "note": "掃除機と同じ5社構成。暫定URLのため後ほど手動修正可。"
+      "savedAt": "2026-07-17T13:14:29Z"
     },
     "スポットクーラー": {
       "articles": [
         {
-          "id": "544fcd6af494",
-          "site": "ヨドバシ",
-          "title": "ヨドバシ",
-          "url": "https://www.yodobashi.com/category/word/%E3%82%B9%E3%83%9D%E3%83%83%E3%83%88%E3%82%AF%E3%83%BC%E3%83%A9%E3%83%BC/",
-          "note": "暫定URL（カテゴリ検索／メディア導線）。特集記事URLが判明したら手動差し替え。"
-        },
-        {
-          "id": "0c057e8b9c23",
-          "site": "ジョーシン",
-          "title": "ジョーシン",
-          "url": "https://joshinweb.jp/search/?word=%E3%82%B9%E3%83%9D%E3%83%83%E3%83%88%E3%82%AF%E3%83%BC%E3%83%A9%E3%83%BC",
-          "note": "暫定URL（カテゴリ検索／メディア導線）。特集記事URLが判明したら手動差し替え。"
-        },
-        {
-          "id": "93daa60b8353",
           "site": "ヤマダ",
-          "title": "ヤマダ",
-          "url": "https://www.yamada-denkiweb.com/media/?s=%E3%82%B9%E3%83%9D%E3%83%83%E3%83%88%E3%82%AF%E3%83%BC%E3%83%A9%E3%83%BC",
-          "note": "暫定URL（カテゴリ検索／メディア導線）。特集記事URLが判明したら手動差し替え。"
+          "category": "スポットクーラー",
+          "url": "https://www.yamada-denkiweb.com/media/48431/"
         },
         {
-          "id": "b218d5e6d545",
-          "site": "エディオン",
-          "title": "エディオン",
-          "url": "https://www.edion.com/item_cst_sch.html?KEYWORD=%E3%82%B9%E3%83%9D%E3%83%83%E3%83%88%E3%82%AF%E3%83%BC%E3%83%A9%E3%83%BC",
-          "note": "暫定URL（カテゴリ検索／メディア導線）。特集記事URLが判明したら手動差し替え。"
+          "site": "ビックカメラ",
+          "category": "スポットクーラー",
+          "url": "https://www.biccamera.com/bc/i/topics/osusume_spot_cooler/index.jsp"
+        },
+        {
+          "site": "価格.comマガジン",
+          "category": "スポットクーラー",
+          "url": "https://kakakumag.com/seikatsu-kaden/?id=22404"
+        },
+        {
+          "site": "SAKIDORI",
+          "category": "スポットクーラー",
+          "url": "https://sakidori.co/article/2776736"
         }
       ],
-      "savedAt": "2026-07-14T12:35:52.047Z",
-      "note": "掃除機と同じ5社構成。暫定URLのため後ほど手動修正可。"
+      "savedAt": "2026-07-17T13:14:29Z"
+    },
+    "冷蔵庫": {
+      "articles": [
+        {
+          "site": "ヨドバシ",
+          "category": "冷蔵庫",
+          "url": "https://www.yodobashi.com/category/6353/6355/6375/h001/"
+        },
+        {
+          "site": "ジョーシン",
+          "category": "冷蔵庫",
+          "url": "https://joshinweb.jp/kaden/fridge.html"
+        },
+        {
+          "site": "ヤマダ",
+          "category": "冷蔵庫",
+          "url": "https://www.yamada-denkiweb.com/media/29954/"
+        },
+        {
+          "site": "エディオン",
+          "category": "冷蔵庫",
+          "url": "https://www.edion.com/special.html?identificationid=reizouko"
+        },
+        {
+          "site": "ビックカメラ",
+          "category": "冷蔵庫",
+          "url": "https://www.biccamera.com/bc/i/topics/osusume_refrigerator_size/index.jsp"
+        },
+        {
+          "site": "ノジマ",
+          "category": "冷蔵庫",
+          "url": "https://www.nojima.co.jp/support/koneta/207761/"
+        },
+        {
+          "site": "価格.comマガジン",
+          "category": "冷蔵庫",
+          "url": "https://kakakumag.com/seikatsu-kaden/?id=10995"
+        },
+        {
+          "site": "SAKIDORI",
+          "category": "冷蔵庫",
+          "url": "https://sakidori.co/article/137632"
+        }
+      ],
+      "savedAt": "2026-07-17T13:14:29Z"
+    },
+    "炊飯器": {
+      "articles": [
+        {
+          "site": "ヨドバシ",
+          "category": "炊飯器",
+          "url": "https://www.yodobashi.com/category/6353/6356/6389/6558/h001/"
+        },
+        {
+          "site": "ジョーシン",
+          "category": "炊飯器",
+          "url": "https://joshinweb.jp/kitchen/ih_rc.html"
+        },
+        {
+          "site": "ヤマダ",
+          "category": "炊飯器",
+          "url": "https://www.yamada-denkiweb.com/media/23593/"
+        },
+        {
+          "site": "エディオン",
+          "category": "炊飯器",
+          "url": "https://www.edion.com/special.html?identificationid=osusumesuihanki"
+        },
+        {
+          "site": "ビックカメラ",
+          "category": "炊飯器",
+          "url": "https://www.biccamera.com/bc/i/topics/osusume_ricecooker/index.jsp"
+        },
+        {
+          "site": "ノジマ",
+          "category": "炊飯器",
+          "url": "https://www.nojima.co.jp/support/koneta/157590/"
+        },
+        {
+          "site": "価格.comマガジン",
+          "category": "炊飯器",
+          "url": "https://kakakumag.com/seikatsu-kaden/?id=11333"
+        },
+        {
+          "site": "SAKIDORI",
+          "category": "炊飯器",
+          "url": "https://sakidori.co/article/16602"
+        }
+      ],
+      "savedAt": "2026-07-17T13:14:29Z"
+    },
+    "ポット": {
+      "articles": [
+        {
+          "site": "ジョーシン",
+          "category": "ポット",
+          "url": "https://joshinweb.jp/kitchen/e_pot.html"
+        },
+        {
+          "site": "ヤマダ",
+          "category": "ポット",
+          "url": "https://www.yamada-denkiweb.com/media/24621/"
+        },
+        {
+          "site": "ビックカメラ",
+          "category": "ポット",
+          "url": "https://www.biccamera.com/bc/i/topics/osusume_electronic_pot/index.jsp"
+        },
+        {
+          "site": "SAKIDORI",
+          "category": "ポット",
+          "url": "https://sakidori.co/article/183026"
+        }
+      ],
+      "savedAt": "2026-07-17T13:14:29Z"
+    },
+    "電気ケトル": {
+      "articles": [
+        {
+          "site": "ジョーシン",
+          "category": "電気ケトル",
+          "url": "https://joshinweb.jp/kitchen/ketl.html"
+        },
+        {
+          "site": "ヤマダ",
+          "category": "電気ケトル",
+          "url": "https://www.yamada-denkiweb.com/media/24609/"
+        },
+        {
+          "site": "ビックカメラ",
+          "category": "電気ケトル",
+          "url": "https://www.biccamera.com/bc/i/topics/osusume_electrickettle/index.jsp"
+        },
+        {
+          "site": "ノジマ",
+          "category": "電気ケトル",
+          "url": "https://www.nojima.co.jp/support/koneta/123530/"
+        },
+        {
+          "site": "価格.comマガジン",
+          "category": "電気ケトル",
+          "url": "https://kakakumag.com/seikatsu-kaden/?id=13543"
+        },
+        {
+          "site": "SAKIDORI",
+          "category": "電気ケトル",
+          "url": "https://sakidori.co/article/174838"
+        }
+      ],
+      "savedAt": "2026-07-17T13:14:29Z"
+    },
+    "コーヒーメーカー": {
+      "articles": [
+        {
+          "site": "ジョーシン",
+          "category": "コーヒーメーカー",
+          "url": "https://joshinweb.jp/kitchen/coffee.html"
+        },
+        {
+          "site": "ヤマダ",
+          "category": "コーヒーメーカー",
+          "url": "https://www.yamada-denkiweb.com/media/21248/"
+        },
+        {
+          "site": "エディオン",
+          "category": "コーヒーメーカー",
+          "url": "https://www.edion.com/special.html?identificationid=osusumecoffeemaker"
+        },
+        {
+          "site": "ビックカメラ",
+          "category": "コーヒーメーカー",
+          "url": "https://www.biccamera.com/bc/i/topics/osusume_coffee_maker/index.jsp"
+        },
+        {
+          "site": "ノジマ",
+          "category": "コーヒーメーカー",
+          "url": "https://www.nojima.co.jp/support/koneta/125398/"
+        },
+        {
+          "site": "価格.comマガジン",
+          "category": "コーヒーメーカー",
+          "url": "https://kakakumag.com/seikatsu-kaden/?id=21981"
+        },
+        {
+          "site": "SAKIDORI",
+          "category": "コーヒーメーカー",
+          "url": "https://sakidori.co/article/8259"
+        }
+      ],
+      "savedAt": "2026-07-17T13:14:29Z"
+    },
+    "ホットプレート": {
+      "articles": [
+        {
+          "site": "ジョーシン",
+          "category": "ホットプレート",
+          "url": "https://joshinweb.jp/kitchen/hotp.html"
+        },
+        {
+          "site": "ビックカメラ",
+          "category": "ホットプレート",
+          "url": "https://www.biccamera.com/bc/i/topics/media/hotplate/index.jsp"
+        },
+        {
+          "site": "ノジマ",
+          "category": "ホットプレート",
+          "url": "https://www.nojima.co.jp/support/koneta/124801/"
+        },
+        {
+          "site": "価格.comマガジン",
+          "category": "ホットプレート",
+          "url": "https://kakakumag.com/seikatsu-kaden/?id=11557"
+        },
+        {
+          "site": "SAKIDORI",
+          "category": "ホットプレート",
+          "url": "https://sakidori.co/article/66924"
+        }
+      ],
+      "savedAt": "2026-07-17T13:14:29Z"
+    },
+    "浄水器・整水器": {
+      "articles": [
+        {
+          "site": "ヨドバシ",
+          "category": "浄水器・整水器",
+          "url": "https://www.yodobashi.com/category/6353/6355/6379/6504/h001/"
+        },
+        {
+          "site": "ヤマダ",
+          "category": "浄水器・整水器",
+          "url": "https://www.yamada-denkiweb.com/media/248/"
+        },
+        {
+          "site": "エディオン",
+          "category": "浄水器・整水器",
+          "url": "https://www.edion.com/special.html?identificationid=osusumejyousuiki"
+        },
+        {
+          "site": "ビックカメラ",
+          "category": "浄水器・整水器",
+          "url": "https://www.biccamera.com/bc/i/topics/osusume_water_purifier/index.jsp"
+        },
+        {
+          "site": "価格.comマガジン",
+          "category": "浄水器・整水器",
+          "url": "https://kakakumag.com/houseware/?id=16070"
+        },
+        {
+          "site": "SAKIDORI",
+          "category": "浄水器・整水器",
+          "url": "https://sakidori.co/article/330936"
+        }
+      ],
+      "savedAt": "2026-07-17T13:14:29Z"
+    },
+    "食器洗い機": {
+      "articles": [
+        {
+          "site": "ヤマダ",
+          "category": "食器洗い機",
+          "url": "https://www.yamada-denkiweb.com/media/863/"
+        },
+        {
+          "site": "エディオン",
+          "category": "食器洗い機",
+          "url": "https://www.edion.com/special.html?identificationid=dishwasher"
+        },
+        {
+          "site": "ビックカメラ",
+          "category": "食器洗い機",
+          "url": "https://www.biccamera.com/bc/i/topics/osusume_dishwasher/index.jsp"
+        },
+        {
+          "site": "ノジマ",
+          "category": "食器洗い機",
+          "url": "https://www.nojima.co.jp/support/koneta/72618/"
+        },
+        {
+          "site": "価格.comマガジン",
+          "category": "食器洗い機",
+          "url": "https://kakakumag.com/seikatsu-kaden/?id=19681"
+        },
+        {
+          "site": "SAKIDORI",
+          "category": "食器洗い機",
+          "url": "https://sakidori.co/article/73684"
+        }
+      ],
+      "savedAt": "2026-07-17T13:14:29Z"
+    },
+    "スチームクリーナー": {
+      "articles": [
+        {
+          "site": "ビックカメラ",
+          "category": "スチームクリーナー",
+          "url": "https://www.biccamera.com/bc/i/topics/osusume_steam_cleaner/index.jsp"
+        },
+        {
+          "site": "SAKIDORI",
+          "category": "スチームクリーナー",
+          "url": "https://sakidori.co/article/111263"
+        }
+      ],
+      "savedAt": "2026-07-17T13:14:29Z"
+    },
+    "アイロン": {
+      "articles": [
+        {
+          "site": "ヤマダ",
+          "category": "アイロン",
+          "url": "https://www.yamada-denkiweb.com/media/21216/"
+        },
+        {
+          "site": "ビックカメラ",
+          "category": "アイロン",
+          "url": "https://www.biccamera.com/bc/i/topics/osusume_steam_iron/index.jsp"
+        },
+        {
+          "site": "ノジマ",
+          "category": "アイロン",
+          "url": "https://www.nojima.co.jp/support/koneta/126479/"
+        },
+        {
+          "site": "価格.comマガジン",
+          "category": "アイロン",
+          "url": "https://kakakumag.com/seikatsu-kaden/?id=15843"
+        }
+      ],
+      "savedAt": "2026-07-17T13:14:29Z"
+    },
+    "ミシン": {
+      "articles": [
+        {
+          "site": "ヨドバシ",
+          "category": "ミシン",
+          "url": "https://www.yodobashi.com/category/6353/6354/6371/h001/"
+        },
+        {
+          "site": "ジョーシン",
+          "category": "ミシン",
+          "url": "https://joshinweb.jp/kaden/sewing.html"
+        },
+        {
+          "site": "ヤマダ",
+          "category": "ミシン",
+          "url": "https://www.yamada-denkiweb.com/media/2130/"
+        },
+        {
+          "site": "ビックカメラ",
+          "category": "ミシン",
+          "url": "https://www.biccamera.com/bc/i/topics/osusume_sewingmachine/index.jsp"
+        },
+        {
+          "site": "ノジマ",
+          "category": "ミシン",
+          "url": "https://www.nojima.co.jp/support/koneta/43231/"
+        },
+        {
+          "site": "価格.comマガジン",
+          "category": "ミシン",
+          "url": "https://kakakumag.com/seikatsu-kaden/?id=16543"
+        },
+        {
+          "site": "SAKIDORI",
+          "category": "ミシン",
+          "url": "https://sakidori.co/article/279627"
+        }
+      ],
+      "savedAt": "2026-07-17T13:14:29Z"
+    },
+    "温水洗浄便座": {
+      "articles": [
+        {
+          "site": "ヨドバシ",
+          "category": "温水洗浄便座",
+          "url": "https://www.yodobashi.com/category/6353/6362/6453/6807/h001/"
+        },
+        {
+          "site": "ビックカメラ",
+          "category": "温水洗浄便座",
+          "url": "https://www.biccamera.com/bc/i/topics/osusume_heated_toiletseat/index.jsp"
+        },
+        {
+          "site": "SAKIDORI",
+          "category": "温水洗浄便座",
+          "url": "https://sakidori.co/article/587509"
+        }
+      ],
+      "savedAt": "2026-07-17T13:14:29Z"
+    },
+    "換気扇": {
+      "articles": [],
+      "savedAt": "2026-07-17T13:14:29Z"
+    },
+    "エアコン": {
+      "articles": [
+        {
+          "site": "ヨドバシ",
+          "category": "エアコン",
+          "url": "https://www.yodobashi.com/category/6353/38073/h001/"
+        },
+        {
+          "site": "ヤマダ",
+          "category": "エアコン",
+          "url": "https://www.yamada-denkiweb.com/media/4022/"
+        },
+        {
+          "site": "エディオン",
+          "category": "エアコン",
+          "url": "https://www.edion.com/special.html?identificationid=aircon"
+        },
+        {
+          "site": "ビックカメラ",
+          "category": "エアコン",
+          "url": "https://www.biccamera.com/bc/i/topics/osusume_aircon_20/index.jsp"
+        },
+        {
+          "site": "ノジマ",
+          "category": "エアコン",
+          "url": "https://www.nojima.co.jp/support/koneta/149342/"
+        },
+        {
+          "site": "価格.comマガジン",
+          "category": "エアコン",
+          "url": "https://kakakumag.com/seikatsu-kaden/?id=22044"
+        },
+        {
+          "site": "SAKIDORI",
+          "category": "エアコン",
+          "url": "https://sakidori.co/article/238393"
+        }
+      ],
+      "savedAt": "2026-07-17T13:14:29Z"
+    },
+    "空気清浄機": {
+      "articles": [
+        {
+          "site": "ヨドバシ",
+          "category": "空気清浄機",
+          "url": "https://www.yodobashi.com/category/6353/6357/6407/h001/"
+        },
+        {
+          "site": "ジョーシン",
+          "category": "空気清浄機",
+          "url": "https://joshinweb.jp/season/pore_air.html"
+        },
+        {
+          "site": "ヤマダ",
+          "category": "空気清浄機",
+          "url": "https://www.yamada-denkiweb.com/media/855/"
+        },
+        {
+          "site": "エディオン",
+          "category": "空気清浄機",
+          "url": "https://www.edion.com/special.html?identificationid=osusumekusei"
+        },
+        {
+          "site": "ビックカメラ",
+          "category": "空気清浄機",
+          "url": "https://www.biccamera.com/bc/i/topics/osusume_air_cleaner/index.jsp"
+        },
+        {
+          "site": "ノジマ",
+          "category": "空気清浄機",
+          "url": "https://www.nojima.co.jp/support/koneta/158451/"
+        },
+        {
+          "site": "価格.comマガジン",
+          "category": "空気清浄機",
+          "url": "https://kakakumag.com/seikatsu-kaden/?id=3844"
+        },
+        {
+          "site": "SAKIDORI",
+          "category": "空気清浄機",
+          "url": "https://sakidori.co/article/100284"
+        }
+      ],
+      "savedAt": "2026-07-17T13:14:29Z"
+    },
+    "扇風機": {
+      "articles": [
+        {
+          "site": "ヨドバシ",
+          "category": "扇風機",
+          "url": "https://www.yodobashi.com/category/6353/6357/6411/h001/"
+        },
+        {
+          "site": "ジョーシン",
+          "category": "扇風機",
+          "url": "https://joshinweb.jp/season/fan.html"
+        },
+        {
+          "site": "ヤマダ",
+          "category": "扇風機",
+          "url": "https://www.yamada-denkiweb.com/media/30464/"
+        },
+        {
+          "site": "エディオン",
+          "category": "扇風機",
+          "url": "https://www.edion.com/special.html?identificationid=senpuki"
+        },
+        {
+          "site": "ビックカメラ",
+          "category": "扇風機",
+          "url": "https://www.biccamera.com/bc/i/topics/osusume_fan/index.jsp"
+        },
+        {
+          "site": "ノジマ",
+          "category": "扇風機",
+          "url": "https://www.nojima.co.jp/support/koneta/155796/"
+        },
+        {
+          "site": "価格.comマガジン",
+          "category": "扇風機",
+          "url": "https://kakakumag.com/seikatsu-kaden/?id=10338"
+        },
+        {
+          "site": "SAKIDORI",
+          "category": "扇風機",
+          "url": "https://sakidori.co/article/15365"
+        }
+      ],
+      "savedAt": "2026-07-17T13:14:29Z"
+    },
+    "リビング扇風機": {
+      "articles": [],
+      "savedAt": "2026-07-17T13:14:29Z"
+    },
+    "タワーファン": {
+      "articles": [
+        {
+          "site": "ジョーシン",
+          "category": "タワーファン",
+          "url": "https://joshinweb.jp/season/tower_f.html"
+        },
+        {
+          "site": "ビックカメラ",
+          "category": "タワーファン",
+          "url": "https://www.biccamera.com/bc/i/topics/osusume_tower_fan/index.jsp"
+        },
+        {
+          "site": "SAKIDORI",
+          "category": "タワーファン",
+          "url": "https://sakidori.co/article/26902"
+        }
+      ],
+      "savedAt": "2026-07-17T13:14:29Z"
+    },
+    "サーキュレーター": {
+      "articles": [
+        {
+          "site": "ヨドバシ",
+          "category": "サーキュレーター",
+          "url": "https://www.yodobashi.com/category/6353/6357/6409/h001/"
+        },
+        {
+          "site": "ジョーシン",
+          "category": "サーキュレーター",
+          "url": "https://joshinweb.jp/season/circu.html"
+        },
+        {
+          "site": "ヤマダ",
+          "category": "サーキュレーター",
+          "url": "https://www.yamada-denkiweb.com/media/28732/"
+        },
+        {
+          "site": "エディオン",
+          "category": "サーキュレーター",
+          "url": "https://www.edion.com/special.html?identificationid=osusumecirculator"
+        },
+        {
+          "site": "ビックカメラ",
+          "category": "サーキュレーター",
+          "url": "https://www.biccamera.com/bc/i/topics/osusume_circulator/index.jsp"
+        },
+        {
+          "site": "ノジマ",
+          "category": "サーキュレーター",
+          "url": "https://www.nojima.co.jp/support/koneta/176695/"
+        },
+        {
+          "site": "価格.comマガジン",
+          "category": "サーキュレーター",
+          "url": "https://kakakumag.com/seikatsu-kaden/?id=15687"
+        },
+        {
+          "site": "SAKIDORI",
+          "category": "サーキュレーター",
+          "url": "https://sakidori.co/article/23978"
+        }
+      ],
+      "savedAt": "2026-07-17T13:14:29Z"
+    },
+    "ハンディファン": {
+      "articles": [
+        {
+          "site": "ジョーシン",
+          "category": "ハンディファン",
+          "url": "https://joshinweb.jp/season/h_fan.html"
+        },
+        {
+          "site": "ヤマダ",
+          "category": "ハンディファン",
+          "url": "https://www.yamada-denkiweb.com/media/2494/"
+        },
+        {
+          "site": "エディオン",
+          "category": "ハンディファン",
+          "url": "https://www.edion.com/special.html?identificationid=osusumehandyfan"
+        },
+        {
+          "site": "ビックカメラ",
+          "category": "ハンディファン",
+          "url": "https://www.biccamera.com/bc/i/topics/osusume_mobilefan/index.jsp"
+        },
+        {
+          "site": "価格.comマガジン",
+          "category": "ハンディファン",
+          "url": "https://kakakumag.com/seikatsu-kaden/?id=22429"
+        },
+        {
+          "site": "SAKIDORI",
+          "category": "ハンディファン",
+          "url": "https://sakidori.co/article/452604"
+        }
+      ],
+      "savedAt": "2026-07-17T13:14:29Z"
+    },
+    "冷風機": {
+      "articles": [
+        {
+          "site": "ヤマダ",
+          "category": "冷風機",
+          "url": "https://www.yamada-denkiweb.com/media/30475/"
+        },
+        {
+          "site": "ビックカメラ",
+          "category": "冷風機",
+          "url": "https://www.biccamera.com/bc/i/topics/osusume_coldfan/index.jsp"
+        },
+        {
+          "site": "価格.comマガジン",
+          "category": "冷風機",
+          "url": "https://kakakumag.com/seikatsu-kaden/?id=14012"
+        },
+        {
+          "site": "SAKIDORI",
+          "category": "冷風機",
+          "url": "https://sakidori.co/article/28762"
+        }
+      ],
+      "savedAt": "2026-07-17T13:14:29Z"
+    },
+    "除湿機": {
+      "articles": [
+        {
+          "site": "ヨドバシ",
+          "category": "除湿機",
+          "url": "https://www.yodobashi.com/category/6353/6357/6408/6639/h001/"
+        },
+        {
+          "site": "ヤマダ",
+          "category": "除湿機",
+          "url": "https://www.yamada-denkiweb.com/media/2796/"
+        },
+        {
+          "site": "エディオン",
+          "category": "除湿機",
+          "url": "https://www.edion.com/special.html?identificationid=osusumejoshitsuki"
+        },
+        {
+          "site": "ビックカメラ",
+          "category": "除湿機",
+          "url": "https://www.biccamera.com/bc/i/topics/osusume_dehumidifier/index.jsp"
+        },
+        {
+          "site": "ノジマ",
+          "category": "除湿機",
+          "url": "https://www.nojima.co.jp/support/koneta/157407/"
+        },
+        {
+          "site": "価格.comマガジン",
+          "category": "除湿機",
+          "url": "https://kakakumag.com/seikatsu-kaden/?id=22175"
+        },
+        {
+          "site": "SAKIDORI",
+          "category": "除湿機",
+          "url": "https://sakidori.co/article/19708"
+        }
+      ],
+      "savedAt": "2026-07-17T13:14:29Z"
+    },
+    "電気毛布": {
+      "articles": [
+        {
+          "site": "ヨドバシ",
+          "category": "電気毛布",
+          "url": "https://www.yodobashi.com/category/6353/6357/6405/h001/"
+        },
+        {
+          "site": "ヤマダ",
+          "category": "電気毛布",
+          "url": "https://www.yamada-denkiweb.com/media/27743/"
+        },
+        {
+          "site": "エディオン",
+          "category": "電気毛布",
+          "url": "https://www.edion.com/special.html?identificationid=osusumedenkimoufu"
+        },
+        {
+          "site": "ビックカメラ",
+          "category": "電気毛布",
+          "url": "https://www.biccamera.com/bc/i/topics/osusume_electric_blanket/index.jsp"
+        },
+        {
+          "site": "ノジマ",
+          "category": "電気毛布",
+          "url": "https://www.nojima.co.jp/support/koneta/101740/"
+        },
+        {
+          "site": "価格.comマガジン",
+          "category": "電気毛布",
+          "url": "https://kakakumag.com/seikatsu-kaden/?id=19175"
+        },
+        {
+          "site": "SAKIDORI",
+          "category": "電気毛布",
+          "url": "https://sakidori.co/article/130896"
+        }
+      ],
+      "savedAt": "2026-07-17T13:14:29Z"
+    },
+    "ホットカーペット": {
+      "articles": [
+        {
+          "site": "ヤマダ",
+          "category": "ホットカーペット",
+          "url": "https://www.yamada-denkiweb.com/media/25528/"
+        },
+        {
+          "site": "エディオン",
+          "category": "ホットカーペット",
+          "url": "https://www.edion.com/special.html?identificationid=osusumehotcarpet"
+        },
+        {
+          "site": "ビックカメラ",
+          "category": "ホットカーペット",
+          "url": "https://www.biccamera.com/bc/i/topics/osusume_hot_carpet/index.jsp"
+        },
+        {
+          "site": "SAKIDORI",
+          "category": "ホットカーペット",
+          "url": "https://sakidori.co/article/247098"
+        }
+      ],
+      "savedAt": "2026-07-17T13:14:29Z"
+    },
+    "こたつ": {
+      "articles": [
+        {
+          "site": "ヤマダ",
+          "category": "こたつ",
+          "url": "https://www.yamada-denkiweb.com/media/1135/"
+        },
+        {
+          "site": "エディオン",
+          "category": "こたつ",
+          "url": "https://www.edion.com/special.html?identificationid=osusumekotatu"
+        },
+        {
+          "site": "ビックカメラ",
+          "category": "こたつ",
+          "url": "https://www.biccamera.com/bc/i/topics/osusume_kotatsu/index.jsp"
+        },
+        {
+          "site": "SAKIDORI",
+          "category": "こたつ",
+          "url": "https://sakidori.co/article/130482"
+        }
+      ],
+      "savedAt": "2026-07-17T13:14:29Z"
+    },
+    "スマートウォッチ": {
+      "articles": [
+        {
+          "site": "ヨドバシ",
+          "category": "スマートウォッチ",
+          "url": "https://www.yodobashi.com/category/174101/500000069000/500000069001/h001/"
+        },
+        {
+          "site": "ジョーシン",
+          "category": "スマートウォッチ",
+          "url": "https://joshinweb.jp/kaden/smt_h.html"
+        },
+        {
+          "site": "ヤマダ",
+          "category": "スマートウォッチ",
+          "url": "https://www.yamada-denkiweb.com/media/1438/"
+        },
+        {
+          "site": "エディオン",
+          "category": "スマートウォッチ",
+          "url": "https://www.edion.com/special.html?identificationid=smartwatch"
+        },
+        {
+          "site": "ビックカメラ",
+          "category": "スマートウォッチ",
+          "url": "https://www.biccamera.com/bc/i/topics/smartwatch/index.jsp"
+        },
+        {
+          "site": "ノジマ",
+          "category": "スマートウォッチ",
+          "url": "https://www.nojima.co.jp/support/koneta/70120/"
+        },
+        {
+          "site": "価格.comマガジン",
+          "category": "スマートウォッチ",
+          "url": "https://kakakumag.com/pc-smartphone/?id=16351"
+        },
+        {
+          "site": "SAKIDORI",
+          "category": "スマートウォッチ",
+          "url": "https://sakidori.co/article/1756054"
+        }
+      ],
+      "savedAt": "2026-07-17T13:14:29Z"
+    },
+    "シェーバー": {
+      "articles": [
+        {
+          "site": "ヨドバシ",
+          "category": "シェーバー",
+          "url": "https://www.yodobashi.com/category/6353/6358/6414/6658/h001/"
+        },
+        {
+          "site": "ヤマダ",
+          "category": "シェーバー",
+          "url": "https://www.yamada-denkiweb.com/media/24574/"
+        },
+        {
+          "site": "ビックカメラ",
+          "category": "シェーバー",
+          "url": "https://www.biccamera.com/bc/i/topics/osusume_mensshaver/index.jsp"
+        },
+        {
+          "site": "ノジマ",
+          "category": "シェーバー",
+          "url": "https://www.nojima.co.jp/support/koneta/58031/"
+        },
+        {
+          "site": "価格.comマガジン",
+          "category": "シェーバー",
+          "url": "https://kakakumag.com/seikatsu-kaden/?id=13723"
+        },
+        {
+          "site": "SAKIDORI",
+          "category": "シェーバー",
+          "url": "https://sakidori.co/article/95570"
+        }
+      ],
+      "savedAt": "2026-07-17T13:14:29Z"
+    },
+    "電動歯ブラシ": {
+      "articles": [
+        {
+          "site": "ヨドバシ",
+          "category": "電動歯ブラシ",
+          "url": "https://www.yodobashi.com/category/6353/6358/32001/32002/h001/"
+        },
+        {
+          "site": "ヤマダ",
+          "category": "電動歯ブラシ",
+          "url": "https://www.yamada-denkiweb.com/media/33874/"
+        },
+        {
+          "site": "ビックカメラ",
+          "category": "電動歯ブラシ",
+          "url": "https://www.biccamera.com/bc/i/topics/osusume_electric_toothbrush/index.jsp"
+        },
+        {
+          "site": "ノジマ",
+          "category": "電動歯ブラシ",
+          "url": "https://www.nojima.co.jp/support/koneta/125658/"
+        },
+        {
+          "site": "価格.comマガジン",
+          "category": "電動歯ブラシ",
+          "url": "https://kakakumag.com/seikatsu-kaden/?id=11764"
+        },
+        {
+          "site": "SAKIDORI",
+          "category": "電動歯ブラシ",
+          "url": "https://sakidori.co/article/33306"
+        }
+      ],
+      "savedAt": "2026-07-17T13:14:29Z"
+    },
+    "ドライヤー": {
+      "articles": [
+        {
+          "site": "ヨドバシ",
+          "category": "ドライヤー",
+          "url": "https://www.yodobashi.com/category/6353/6358/6415/6666/142730/h001/"
+        },
+        {
+          "site": "ヤマダ",
+          "category": "ドライヤー",
+          "url": "https://www.yamada-denkiweb.com/media/23728/"
+        },
+        {
+          "site": "エディオン",
+          "category": "ドライヤー",
+          "url": "https://www.edion.com/special.html?identificationid=osusumehairdryer"
+        },
+        {
+          "site": "ビックカメラ",
+          "category": "ドライヤー",
+          "url": "https://www.biccamera.com/bc/i/topics/hairdryer/index.jsp"
+        },
+        {
+          "site": "ノジマ",
+          "category": "ドライヤー",
+          "url": "https://www.nojima.co.jp/support/koneta/157308/"
+        },
+        {
+          "site": "価格.comマガジン",
+          "category": "ドライヤー",
+          "url": "https://kakakumag.com/seikatsu-kaden/?id=22083"
+        },
+        {
+          "site": "SAKIDORI",
+          "category": "ドライヤー",
+          "url": "https://sakidori.co/article/18417"
+        }
+      ],
+      "savedAt": "2026-07-17T13:14:29Z"
+    },
+    "ヘアアイロン": {
+      "articles": [
+        {
+          "site": "ヤマダ",
+          "category": "ヘアアイロン",
+          "url": "https://www.yamada-denkiweb.com/media/35722/"
+        },
+        {
+          "site": "ビックカメラ",
+          "category": "ヘアアイロン",
+          "url": "https://www.biccamera.com/bc/i/topics/osusume_hair_iron/index.jsp"
+        },
+        {
+          "site": "ノジマ",
+          "category": "ヘアアイロン",
+          "url": "https://www.nojima.co.jp/support/koneta/43895/"
+        },
+        {
+          "site": "価格.comマガジン",
+          "category": "ヘアアイロン",
+          "url": "https://kakakumag.com/seikatsu-kaden/?id=13648"
+        },
+        {
+          "site": "SAKIDORI",
+          "category": "ヘアアイロン",
+          "url": "https://sakidori.co/article/312659"
+        }
+      ],
+      "savedAt": "2026-07-17T13:14:29Z"
+    },
+    "マッサージ機": {
+      "articles": [
+        {
+          "site": "ヨドバシ",
+          "category": "マッサージ機",
+          "url": "https://www.yodobashi.com/category/6353/6362/6442/h001/"
+        },
+        {
+          "site": "ジョーシン",
+          "category": "マッサージ機",
+          "url": "https://joshinweb.jp/health/massag_m.html"
+        },
+        {
+          "site": "ヤマダ",
+          "category": "マッサージ機",
+          "url": "https://www.yamada-denkiweb.com/media/21805/"
+        },
+        {
+          "site": "ビックカメラ",
+          "category": "マッサージ機",
+          "url": "https://www.biccamera.com/bc/i/topics/osusume_massage_chair/index.jsp"
+        },
+        {
+          "site": "ノジマ",
+          "category": "マッサージ機",
+          "url": "https://www.nojima.co.jp/support/koneta/26774/"
+        },
+        {
+          "site": "価格.comマガジン",
+          "category": "マッサージ機",
+          "url": "https://kakakumag.com/seikatsu-kaden/?id=22100"
+        },
+        {
+          "site": "SAKIDORI",
+          "category": "マッサージ機",
+          "url": "https://sakidori.co/article/627147"
+        }
+      ],
+      "savedAt": "2026-07-17T13:14:29Z"
+    },
+    "テレビ": {
+      "articles": [
+        {
+          "site": "ヨドバシ",
+          "category": "テレビ",
+          "url": "https://www.yodobashi.com/category/22052/500000073000/500000073006/h001/"
+        },
+        {
+          "site": "ヤマダ",
+          "category": "テレビ",
+          "url": "https://www.yamada-denkiweb.com/media/30763/"
+        },
+        {
+          "site": "エディオン",
+          "category": "テレビ",
+          "url": "https://www.edion.com/special.html?identificationid=osusumetv"
+        },
+        {
+          "site": "ビックカメラ",
+          "category": "テレビ",
+          "url": "https://www.biccamera.com/bc/i/topics/osusume_smart_tv/index.jsp"
+        },
+        {
+          "site": "ノジマ",
+          "category": "テレビ",
+          "url": "https://www.nojima.co.jp/support/koneta/105727/"
+        },
+        {
+          "site": "価格.comマガジン",
+          "category": "テレビ",
+          "url": "https://kakakumag.com/av-kaden/?id=22315"
+        },
+        {
+          "site": "SAKIDORI",
+          "category": "テレビ",
+          "url": "https://sakidori.co/article/1139508"
+        }
+      ],
+      "savedAt": "2026-07-17T13:14:29Z"
+    },
+    "レコーダー": {
+      "articles": [
+        {
+          "site": "ジョーシン",
+          "category": "レコーダー",
+          "url": "https://joshinweb.jp/av/tvrec.html"
+        },
+        {
+          "site": "ヤマダ",
+          "category": "レコーダー",
+          "url": "https://www.yamada-denkiweb.com/media/756/"
+        },
+        {
+          "site": "ビックカメラ",
+          "category": "レコーダー",
+          "url": "https://www.biccamera.com/bc/i/topics/osusume_bdr/index.jsp"
+        },
+        {
+          "site": "ノジマ",
+          "category": "レコーダー",
+          "url": "https://www.nojima.co.jp/support/koneta/47911/"
+        },
+        {
+          "site": "価格.comマガジン",
+          "category": "レコーダー",
+          "url": "https://kakakumag.com/av-kaden/?id=22191"
+        },
+        {
+          "site": "SAKIDORI",
+          "category": "レコーダー",
+          "url": "https://sakidori.co/article/597519"
+        }
+      ],
+      "savedAt": "2026-07-17T13:14:29Z"
+    },
+    "パソコン": {
+      "articles": [
+        {
+          "site": "ヨドバシ",
+          "category": "パソコン",
+          "url": "https://www.yodobashi.com/category/19531/11970/34643/h001/"
+        },
+        {
+          "site": "ジョーシン",
+          "category": "パソコン",
+          "url": "https://joshinweb.jp/pc/notepc.html"
+        },
+        {
+          "site": "ヤマダ",
+          "category": "パソコン",
+          "url": "https://www.yamada-denkiweb.com/media/443/"
+        },
+        {
+          "site": "エディオン",
+          "category": "パソコン",
+          "url": "https://www.edion.com/special.html?identificationid=osusumepc"
+        },
+        {
+          "site": "ビックカメラ",
+          "category": "パソコン",
+          "url": "https://www.biccamera.com/bc/i/topics/notebook/index.jsp"
+        },
+        {
+          "site": "ノジマ",
+          "category": "パソコン",
+          "url": "https://www.nojima.co.jp/support/koneta/48370/"
+        },
+        {
+          "site": "価格.comマガジン",
+          "category": "パソコン",
+          "url": "https://kakakumag.com/pc-smartphone/?id=22249"
+        },
+        {
+          "site": "SAKIDORI",
+          "category": "パソコン",
+          "url": "https://sakidori.co/article/3063635"
+        }
+      ],
+      "savedAt": "2026-07-17T13:14:29Z"
+    },
+    "デジタルオーディオプレーヤー": {
+      "articles": [
+        {
+          "site": "ビックカメラ",
+          "category": "デジタルオーディオプレーヤー",
+          "url": "https://www.biccamera.com/bc/i/topics/osusume_dap/index.jsp"
+        },
+        {
+          "site": "価格.comマガジン",
+          "category": "デジタルオーディオプレーヤー",
+          "url": "https://kakakumag.com/av-kaden/?id=19203"
+        },
+        {
+          "site": "SAKIDORI",
+          "category": "デジタルオーディオプレーヤー",
+          "url": "https://sakidori.co/article/316532"
+        }
+      ],
+      "savedAt": "2026-07-17T13:14:29Z"
+    },
+    "Bluetoothスピーカー": {
+      "articles": [
+        {
+          "site": "ヤマダ",
+          "category": "Bluetoothスピーカー",
+          "url": "https://www.yamada-denkiweb.com/media/21981/"
+        },
+        {
+          "site": "ビックカメラ",
+          "category": "Bluetoothスピーカー",
+          "url": "https://www.biccamera.com/bc/i/topics/osusume_bluetooth_speaker/index.jsp"
+        },
+        {
+          "site": "ノジマ",
+          "category": "Bluetoothスピーカー",
+          "url": "https://www.nojima.co.jp/support/koneta/46568/"
+        },
+        {
+          "site": "価格.comマガジン",
+          "category": "Bluetoothスピーカー",
+          "url": "https://kakakumag.com/av-kaden/?id=11757"
+        },
+        {
+          "site": "SAKIDORI",
+          "category": "Bluetoothスピーカー",
+          "url": "https://sakidori.co/article/59418"
+        }
+      ],
+      "savedAt": "2026-07-17T13:14:29Z"
     }
   }
 }

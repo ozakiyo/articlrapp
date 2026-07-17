@@ -3,6 +3,11 @@
  */
 const cheerio = require('cheerio');
 const { loadSavedCompetitorArticles } = require('./competitorArticlesStore');
+const {
+  loadArticleSnapshot,
+  saveArticleSnapshot,
+  saveLastAnalysis,
+} = require('./competitorHeadingSnapshotStore');
 
 const NOISE_HEADING =
   /^(目次|関連記事|おすすめ|人気記事|カテゴリ|シェア|breadcrumb|パンくず|footer|header)$/i;
@@ -12,6 +17,43 @@ function normalizeHeadingText(text) {
     .replace(/\s+/g, '')
     .replace(/[　·・｜|/／]/g, '')
     .toLowerCase();
+}
+
+/**
+ * 前回と今回の見出し差分（h1 除外）。正規化テキストで判定。
+ * @returns {{ added: object[], removed: object[], isFirstFetch: boolean }}
+ */
+function diffHeadings(previousHeadings, currentHeadings) {
+  const prev = Array.isArray(previousHeadings) ? previousHeadings : [];
+  const curr = Array.isArray(currentHeadings) ? currentHeadings : [];
+  const isFirstFetch = prev.length === 0;
+
+  const toMap = (list) => {
+    const map = new Map();
+    for (const h of list) {
+      if (!h || h.level === 'h1') continue;
+      const norm = normalizeHeadingText(h.text);
+      if (!norm || map.has(norm)) continue;
+      map.set(norm, { level: h.level, text: h.text });
+    }
+    return map;
+  };
+
+  const prevMap = toMap(prev);
+  const currMap = toMap(curr);
+  const added = [];
+  const removed = [];
+
+  if (!isFirstFetch) {
+    for (const [norm, h] of currMap) {
+      if (!prevMap.has(norm)) added.push(h);
+    }
+    for (const [norm, h] of prevMap) {
+      if (!currMap.has(norm)) removed.push(h);
+    }
+  }
+
+  return { added, removed, isFirstFetch };
 }
 
 function extractHeadingsFromHtml(html) {
@@ -186,10 +228,14 @@ async function analyzeCompetitorArticles(category, options = {}, deps = {}) {
 
   const competitors = [];
   const warnings = [];
+  const headingUpdates = [];
+  const fetchedAt = new Date().toISOString();
+  let firstFetchCount = 0;
 
   for (const article of articles) {
     const site = article.site || '競合';
     const url = article.url;
+    const previous = loadArticleSnapshot(label, site, url);
     try {
       const page = await fetchCompetitorArticlePage(url, deps);
       const headings = page.headings || [];
@@ -198,29 +244,74 @@ async function analyzeCompetitorArticles(category, options = {}, deps = {}) {
         .filter((h) => !headingMatchesOwn(h.text, ownHeadings))
         .map((h) => ({ level: h.level, text: h.text }));
 
-      competitors.push({
-        id: article.id,
+      const diff = diffHeadings(previous?.headings, headings);
+      if (diff.isFirstFetch) firstFetchCount += 1;
+
+      const headingChanges = {
+        added: diff.added,
+        removed: diff.removed,
+        previousFetchedAt: previous?.fetchedAt || null,
+        isFirstFetch: diff.isFirstFetch,
+      };
+
+      for (const h of diff.added) {
+        headingUpdates.push({
+          site,
+          url,
+          level: h.level,
+          heading: h.text,
+          changeType: 'added',
+          previousFetchedAt: previous?.fetchedAt || null,
+        });
+      }
+      for (const h of diff.removed) {
+        headingUpdates.push({
+          site,
+          url,
+          level: h.level,
+          heading: h.text,
+          changeType: 'removed',
+          previousFetchedAt: previous?.fetchedAt || null,
+        });
+      }
+
+      saveArticleSnapshot(label, {
         site,
-        title: article.title || site,
+        url,
+        headings,
+        fetchedAt,
+      });
+
+      competitors.push({
+        id: article.id || `${site}|${url}`,
+        site,
+        category: article.category || '',
         url,
         fetchMethod: page.fetchMethod,
         headingCount: headings.length,
         headings,
         gaps,
         gapCount: gaps.length,
+        headingChanges,
       });
     } catch (err) {
       warnings.push({ site, url, message: err.message });
       competitors.push({
-        id: article.id,
+        id: article.id || `${site}|${url}`,
         site,
-        title: article.title || site,
+        category: article.category || '',
         url,
         fetchMethod: null,
         headingCount: 0,
         headings: [],
         gaps: [],
         gapCount: 0,
+        headingChanges: {
+          added: [],
+          removed: [],
+          previousFetchedAt: previous?.fetchedAt || null,
+          isFirstFetch: !previous,
+        },
         error: err.message,
       });
     }
@@ -229,29 +320,37 @@ async function analyzeCompetitorArticles(category, options = {}, deps = {}) {
   const proposals = buildGapProposals(competitors, ownHeadings);
   const successCount = competitors.filter((c) => c.headingCount > 0).length;
 
-  return {
+  const result = {
     category: label,
-    fetchedAt: new Date().toISOString(),
+    fetchedAt,
     hubUrl: articleMaster?.hubPage?.url || saved?.hubUrl || null,
     ownHeadingCount: ownHeadings.length,
     ownHeadings,
     competitors,
     proposals,
+    headingUpdates,
     summary: {
       competitorCount: competitors.length,
       successCount,
       proposalCount: proposals.length,
       highPriorityCount: proposals.filter((p) => p.priority === 'high').length,
+      headingUpdateCount: headingUpdates.length,
+      firstFetchCount,
     },
     warnings,
     savedAt: saved?.savedAt || null,
   };
+
+  saveLastAnalysis(label, result);
+  return result;
 }
 
 module.exports = {
   extractHeadingsFromHtml,
   collectOwnHeadings,
   headingMatchesOwn,
+  normalizeHeadingText,
+  diffHeadings,
   fetchCompetitorArticlePage,
   analyzeCompetitorArticles,
 };

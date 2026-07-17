@@ -679,14 +679,18 @@
   }
 
   function competitorArticleRowHtml(article = {}, index = 0) {
+    const category =
+      article.category ||
+      (typeof getKyosoCategory === 'function' ? getKyosoCategory() : '') ||
+      '';
     return `<div class="competitor-article-row" data-index="${index}">
       <label class="field nested-field competitor-article-site">
         <span class="field-sub">サイト名</span>
         <input type="text" class="kyoso-article-site" placeholder="例: ビックカメラ" value="${escapeHtml(article.site || '')}" />
       </label>
-      <label class="field nested-field competitor-article-title">
-        <span class="field-sub">記事名（任意）</span>
-        <input type="text" class="kyoso-article-title" placeholder="例: 掃除機のおすすめ" value="${escapeHtml(article.title || '')}" />
+      <label class="field nested-field competitor-article-category">
+        <span class="field-sub">カテゴリ</span>
+        <input type="text" class="kyoso-article-category" placeholder="例: 掃除機" value="${escapeHtml(category)}" />
       </label>
       <label class="field nested-field competitor-article-url">
         <span class="field-sub">記事 URL</span>
@@ -698,12 +702,13 @@
 
   function renderCompetitorArticleRows(articles = []) {
     if (!kyosoArticleList) return;
+    const category = getKyosoCategory();
     const rows = articles.length
       ? articles
       : [
-          { site: 'ビックカメラ', title: '', url: '' },
-          { site: 'ヨドバシ', title: '', url: '' },
-          { site: '価格.com', title: '', url: '' },
+          { site: 'ビックカメラ', category, url: '' },
+          { site: 'ヨドバシ', category, url: '' },
+          { site: '価格.comマガジン', category, url: '' },
         ];
     kyosoArticleList.innerHTML = rows.map((a, i) => competitorArticleRowHtml(a, i)).join('');
     kyosoArticleList.querySelectorAll('.competitor-article-remove').forEach((btn) => {
@@ -718,10 +723,12 @@
 
   function getCompetitorArticlesFromForm() {
     if (!kyosoArticleList) return [];
+    const fallbackCategory = getKyosoCategory();
     return [...kyosoArticleList.querySelectorAll('.competitor-article-row')]
       .map((row) => ({
         site: row.querySelector('.kyoso-article-site')?.value.trim() || '',
-        title: row.querySelector('.kyoso-article-title')?.value.trim() || '',
+        category:
+          row.querySelector('.kyoso-article-category')?.value.trim() || fallbackCategory || '',
         url: row.querySelector('.kyoso-article-url')?.value.trim() || '',
       }))
       .filter((a) => a.url);

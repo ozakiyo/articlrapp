@@ -3,11 +3,22 @@
  */
 const fs = require('fs');
 const path = require('path');
-const crypto = require('crypto');
 
 const STORE_DIR = path.join(__dirname, 'data');
 const STORE_FILE = path.join(STORE_DIR, 'competitor-articles.json');
 const MAX_ARTICLES_PER_CATEGORY = 8;
+const TRACKING_QUERY_KEYS = new Set([
+  'lid',
+  'utm_source',
+  'utm_medium',
+  'utm_campaign',
+  'utm_content',
+  'utm_term',
+  'ref',
+  'yclid',
+  'gclid',
+  'fbclid',
+]);
 
 function normalizeCategoryLabel(category) {
   return String(category || '').trim();
@@ -17,28 +28,36 @@ function normalizeUrl(url) {
   let u = String(url || '').trim();
   if (!u) return '';
   if (!/^https?:\/\//i.test(u)) u = `https://${u.replace(/^\/+/, '')}`;
-  return u;
+  try {
+    const parsed = new URL(u);
+    for (const key of [...parsed.searchParams.keys()]) {
+      if (TRACKING_QUERY_KEYS.has(String(key).toLowerCase())) {
+        parsed.searchParams.delete(key);
+      }
+    }
+    parsed.hash = '';
+    return parsed.toString();
+  } catch {
+    return u;
+  }
 }
 
-function normalizeArticleEntry(raw, index = 0) {
+function normalizeArticleEntry(raw, index = 0, fallbackCategory = '') {
   if (!raw || typeof raw !== 'object') return null;
   const url = normalizeUrl(raw.url);
   if (!url) return null;
   const site = String(raw.site || '').trim() || `競合${index + 1}`;
-  const title = String(raw.title || '').trim() || site;
-  const note = String(raw.note || '').trim() || null;
-  const id =
-    String(raw.id || '').trim() ||
-    crypto.createHash('md5').update(`${site}|${url}`).digest('hex').slice(0, 12);
-  return { id, site, title, url, note };
+  const category =
+    String(raw.category || fallbackCategory || '').trim() || fallbackCategory || '';
+  return { site, category, url };
 }
 
-function normalizeArticlesInput(articles) {
+function normalizeArticlesInput(articles, fallbackCategory = '') {
   if (!Array.isArray(articles)) return [];
   const out = [];
   const seen = new Set();
   for (let i = 0; i < articles.length; i++) {
-    const entry = normalizeArticleEntry(articles[i], i);
+    const entry = normalizeArticleEntry(articles[i], i, fallbackCategory);
     if (!entry || seen.has(entry.url)) continue;
     seen.add(entry.url);
     out.push(entry);
@@ -89,9 +108,10 @@ function writeStore(store) {
   return payload;
 }
 
-function normalizeCategoryEntry(entry) {
+function normalizeCategoryEntry(entry, categoryLabel = '') {
   if (!entry || typeof entry !== 'object') return null;
-  const articles = normalizeArticlesInput(entry.articles);
+  const label = normalizeCategoryLabel(categoryLabel);
+  const articles = normalizeArticlesInput(entry.articles, label);
   if (!articles.length) return null;
   return {
     articles,
@@ -108,7 +128,7 @@ function loadSavedCompetitorArticles(category) {
   const label = normalizeCategoryLabel(category);
   if (!label) return null;
   const store = readStore();
-  const entry = normalizeCategoryEntry(store.categories[label]);
+  const entry = normalizeCategoryEntry(store.categories[label], label);
   if (!entry) return null;
   return { category: label, ...entry };
 }
@@ -117,7 +137,7 @@ function listSavedCompetitorCategories() {
   const store = readStore();
   return Object.entries(store.categories)
     .map(([category, entry]) => {
-      const normalized = normalizeCategoryEntry(entry);
+      const normalized = normalizeCategoryEntry(entry, category);
       if (!normalized) return null;
       return { category, ...normalized };
     })
@@ -139,7 +159,7 @@ function saveCompetitorArticles(category, articles, meta = {}) {
   if (!label) {
     throw new Error('カテゴリを指定してください。');
   }
-  const normalized = normalizeArticlesInput(articles);
+  const normalized = normalizeArticlesInput(articles, label);
   if (!normalized.length) {
     throw new Error('保存する競合記事 URL を1件以上入力してください。');
   }

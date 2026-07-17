@@ -190,6 +190,7 @@ const {
   saveCompetitorArticles,
 } = require('./competitorArticlesStore');
 const { analyzeCompetitorArticles } = require('./competitorArticleEngine');
+const { loadLastAnalysis } = require('./competitorHeadingSnapshotStore');
 const { getCategoriesPayload } = require('./categoryRegistry');
 const {
   getIsoWeekId,
@@ -1926,12 +1927,25 @@ app.post('/api/competitor-articles/analyze', async (req, res) => {
       category,
       proposals: result.summary?.proposalCount,
       success: result.summary?.successCount,
+      headingUpdates: result.summary?.headingUpdateCount,
     });
     return res.json(result);
   } catch (err) {
     console.error('❌ Competitor article analysis failed:', err.message);
     return res.status(400).json({ error: err.message });
   }
+});
+
+app.get('/api/competitor-articles/last-analysis', (req, res) => {
+  const category = String(req.query?.category ?? '').trim();
+  if (!category) {
+    return res.status(400).json({ error: 'カテゴリを指定してください。' });
+  }
+  const analysis = loadLastAnalysis(category);
+  if (!analysis) {
+    return res.status(404).json({ error: '前回の比較結果がありません。' });
+  }
+  return res.json(analysis);
 });
 
 app.post('/api/extract-category-rankings', async (req, res) => {

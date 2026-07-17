@@ -184,8 +184,6 @@
         footnote.textContent = '';
       }
     }
-
-    renderTasks(report);
   }
 
   function findReplacementForProduct(replacements, label) {
@@ -208,23 +206,17 @@
     const tbody = document.getElementById('weekly-products-tbody');
     if (!tbody) return;
 
-    const replacements = report.replacements || [];
     const bestsellers = report.bestsellers || [];
-    const rising = report.rising || [];
-    const seenLabels = new Set();
-    const htmlRows = [];
+    if (!bestsellers.length) {
+      tbody.innerHTML =
+        '<tr><td colspan="9" class="weekly-empty-cell">ランキング未取得、または該当なし</td></tr>';
+      return;
+    }
 
-    const headingBtn = (candidate) =>
-      candidate
-        ? `<button type="button" class="secondary weekly-to-headings-btn" data-heading="${esc(candidate)}">見出しへ</button>`
-        : '';
-
-    for (const r of bestsellers) {
-      seenLabels.add(r.label);
-      const rep = findReplacementForProduct(replacements, r.label);
-      htmlRows.push(`<tr>
-        <td><span class="weekly-badge weekly-badge-info">売れ筋</span></td>
-        <td>${r.rank}</td>
+    tbody.innerHTML = bestsellers
+      .map(
+        (r) => `<tr>
+        <td>${r.rank ?? '—'}</td>
         <td>${esc(r.manufacturer || '—')}</td>
         <td>${esc(r.productName || r.label || '—')}</td>
         <td>${esc(r.modelCode || r.modelKey || '—')}</td>
@@ -233,56 +225,9 @@
         <td>${rankCell(r.rankYahoo)}</td>
         <td>${rankCell(r.rankKojima)}</td>
         <td>${rankCell(r.rankBic)}</td>
-        <td>${replacementCell(rep)}</td>
-        <td class="weekly-reason-cell">${esc(r.reason)}</td>
-        <td>${headingBtn(rep?.headingCandidate)}</td>
-      </tr>`);
-    }
-
-    for (const r of rising) {
-      if (seenLabels.has(r.label)) continue;
-      seenLabels.add(r.label);
-      const rep = findReplacementForProduct(replacements, r.label);
-      htmlRows.push(`<tr>
-        <td><span class="weekly-badge ${badgeClass(r.type)}">${badgeLabel(r.type)}</span></td>
-        <td>${rankCell(r.compositeRank)}${r.delta > 0 ? ` (+${r.delta})` : r.type === 'new' ? ' 新規' : ''}</td>
-        <td>${esc(r.manufacturer || '—')}</td>
-        <td>${esc(r.productName || r.label || '—')}</td>
-        <td>${esc(r.modelCode || r.modelKey || '—')}</td>
-        <td>${esc(r.amazonChange)}</td>
-        <td>—</td>
-        <td>—</td>
-        <td>—</td>
-        <td>—</td>
-        <td>${replacementCell(rep)}</td>
-        <td class="weekly-reason-cell">${esc(r.reason)}</td>
-        <td>${headingBtn(rep?.headingCandidate)}</td>
-      </tr>`);
-    }
-
-    for (const rep of replacements) {
-      const alreadyShown = [...seenLabels].some(
-        (l) => l.includes(rep.fromLabel) || rep.fromLabel.includes(l)
-      );
-      if (alreadyShown) continue;
-      htmlRows.push(`<tr>
-        <td><span class="weekly-badge weekly-badge-warn">入替</span></td>
-        <td>${rep.fromPosition ? `${rep.fromPosition}位` : '—'}</td>
-        <td colspan="3">${esc(rep.fromLabel)}</td>
-        <td>—</td><td>—</td><td>—</td><td>—</td><td>—</td>
-        <td>→ <strong>${esc(rep.toLabel)}</strong></td>
-        <td class="weekly-reason-cell">${esc(rep.reason)}</td>
-        <td>${headingBtn(rep.headingCandidate)}</td>
-      </tr>`);
-    }
-
-    if (!htmlRows.length) {
-      tbody.innerHTML =
-        '<tr><td colspan="13" class="weekly-empty-cell">ランキング未取得、または該当なし</td></tr>';
-      return;
-    }
-    tbody.innerHTML = htmlRows.join('');
-    bindHeadingButtons();
+      </tr>`
+      )
+      .join('');
   }
 
   function renderArticles(report) {
@@ -679,6 +624,16 @@
     return '<span class="weekly-badge weekly-badge-info">中</span>';
   }
 
+  function headingChangeBadge(changeType) {
+    if (changeType === 'added') {
+      return '<span class="weekly-badge weekly-badge-up">追加</span>';
+    }
+    if (changeType === 'removed') {
+      return '<span class="weekly-badge weekly-badge-down">削除</span>';
+    }
+    return '<span class="weekly-badge weekly-badge-info">—</span>';
+  }
+
   function loadStoredCompetitorAnalysis(category) {
     try {
       const raw = sessionStorage.getItem(COMPETITOR_ANALYSIS_KEY);
@@ -691,13 +646,88 @@
     }
   }
 
-  function renderCompetitorComparison(data) {
-    const tbody = document.getElementById('weekly-competitor-tbody');
-    const msg = document.getElementById('weekly-competitor-msg');
+  async function fetchLastCompetitorAnalysis(category) {
+    if (!category) return null;
+    try {
+      const res = await fetch(
+        `/api/competitor-articles/last-analysis?category=${encodeURIComponent(category)}`
+      );
+      if (res.status === 404) return null;
+      const data = await res.json();
+      if (!res.ok) return null;
+      return data;
+    } catch {
+      return null;
+    }
+  }
+
+  function renderHeadingUpdatesTable(data) {
+    const tbody = document.getElementById('weekly-heading-updates-tbody');
+    const hint = document.getElementById('weekly-heading-updates-hint');
     if (!tbody) return;
 
+    const updates = data?.headingUpdates || [];
+    const summary = data?.summary || {};
+    const firstFetchCount = summary.firstFetchCount ?? 0;
+    const successCount = summary.successCount ?? 0;
+
     if (!data) {
-      tbody.innerHTML = '<tr><td colspan="6" class="weekly-empty-cell">比較データなし</td></tr>';
+      tbody.innerHTML = '<tr><td colspan="6" class="weekly-empty-cell">更新見出しなし</td></tr>';
+      if (hint) {
+        hint.textContent = '初回取得後、次回の比較から追加・削除された見出しを表示します。';
+      }
+      return;
+    }
+
+    if (firstFetchCount > 0 && firstFetchCount >= successCount && !updates.length) {
+      tbody.innerHTML =
+        '<tr><td colspan="6" class="weekly-empty-cell">初回取得のため、次回から更新見出しを表示します</td></tr>';
+      if (hint) {
+        hint.textContent =
+          '見出しスナップショットを保存しました。次回の「競合記事を取得・比較」で前回比の追加・削除が表示されます。';
+      }
+      return;
+    }
+
+    if (!updates.length) {
+      tbody.innerHTML =
+        '<tr><td colspan="6" class="weekly-empty-cell">前回比で追加・削除された見出しはありません</td></tr>';
+      if (hint) {
+        hint.textContent = `前回取得との差分はありません${data.fetchedAt ? `（今回: ${fmtDate(data.fetchedAt)}）` : ''}`;
+      }
+      return;
+    }
+
+    if (hint) {
+      hint.textContent = `前回比で ${updates.length} 件の見出し更新${data.fetchedAt ? ` / ${fmtDate(data.fetchedAt)}` : ''}`;
+    }
+
+    const sorted = [...updates].sort((a, b) => {
+      const order = { added: 0, removed: 1 };
+      return (order[a.changeType] ?? 9) - (order[b.changeType] ?? 9) ||
+        String(a.site || '').localeCompare(String(b.site || ''), 'ja') ||
+        String(a.heading || '').localeCompare(String(b.heading || ''), 'ja');
+    });
+
+    tbody.innerHTML = sorted
+      .map(
+        (u) => `<tr class="${u.changeType === 'removed' ? 'weekly-heading-removed' : 'weekly-heading-added'}">
+        <td>${headingChangeBadge(u.changeType)}</td>
+        <td>${esc(u.site)}</td>
+        <td>${esc(u.heading)}</td>
+        <td>${esc(u.level?.toUpperCase() || '')}</td>
+        <td>${esc(fmtDate(u.previousFetchedAt))}</td>
+        <td><a href="${esc(u.url)}" target="_blank" rel="noopener">参照</a></td>
+      </tr>`
+      )
+      .join('');
+  }
+
+  function renderCompetitorComparison(data) {
+    const msg = document.getElementById('weekly-competitor-msg');
+    renderHeadingUpdatesTable(data);
+
+    if (!data) {
       if (msg) {
         msg.textContent =
           '競合調査タブで記事 URL を保存後、「競合記事を取得・比較」を実行してください。';
@@ -705,49 +735,35 @@
       return;
     }
 
-    const proposals = data.proposals || [];
     const summary = data.summary || {};
     if (msg) {
-      msg.textContent = `自社見出し ${data.ownHeadingCount ?? 0}件 / 競合 ${summary.successCount ?? 0}/${summary.competitorCount ?? 0} 件取得 / 改修候補 ${summary.proposalCount ?? 0}件（高優先 ${summary.highPriorityCount ?? 0}）${data.fetchedAt ? ` / ${fmtDate(data.fetchedAt)}` : ''}`;
+      msg.textContent = [
+        `競合 ${summary.successCount ?? 0}/${summary.competitorCount ?? 0} 件取得`,
+        `更新見出し ${summary.headingUpdateCount ?? 0}件`,
+        data.fetchedAt ? fmtDate(data.fetchedAt) : null,
+      ]
+        .filter(Boolean)
+        .join(' / ');
     }
-
-    if (!proposals.length) {
-      tbody.innerHTML =
-        '<tr><td colspan="6" class="weekly-empty-cell">自社にない見出し候補はありません</td></tr>';
-      return;
-    }
-
-    tbody.innerHTML = proposals
-      .map(
-        (p) => `<tr>
-        <td>${competitorPriorityBadge(p.priority)}</td>
-        <td>${esc(p.site)}</td>
-        <td>${esc(p.heading)}</td>
-        <td>${esc(p.level?.toUpperCase() || '')}</td>
-        <td class="weekly-reason-cell">${esc(p.reason)}</td>
-        <td><a href="${esc(p.sourceUrl)}" target="_blank" rel="noopener">参照</a></td>
-      </tr>`
-      )
-      .join('');
   }
 
-  function renderReport(report) {
+  async function resolveCompetitorAnalysis(report) {
+    const category = report?.category || getWeeklyCategory();
+    const fromServer = await fetchLastCompetitorAnalysis(category);
+    if (fromServer) return fromServer;
+    if (report?.competitorAnalysis) return report.competitorAnalysis;
+    return loadStoredCompetitorAnalysis(category) || currentCompetitorAnalysis;
+  }
+
+  async function renderReport(report) {
     currentReport = report;
     renderHeader(report);
     renderCompareSelect(report);
-    renderFilterCounts(report);
     renderWeeklyPoints(report);
-    renderHubPerformance(report);
     renderProducts(report);
-    renderComparison(report);
-    currentCompetitorAnalysis =
-      report.competitorAnalysis ||
-      loadStoredCompetitorAnalysis(report.category) ||
-      currentCompetitorAnalysis;
+    currentCompetitorAnalysis = await resolveCompetitorAnalysis(report);
     renderCompetitorComparison(currentCompetitorAnalysis);
-    renderArticles(report);
     renderInterest(report);
-    renderChangeEffects(report);
   }
 
   function bindHeadingButtons() {
@@ -796,7 +812,7 @@
       );
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'レポートの読み込みに失敗しました');
-      renderReport(data);
+      await renderReport(data);
     } catch (err) {
       showError(err.message);
     }
@@ -823,7 +839,7 @@
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || data.details || '取得に失敗しました');
-      renderReport(data);
+      await renderReport(data);
     } catch (err) {
       showError(err.message);
       if (msg) msg.textContent = '｜取得失敗';
@@ -857,14 +873,6 @@
       showError(err.message);
     }
   }
-
-  document.querySelectorAll('.weekly-filter-btn').forEach((btn) => {
-    btn.addEventListener('click', () => filterRankingRows(btn.dataset.filter));
-  });
-
-  document.getElementById('weekly-all-headings')?.addEventListener('click', () => {
-    goToHeadings(collectHeadings(currentReport || {}));
-  });
 
   document.getElementById('weekly-to-headings-main')?.addEventListener('click', () => {
     goToHeadings(collectHeadings(currentReport || {}));

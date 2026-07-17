@@ -90,6 +90,25 @@ header p {
   margin-bottom: 0.75rem;
 }
 
+.weekly-competitor-panel .weekly-subheading {
+  margin: 1.25rem 0 0.5rem;
+  font-size: 1rem;
+  font-weight: 600;
+  color: #374151;
+}
+
+.weekly-heading-added td:nth-child(3) {
+  font-weight: 600;
+}
+
+.weekly-heading-removed td {
+  color: #6b7280;
+}
+
+.weekly-heading-removed td:nth-child(3) {
+  text-decoration: line-through;
+}
+
 .competitor-article-list {
   display: flex;
   flex-direction: column;
