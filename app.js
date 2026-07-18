@@ -2919,32 +2919,75 @@ app.post('/api/usecase/generate-copy', async (req, res) => {
     return res.status(400).json({ error: 'カテゴリを指定してください。' });
   }
 
+  // 一括は Playwright より HTTP 優先（9件×ブラウザ起動でゲートウェイタイムアウトしやすい）
+  const scrapeFast = async (url, maxChars = 12000) => {
+    try {
+      const text = await scrapeWithHttpClient(url);
+      const normalized = String(text || '')
+        .replace(/\s+/g, ' ')
+        .trim();
+      if (normalized.length >= 200) return normalized.slice(0, maxChars);
+    } catch (err) {
+      console.warn('usecase scrapeFast HTTP failed, fallback to Playwright:', err.message);
+    }
+    return scrape(url, maxChars);
+  };
+
   try {
     // 一括: sections = [{ label, useCaseId, products: [{...}, manufacturerUrl?] }]
     if (sections?.length) {
       const outSections = [];
+      const errors = [];
       for (const sec of sections) {
         const productsOut = [];
         for (const p of sec.products || []) {
-          const generated = await generateCopyForProduct({
-            category,
-            useCase: {
-              id: sec.useCaseId,
+          try {
+            // eslint-disable-next-line no-await-in-loop
+            const generated = await generateCopyForProduct({
+              category,
+              useCase: {
+                id: sec.useCaseId,
+                label: sec.label,
+                rationale: sec.rationale,
+              },
+              product: p,
+              manufacturerUrl: p.manufacturerUrl || null,
+              scrape: scrapeFast,
+              getGeminiModel,
+            });
+            productsOut.push({
+              ...p,
+              copy: generated.copy,
+              manufacturerUrl: generated.manufacturerUrl,
+              scrapeError: generated.scrapeError,
+              scrapeCharCount: generated.scrapeCharCount,
+            });
+          } catch (err) {
+            const message = String(err?.message || err);
+            console.error('usecase generate-copy product failed:', p?.label || p?.key, message);
+            errors.push({
+              useCaseId: sec.useCaseId,
               label: sec.label,
-              rationale: sec.rationale,
-            },
-            product: p,
-            manufacturerUrl: p.manufacturerUrl || null,
-            scrape,
-            getGeminiModel,
-          });
-          productsOut.push({
-            ...p,
-            copy: generated.copy,
-            manufacturerUrl: generated.manufacturerUrl,
-            scrapeError: generated.scrapeError,
-            scrapeCharCount: generated.scrapeCharCount,
-          });
+              productKey: p?.key || '',
+              productLabel: p?.label || p?.productName || '',
+              error: message,
+            });
+            productsOut.push({
+              ...p,
+              copy: {
+                heading: p?.label || p?.productName || '（生成失敗）',
+                description: `※この商品の生成に失敗しました: ${message}`,
+                featureRows: [],
+                linkLabel: '商品詳細はこちら',
+                hrefKojima: p?.hrefKojima || null,
+                manufacturerUrl: p?.manufacturerUrl || null,
+              },
+              manufacturerUrl: p?.manufacturerUrl || null,
+              scrapeError: message,
+              scrapeCharCount: 0,
+              generateError: message,
+            });
+          }
         }
         outSections.push({
           useCaseId: sec.useCaseId,
@@ -2958,6 +3001,8 @@ app.post('/api/usecase/generate-copy', async (req, res) => {
         category,
         sections: outSections,
         html: renderUseCaseHtml(outSections),
+        errorCount: errors.length,
+        errors,
       });
     }
 
@@ -2970,7 +3015,7 @@ app.post('/api/usecase/generate-copy', async (req, res) => {
       useCase,
       product,
       manufacturerUrl,
-      scrape,
+      scrape: scrapeFast,
       getGeminiModel,
     });
     return res.json({

@@ -359,8 +359,17 @@ async function generateCopyForProduct({
   let manufacturerUrl = String(forcedUrl || '').trim() || null;
   let urlMeta = null;
   if (!manufacturerUrl) {
-    urlMeta = await resolveManufacturerPageUrl({ product, getGeminiModel });
-    manufacturerUrl = urlMeta.url;
+    try {
+      urlMeta = await resolveManufacturerPageUrl({ product, getGeminiModel });
+      manufacturerUrl = urlMeta.url;
+    } catch (err) {
+      urlMeta = {
+        url: null,
+        confidence: 'low',
+        note: String(err?.message || err),
+      };
+      manufacturerUrl = null;
+    }
   }
   const scraped = manufacturerUrl
     ? await scrapeManufacturerFacts({ url: manufacturerUrl, scrape })

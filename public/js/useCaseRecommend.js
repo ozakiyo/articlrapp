@@ -307,14 +307,29 @@
       btn.textContent = '生成中…（数分かかることがあります）';
     }
     if (msg) msg.textContent = 'メーカー情報を取得し、説明文・機能表を生成しています…';
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 15 * 60 * 1000);
     try {
       const res = await fetch('/api/usecase/generate-copy', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ category, sections }),
+        signal: controller.signal,
       });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || data.details || '生成に失敗しました');
+      const raw = await res.text();
+      let data = {};
+      try {
+        data = raw ? JSON.parse(raw) : {};
+      } catch {
+        throw new Error(
+          res.ok
+            ? 'サーバー応答がJSONではありません（途中切断の可能性）。'
+            : `HTTP ${res.status}: ゲートウェイ／タイムアウトの可能性。 ${raw.slice(0, 160)}`
+        );
+      }
+      if (!res.ok) {
+        throw new Error(data.details || data.error || `HTTP ${res.status}`);
+      }
       generatedSections = data.sections || [];
       const html = data.html || '';
       const out = document.getElementById('usecase-html-output');
@@ -322,19 +337,32 @@
       if (out) out.value = html;
       if (preview) preview.innerHTML = html;
       document.getElementById('usecase-copy-html').disabled = !html;
+      const genFails = generatedSections
+        .flatMap((s) => s.products || [])
+        .filter((p) => p.generateError)
+        .length;
       const scrapeIssues = generatedSections
         .flatMap((s) => s.products || [])
-        .filter((p) => p.scrapeError)
+        .filter((p) => p.scrapeError && !p.generateError)
         .length;
-      if (msg) {
+      if (genFails > 0) {
+        const first = data.errors?.[0]?.error || '不明';
+        showError(`一部の商品で生成失敗（${genFails}件）。最初のエラー: ${first}`);
+        if (msg) msg.textContent = `一部完了（生成失敗 ${genFails} 件）`;
+      } else if (msg) {
         msg.textContent = scrapeIssues
           ? `生成完了（メーカー取得失敗 ${scrapeIssues} 件。URLを直して再生成できます）`
           : '生成完了';
       }
     } catch (err) {
-      showError(err.message);
+      const message =
+        err?.name === 'AbortError'
+          ? '15分でタイムアウトしました。サーバー／nginxのタイムアウト設定も確認してください。'
+          : err.message || String(err);
+      showError(message);
       if (msg) msg.textContent = '生成失敗';
     } finally {
+      clearTimeout(timeoutId);
       if (btn) {
         btn.disabled = false;
         btn.textContent = '説明文・機能表を一括生成';
