@@ -5,9 +5,11 @@
   const WEEKLY_CONTEXT_KEY = 'articleappNode.weeklyContext';
   const RANKING_CONTEXT_KEY = 'articleappNode.rankingContext';
   const COMPETITOR_ANALYSIS_KEY = 'articleappNode.competitorAnalysis';
+  const CHANGE_DRAFT_KEY = 'articleappNode.weeklyChangeDraft';
 
   let currentReport = null;
   let currentCompetitorAnalysis = null;
+  let changeDraftEntries = [];
 
   function esc(s) {
     const d = document.createElement('div');
@@ -50,6 +52,17 @@
     const v = Number(n) || 0;
     if (v >= 10000) return `${(v / 10000).toFixed(1)}万`;
     return String(v);
+  }
+
+  function formatCv(n) {
+    if (n == null || Number.isNaN(Number(n))) return '—';
+    return `¥${Number(n).toLocaleString('ja-JP')}`;
+  }
+
+  function formatBeforeAfter(before, after, pct, formatter) {
+    const fmt = formatter || ((v) => (v == null ? '—' : String(v)));
+    if (before == null && after == null) return '—';
+    return `${fmt(before)} → ${fmt(after)} ${pvChangeCell(pct)}`;
   }
 
   function pvChangeCell(pct) {
@@ -138,13 +151,10 @@
     if (el) el.textContent = `${done} / ${checks.length} 完了`;
   }
 
-  function renderWeeklyPoints(report) {
-    const ul = document.getElementById('weekly-points-list');
+  function renderTopics(report) {
     const seasonInline = document.getElementById('weekly-season-inline');
-    const footnote = document.getElementById('weekly-points-footnote');
+    const footnote = document.getElementById('weekly-topics-footnote');
     const wp = report.weeklyPoints || {};
-    const points = wp.points?.length ? wp.points : ['ポイントなし'];
-    if (ul) ul.innerHTML = points.map((t) => `<li>${esc(t)}</li>`).join('');
 
     const s = wp.season || report.season || {};
     if (seasonInline) {
@@ -153,24 +163,50 @@
         s.nextWeek ? `来週: ${s.nextWeek}` : null,
         s.monthTheme ? `今月: ${s.monthTheme}` : null,
       ].filter(Boolean);
-      seasonInline.textContent = parts.length ? parts.join(' ｜ ') : '—';
+      const events = Array.isArray(s.events) ? s.events.filter(Boolean) : [];
+      if (events.length) parts.push(`イベント: ${events.join(' / ')}`);
+      seasonInline.textContent = parts.length ? parts.join(' ｜ ') : '—（記事マスタの season に未登録）';
     }
 
     const newsTbody = document.getElementById('weekly-news-tbody');
     const newsRows = report.news || [];
     if (newsTbody) {
       if (!newsRows.length) {
-        newsTbody.innerHTML = '<tr><td colspan="4" class="weekly-empty-cell">ニュースなし</td></tr>';
+        newsTbody.innerHTML =
+          '<tr><td colspan="4" class="weekly-empty-cell">ニュース・新製品なし（記事マスタの news に未登録）</td></tr>';
       } else {
         newsTbody.innerHTML = newsRows
           .map(
             (r) => `<tr>
-            <td>${esc(r.date)}</td>
-            <td>${esc(r.content)}</td>
-            <td>${esc(r.impact)}</td>
-            <td>${esc(r.action)}</td>
+            <td>${esc(r.date || '—')}</td>
+            <td>${esc(r.content || r.title || '—')}</td>
+            <td>${esc(r.impact || '—')}</td>
+            <td>${esc(r.action || '—')}</td>
           </tr>`
           )
+          .join('');
+      }
+    }
+
+    const snsTbody = document.getElementById('weekly-sns-tbody');
+    const snsRows = report.snsTopics || [];
+    if (snsTbody) {
+      if (!snsRows.length) {
+        snsTbody.innerHTML =
+          '<tr><td colspan="4" class="weekly-empty-cell">SNS・話題なし（記事マスタの snsTopics に未登録）</td></tr>';
+      } else {
+        snsTbody.innerHTML = snsRows
+          .map((r) => {
+            const link = r.url
+              ? `<a href="${esc(r.url)}" target="_blank" rel="noopener">参照</a>`
+              : '—';
+            return `<tr>
+              <td>${esc(r.date || '—')}</td>
+              <td>${esc(r.content || r.topic || r.title || '—')}</td>
+              <td>${esc(r.source || r.platform || '—')}</td>
+              <td>${link}</td>
+            </tr>`;
+          })
           .join('');
       }
     }
@@ -184,6 +220,8 @@
         footnote.textContent = '';
       }
     }
+
+    renderInterest(report);
   }
 
   function findReplacementForProduct(replacements, label) {
@@ -511,56 +549,201 @@
     updateTaskProgress();
   }
 
+  function todayInputValue() {
+    const d = new Date();
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${y}-${m}-${day}`;
+  }
+
+  function changeDraftStorageKey(category, weekId) {
+    return `${CHANGE_DRAFT_KEY}:${category || ''}:${weekId || ''}`;
+  }
+
+  function loadChangeDraft(category, weekId) {
+    try {
+      const raw = sessionStorage.getItem(changeDraftStorageKey(category, weekId));
+      if (!raw) return [];
+      const parsed = JSON.parse(raw);
+      return Array.isArray(parsed?.entries) ? parsed.entries : [];
+    } catch {
+      return [];
+    }
+  }
+
+  function saveChangeDraft(category, weekId, entries) {
+    try {
+      sessionStorage.setItem(
+        changeDraftStorageKey(category, weekId),
+        JSON.stringify({ category, weekId, entries, savedAt: Date.now() })
+      );
+    } catch {
+      /* ignore */
+    }
+  }
+
+  function clearChangeDraft(category, weekId) {
+    try {
+      sessionStorage.removeItem(changeDraftStorageKey(category, weekId));
+    } catch {
+      /* ignore */
+    }
+  }
+
+  function parseTargetOptionValue(value) {
+    const raw = String(value || 'hub|柱記事全体');
+    const [meta, ...labelParts] = raw.split('|');
+    const label = labelParts.join('|') || '柱記事全体';
+    if (meta === 'hub' || !meta) {
+      return { targetType: 'hub', targetLabel: label || '柱記事全体' };
+    }
+    const [kind, id] = meta.split(':');
+    if (kind === 'section') {
+      return { targetType: 'section', sectionId: id || null, targetLabel: label };
+    }
+    if (kind === 'menu') {
+      return { targetType: 'menu', menuHeadingId: id || null, targetLabel: label };
+    }
+    if (kind === 'product') {
+      return { targetType: 'product', productId: id || null, targetLabel: label };
+    }
+    return { targetType: 'hub', targetLabel: label };
+  }
+
+  function populateChangeTargetSelect(report) {
+    const select = document.getElementById('weekly-change-target');
+    if (!select) return;
+    const targets = report?.changeTargets?.length
+      ? report.changeTargets
+      : [{ value: 'hub', label: '柱記事全体', targetType: 'hub' }];
+    select.innerHTML = targets
+      .map((t) => {
+        const value = `${t.value}|${t.label}`;
+        return `<option value="${esc(value)}">${esc(t.label)}</option>`;
+      })
+      .join('');
+  }
+
+  function renderChangeDraftTable() {
+    const tbody = document.getElementById('weekly-change-draft-tbody');
+    const msg = document.getElementById('weekly-change-draft-msg');
+    if (!tbody) return;
+    if (!changeDraftEntries.length) {
+      tbody.innerHTML =
+        '<tr><td colspan="5" class="weekly-empty-cell">まだ登録がありません</td></tr>';
+      if (msg) msg.textContent = '';
+      return;
+    }
+    if (msg) {
+      msg.textContent = `${changeDraftEntries.length} 件（確定前。週次レポート確定時に保存されます）`;
+    }
+    tbody.innerHTML = changeDraftEntries
+      .map(
+        (e, idx) => `<tr>
+        <td>${esc(e.changedAt || '—')}</td>
+        <td>${esc(e.targetLabel || '—')}</td>
+        <td>${esc(e.description || '—')}</td>
+        <td>${esc(e.expectedEffect || '—')}</td>
+        <td><button type="button" class="secondary weekly-change-remove" data-index="${idx}">削除</button></td>
+      </tr>`
+      )
+      .join('');
+    tbody.querySelectorAll('.weekly-change-remove').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        const i = Number(btn.dataset.index);
+        if (Number.isNaN(i)) return;
+        changeDraftEntries.splice(i, 1);
+        const category = currentReport?.category || getWeeklyCategory();
+        const weekId = currentReport?.weekId || '';
+        saveChangeDraft(category, weekId, changeDraftEntries);
+        renderChangeDraftTable();
+      });
+    });
+  }
+
+  function addChangeDraftEntry() {
+    const dateEl = document.getElementById('weekly-change-date');
+    const targetEl = document.getElementById('weekly-change-target');
+    const descEl = document.getElementById('weekly-change-description');
+    const expectedEl = document.getElementById('weekly-change-expected');
+    const description = descEl?.value.trim() || '';
+    if (!description) {
+      showError('改修内容を入力してください。');
+      return;
+    }
+    showError('');
+    const target = parseTargetOptionValue(targetEl?.value);
+    const entry = {
+      id: `chg-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+      changedAt: dateEl?.value || todayInputValue(),
+      ...target,
+      description,
+      expectedEffect: expectedEl?.value.trim() || '',
+    };
+    changeDraftEntries.push(entry);
+    const category = currentReport?.category || getWeeklyCategory();
+    const weekId = currentReport?.weekId || '';
+    saveChangeDraft(category, weekId, changeDraftEntries);
+    if (descEl) descEl.value = '';
+    if (expectedEl) expectedEl.value = '';
+    renderChangeDraftTable();
+  }
+
+  function initChangeRegisterForm(report) {
+    const dateEl = document.getElementById('weekly-change-date');
+    if (dateEl && !dateEl.value) dateEl.value = todayInputValue();
+    populateChangeTargetSelect(report);
+    const category = report?.category || getWeeklyCategory();
+    const weekId = report?.weekId || '';
+    changeDraftEntries = loadChangeDraft(category, weekId);
+    renderChangeDraftTable();
+  }
+
   function renderChangeEffects(report) {
     const msg = document.getElementById('weekly-change-effects-msg');
-    const articleTbody = document.getElementById('weekly-change-effects-article-tbody');
-    const productTbody = document.getElementById('weekly-change-effects-product-tbody');
+    const tbody = document.getElementById('weekly-change-effects-tbody');
+    if (!tbody) return;
+
     const effects = report.changeEffects || {};
-    if (msg) msg.textContent = effects.message || '';
+    const rows = effects.items || [
+      ...(effects.articleItems || []),
+      ...(effects.productItems || []),
+    ];
 
-    const articleRows = effects.articleItems || (effects.items || []).filter((r) => r.effectType === 'article');
-    const productRows = effects.productItems || (effects.items || []).filter((r) => r.effectType === 'product');
-
-    if (articleTbody) {
-      if (!articleRows.length) {
-        articleTbody.innerHTML = `<tr><td colspan="6" class="weekly-empty-cell">${esc(
-          effects.hasData ? '記事の変更ログなし' : effects.message || '先週の確定データ待ち'
-        )}</td></tr>`;
-      } else {
-        articleTbody.innerHTML = articleRows
-          .map(
-            (r) => `<tr>
-            <td>${esc(r.articleTitle)}</td>
-            <td>${esc(r.changeDescription)}</td>
-            <td>${formatPv(r.pvBefore)} → ${formatPv(r.pvNow)} ${pvChangeCell(r.pvChangePercent)}</td>
-            <td>${r.menuClicksBefore != null ? `${r.menuClicksBefore}→${r.menuClicksNow} ${pvChangeCell(r.menuClickChangePercent)}` : '—'}</td>
-            <td>${verdictBadge(r.verdict, r.verdictLabel)}</td>
-            <td class="weekly-reason-cell">${esc(r.reason)}</td>
-          </tr>`
-          )
-          .join('');
-      }
+    if (msg) {
+      msg.textContent =
+        effects.message ||
+        (rows.length ? `先週登録分 ${rows.length} 件の前後比` : '');
     }
 
-    if (productTbody) {
-      if (!productRows.length) {
-        productTbody.innerHTML = `<tr><td colspan="5" class="weekly-empty-cell">${esc(
-          effects.hasData ? '商品の変更ログなし' : effects.message || '先週の確定データ待ち'
-        )}</td></tr>`;
-      } else {
-        productTbody.innerHTML = productRows
-          .map(
-            (r) => `<tr>
-            <td>${esc(r.productLabel || r.articleTitle)}</td>
-            <td>${esc(r.changeDescription)}</td>
-            <td>${r.clicksBefore != null ? `${r.clicksBefore}→${r.clicksNow} ${pvChangeCell(r.clickChangePercent)}` : '—'}</td>
-            <td>${verdictBadge(r.verdict, r.verdictLabel)}</td>
-            <td class="weekly-reason-cell">${esc(r.reason)}</td>
-          </tr>`
-          )
-          .join('');
-      }
+    if (!rows.length) {
+      tbody.innerHTML = `<tr><td colspan="8" class="weekly-empty-cell">${esc(
+        effects.message ||
+          '先週登録した改修がありません。上で登録して週次を確定すると、来週ここに結果が出ます。'
+      )}</td></tr>`;
+      return;
     }
+
+    tbody.innerHTML = rows
+      .map(
+        (r) => `<tr>
+        <td>${verdictBadge(r.verdict, r.verdictLabel)}</td>
+        <td>${esc(r.changeDescription || '—')}</td>
+        <td>${esc(r.productLabel || r.menuLabel || r.articleTitle || '—')}</td>
+        <td>${formatBeforeAfter(r.pvBefore, r.pvNow, r.pvChangePercent, formatPv)}</td>
+        <td>${formatBeforeAfter(
+          r.productClicksBefore ?? r.clicksBefore,
+          r.productClicksNow ?? r.clicksNow,
+          r.productClickChangePercent ?? r.clickChangePercent,
+          (v) => (v == null ? '—' : String(v))
+        )}</td>
+        <td>${formatBeforeAfter(r.cvBefore, r.cvNow, r.cvChangePercent, formatCv)}</td>
+        <td class="weekly-reason-cell">${esc(r.reason || '—')}</td>
+        <td>${esc(r.changeWeekId || '—')}</td>
+      </tr>`
+      )
+      .join('');
   }
 
   function renderComparison(report) {
@@ -759,11 +942,12 @@
     currentReport = report;
     renderHeader(report);
     renderCompareSelect(report);
-    renderWeeklyPoints(report);
     renderProducts(report);
     currentCompetitorAnalysis = await resolveCompetitorAnalysis(report);
     renderCompetitorComparison(currentCompetitorAnalysis);
-    renderInterest(report);
+    initChangeRegisterForm(report);
+    renderChangeEffects(report);
+    renderTopics(report);
   }
 
   function bindHeadingButtons() {
@@ -854,18 +1038,28 @@
   async function confirmReport() {
     if (!currentReport?.weekId) return;
     const category = currentReport.category || getWeeklyCategory();
+    const weekId = currentReport.weekId;
     showError('');
     try {
       const res = await fetch('/api/weekly/confirm', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ category, weekId: currentReport.weekId }),
+        body: JSON.stringify({
+          category,
+          weekId,
+          changeEntries: changeDraftEntries,
+        }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || '確定に失敗しました');
+      clearChangeDraft(category, weekId);
+      changeDraftEntries = [];
+      renderChangeDraftTable();
       const msg = document.getElementById('weekly-confirm-msg');
       if (msg) {
-        msg.textContent = `${data.weekId} の週次レポートを確定しました（${fmtDate(data.confirmedAt)}）。来週の前週比に使用されます。`;
+        const changeNote =
+          data.changeLogCount != null ? ` / 改修ログ ${data.changeLogCount} 件` : '';
+        msg.textContent = `${data.weekId} の週次レポートを確定しました（${fmtDate(data.confirmedAt)}）。来週の前週比に使用されます${changeNote}。`;
         msg.classList.add('weekly-confirm-done');
       }
       await loadReport();
@@ -951,6 +1145,14 @@
 
   window.addEventListener('categories-ready', () => {
     loadReport();
+  });
+
+  document.getElementById('weekly-change-add')?.addEventListener('click', addChangeDraftEntry);
+  document.getElementById('weekly-change-description')?.addEventListener('keydown', (ev) => {
+    if (ev.key === 'Enter') {
+      ev.preventDefault();
+      addChangeDraftEntry();
+    }
   });
 
   document.getElementById('weekly-fetch')?.addEventListener('click', fetchRankings);

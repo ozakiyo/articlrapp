@@ -90,6 +90,27 @@ header p {
   margin-bottom: 0.75rem;
 }
 
+.weekly-change-form {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem 1rem;
+  align-items: end;
+  margin: 0.75rem 0 1rem;
+}
+
+.weekly-change-form .weekly-field-inline {
+  min-width: 10rem;
+}
+
+.weekly-change-form .weekly-field-grow {
+  flex: 1 1 16rem;
+  min-width: 14rem;
+}
+
+.weekly-change-form .actions {
+  margin: 0;
+}
+
 .weekly-competitor-panel .weekly-subheading {
   margin: 1.25rem 0 0.5rem;
   font-size: 1rem;

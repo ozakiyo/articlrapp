@@ -206,7 +206,7 @@ const {
   buildEmptyReportWithComparison,
   buildWeeklyReportWithComparison,
   normalizeCompareMode,
-  buildChangeLogFromTasks,
+  buildChangeLogFromEntries,
   extractHubPerformanceSnapshot,
 } = require('./weeklyReportEngine');
 
@@ -2141,11 +2141,11 @@ app.post('/api/weekly/confirm', (req, res) => {
 
   const confirmedAt = new Date().toISOString();
   const articleMaster = loadArticleMaster(category);
-  const tasks =
-    snapshot.report?.priorityTasks || snapshot.report?.tasks || [];
+  const changeEntries = Array.isArray(req.body?.changeEntries) ? req.body.changeEntries : [];
+  const changeLog = buildChangeLogFromEntries(changeEntries, weekId, confirmedAt);
 
   snapshot.confirmedAt = confirmedAt;
-  snapshot.changeLog = buildChangeLogFromTasks(tasks, weekId, confirmedAt);
+  snapshot.changeLog = changeLog;
   const hubSnapshot = extractHubPerformanceSnapshot(articleMaster);
   snapshot.hubPagePerformance = hubSnapshot.hubPagePerformance;
   snapshot.productClicks = hubSnapshot.productClicks;
@@ -2156,13 +2156,19 @@ app.post('/api/weekly/confirm', (req, res) => {
   }
   saveSnapshot(category, weekId, snapshot);
 
-  console.log('✅ Weekly report confirmed:', { category, weekId, confirmedAt });
+  console.log('✅ Weekly report confirmed:', {
+    category,
+    weekId,
+    confirmedAt,
+    changeLogCount: changeLog.length,
+  });
 
   return res.json({
     ok: true,
     category,
     weekId,
     confirmedAt,
+    changeLogCount: changeLog.length,
   });
 });
 

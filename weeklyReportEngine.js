@@ -584,12 +584,18 @@ function buildHubPerformance(articleMaster) {
   return { hubPv, menuClicks, productClicks };
 }
 
+function sumNumericField(rows, field) {
+  return (rows || []).reduce((sum, row) => sum + (Number(row?.[field]) || 0), 0);
+}
+
 function extractHubPerformanceSnapshot(articleMaster) {
   const hub = articleMaster.hubPage || {};
   return {
     hubPagePerformance: {
       weeklyPv: hub.weeklyPv ?? 0,
       prevWeeklyPv: hub.prevWeeklyPv ?? 0,
+      weeklyCv: hub.weeklyCv ?? null,
+      prevWeeklyCv: hub.prevWeeklyCv ?? null,
     },
     productClicks: (articleMaster.products || []).map((p) => ({
       id: p.id,
@@ -598,6 +604,8 @@ function extractHubPerformanceSnapshot(articleMaster) {
       position: p.position,
       weeklyClicks: p.weeklyClicks ?? 0,
       prevWeeklyClicks: p.prevWeeklyClicks ?? 0,
+      weeklyCv: p.weeklyCv ?? null,
+      prevWeeklyCv: p.prevWeeklyCv ?? null,
     })),
     menuClicks: (articleMaster.menuHeadings || []).map((m) => ({
       id: m.id,
@@ -727,77 +735,124 @@ function buildPriorityTasks(tasks, hubPerformance, replacements, articleMaster) 
   return scored.slice(0, config.signals.maxPriorityTasks);
 }
 
-/** 問い8: 先週の変更効果検証（記事 / 商品に分割） */
+function formatCvValue(n) {
+  if (n == null || Number.isNaN(Number(n))) return '—';
+  return `¥${Number(n).toLocaleString('ja-JP')}`;
+}
+
+function classifyKpiChange(chg, improveAt, declineAt) {
+  if (chg == null) return null;
+  if (chg >= improveAt) return 'improved';
+  if (chg <= declineAt) return 'declined';
+  return 'flat';
+}
+
+function resolveVerdictFromSignals(signals) {
+  if (!signals.length) {
+    return { verdict: 'too_early', verdictLabel: 'まだ早い' };
+  }
+  if (signals.some((s) => s.status === 'declined')) {
+    return { verdict: 'declined', verdictLabel: '要見直し' };
+  }
+  if (signals.some((s) => s.status === 'improved')) {
+    return { verdict: 'improved', verdictLabel: 'うまくいっている' };
+  }
+  return { verdict: 'flat', verdictLabel: '横ばい' };
+}
+
+/**
+ * 改修効果検証（主要KPI: PV / 商品詳細遷移 / CV）
+ */
 function buildChangeEffectItem(log, articleMaster, context) {
-  const { hubPvBefore, hubPvNow, hubPvChg, prevProducts, prevMenus } = context;
+  const {
+    hubPvBefore,
+    hubPvNow,
+    hubPvChg,
+    hubCvBefore,
+    hubCvNow,
+    hubCvChg,
+    prevProducts,
+    productsNow,
+  } = context;
   const product = (articleMaster.products || []).find((p) => p.id === log.productId);
   const menu = (articleMaster.menuHeadings || []).find((m) => m.id === log.menuHeadingId);
   const section = getSections(articleMaster).find(
     (s) => s.id === log.sectionId || s.id === log.articleId
   );
 
-  const prevProd = prevProducts.find((p) => p.id === log.productId);
-  const clicksBefore = prevProd?.weeklyClicks ?? product?.prevWeeklyClicks ?? 0;
-  const clicksNow = product?.weeklyClicks ?? 0;
-  const clickChg = product ? pvChangePercent(clicksNow, clicksBefore) : null;
-
-  const prevMenu = prevMenus.find((m) => m.id === log.menuHeadingId);
-  const menuClicksBefore = prevMenu?.weeklyClicks ?? menu?.prevWeeklyClicks ?? null;
-  const menuClicksNow = menu?.weeklyClicks ?? null;
-  const menuClickChg =
-    menuClicksBefore != null && menuClicksNow != null
-      ? pvChangePercent(menuClicksNow, menuClicksBefore)
-      : null;
-
   const isProduct = Boolean(log.productId);
-  let verdict = 'too_early';
-  let verdictLabel = 'まだ早い';
-  const reasons = [];
+  const prevProd = prevProducts.find((p) => p.id === log.productId);
+  const nowProd = productsNow.find((p) => p.id === log.productId) || product;
 
-  if (!isProduct) {
-    if (hubPvChg != null) {
-      if (hubPvChg >= 5) {
-        verdict = 'improved';
-        verdictLabel = 'うまくいっている';
-        reasons.push(`柱記事PV ${formatPv(hubPvBefore)}→${formatPv(hubPvNow)}（+${hubPvChg}%）`);
-      } else if (hubPvChg <= -10) {
-        verdict = 'declined';
-        verdictLabel = '効果なし/要見直し';
-        reasons.push(`柱記事PV ${formatPv(hubPvBefore)}→${formatPv(hubPvNow)}（${hubPvChg}%）`);
-      } else {
-        verdict = 'flat';
-        verdictLabel = '横ばい';
-        reasons.push(`柱記事PV ${formatPv(hubPvBefore)}→${formatPv(hubPvNow)}（${hubPvChg > 0 ? '+' : ''}${hubPvChg}%）`);
-      }
-    } else {
-      reasons.push('比較用の前週PVデータ不足');
-    }
-
-    if (menu && menuClickChg != null) {
-      reasons.push(`見出しクリック ${menuClicksBefore}→${menuClicksNow}（${menuClickChg > 0 ? '+' : ''}${menuClickChg}%）`);
-      if (menuClickChg >= 10 && verdict !== 'declined') {
-        verdict = 'improved';
-        verdictLabel = 'うまくいっている';
-      } else if (menuClickChg <= -15) {
-        verdict = 'declined';
-        verdictLabel = '効果なし/要見直し';
-      }
-    }
-  } else if (product && clickChg != null) {
-    reasons.push(`商品クリック ${clicksBefore}→${clicksNow}（${clickChg > 0 ? '+' : ''}${clickChg}%）`);
-    if (clickChg >= 10) {
-      verdict = 'improved';
-      verdictLabel = 'うまくいっている';
-    } else if (clickChg <= -15) {
-      verdict = 'declined';
-      verdictLabel = '効果なし/要見直し';
-    } else {
-      verdict = 'flat';
-      verdictLabel = '横ばい';
-    }
+  let productClicksBefore;
+  let productClicksNow;
+  if (isProduct) {
+    productClicksBefore = prevProd?.weeklyClicks ?? product?.prevWeeklyClicks ?? 0;
+    productClicksNow = nowProd?.weeklyClicks ?? product?.weeklyClicks ?? 0;
   } else {
-    reasons.push('比較用の商品クリックデータ不足');
+    productClicksBefore =
+      prevProducts.length > 0
+        ? sumNumericField(prevProducts, 'weeklyClicks')
+        : sumNumericField(articleMaster.products || [], 'prevWeeklyClicks');
+    productClicksNow = sumNumericField(productsNow, 'weeklyClicks');
   }
+  const productClickChg = pvChangePercent(productClicksNow, productClicksBefore);
+
+  let cvBefore = hubCvBefore;
+  let cvNow = hubCvNow;
+  let cvChg = hubCvChg;
+  if (isProduct) {
+    const prodCvBefore = prevProd?.weeklyCv ?? product?.prevWeeklyCv ?? null;
+    const prodCvNow = nowProd?.weeklyCv ?? product?.weeklyCv ?? null;
+    if (prodCvBefore != null || prodCvNow != null) {
+      cvBefore = prodCvBefore ?? 0;
+      cvNow = prodCvNow ?? 0;
+      cvChg = pvChangePercent(cvNow, cvBefore);
+    }
+  }
+
+  const reasons = [];
+  const signals = [];
+
+  if (hubPvChg != null) {
+    reasons.push(
+      `PV ${formatPv(hubPvBefore)}→${formatPv(hubPvNow)}（${hubPvChg > 0 ? '+' : ''}${hubPvChg}%）`
+    );
+    signals.push({
+      kpi: 'pv',
+      status: classifyKpiChange(hubPvChg, 5, -10),
+    });
+  } else {
+    reasons.push('比較用の前週PVデータ不足');
+  }
+
+  if (productClickChg != null) {
+    reasons.push(
+      `商品詳細遷移 ${productClicksBefore}→${productClicksNow}（${productClickChg > 0 ? '+' : ''}${productClickChg}%）`
+    );
+    signals.push({
+      kpi: 'productDetail',
+      status: classifyKpiChange(productClickChg, 10, -15),
+    });
+  } else {
+    reasons.push('比較用の商品詳細遷移データ不足');
+  }
+
+  if (cvChg != null && (cvBefore != null || cvNow != null)) {
+    reasons.push(
+      `CV ${formatCvValue(cvBefore)}→${formatCvValue(cvNow)}（${cvChg > 0 ? '+' : ''}${cvChg}%）`
+    );
+    signals.push({
+      kpi: 'cv',
+      status: classifyKpiChange(cvChg, 5, -10),
+    });
+  } else {
+    reasons.push('比較用のCVデータ不足（記事マスタの weeklyCv を設定）');
+  }
+
+  const { verdict, verdictLabel } = resolveVerdictFromSignals(
+    signals.filter((s) => s.status)
+  );
 
   return {
     effectType: isProduct ? 'product' : 'article',
@@ -809,17 +864,20 @@ function buildChangeEffectItem(log, articleMaster, context) {
     menuHeadingId: log.menuHeadingId || null,
     menuLabel: menu?.label || null,
     changeDescription: log.description,
-    changedAt: log.confirmedAt,
+    changedAt: log.confirmedAt || log.changedAt || null,
     changeWeekId: log.weekId,
     pvBefore: hubPvBefore,
     pvNow: hubPvNow,
     pvChangePercent: hubPvChg,
-    clicksBefore,
-    clicksNow,
-    clickChangePercent: clickChg,
-    menuClicksBefore,
-    menuClicksNow,
-    menuClickChangePercent: menuClickChg,
+    productClicksBefore,
+    productClicksNow,
+    productClickChangePercent: productClickChg,
+    clicksBefore: productClicksBefore,
+    clicksNow: productClicksNow,
+    clickChangePercent: productClickChg,
+    cvBefore,
+    cvNow,
+    cvChangePercent: cvChg,
     verdict,
     verdictLabel,
     reason: reasons.join('。') + '。',
@@ -838,7 +896,7 @@ function buildChangeEffects(previousSnapshot, articleMaster) {
       productItems: [],
       hasData: false,
       message:
-        '先週の変更ログなし。週次レポートを確定すると、来週ここに効果検証が表示されます。',
+        '先週登録した改修がありません。上で登録して週次を確定すると、来週ここに結果が出ます。',
     };
   }
 
@@ -848,12 +906,33 @@ function buildChangeEffects(previousSnapshot, articleMaster) {
   const hubPvNow = hubNow.weeklyPv ?? 0;
   const hubPvChg = pvChangePercent(hubPvNow, hubPvBefore);
 
+  const hubCvBefore =
+    prevHubPerf?.weeklyCv ??
+    (hubNow.prevWeeklyCv != null ? hubNow.prevWeeklyCv : null);
+  const hubCvNow = hubNow.weeklyCv != null ? hubNow.weeklyCv : null;
+  const hubCvChg =
+    hubCvBefore != null || hubCvNow != null
+      ? pvChangePercent(hubCvNow ?? 0, hubCvBefore ?? 0)
+      : null;
+
+  const productsNow = (articleMaster.products || []).map((p) => ({
+    id: p.id,
+    label: p.label,
+    weeklyClicks: p.weeklyClicks ?? 0,
+    prevWeeklyClicks: p.prevWeeklyClicks ?? 0,
+    weeklyCv: p.weeklyCv ?? null,
+    prevWeeklyCv: p.prevWeeklyCv ?? null,
+  }));
+
   const context = {
     hubPvBefore,
     hubPvNow,
     hubPvChg,
+    hubCvBefore,
+    hubCvNow,
+    hubCvChg,
     prevProducts: previousSnapshot?.productClicks || [],
-    prevMenus: previousSnapshot?.menuClicks || [],
+    productsNow,
   };
 
   const items = changeLog.map((log) => buildChangeEffectItem(log, articleMaster, context));
@@ -884,6 +963,70 @@ function buildChangeLogFromTasks(tasks, weekId, confirmedAt) {
       confirmedAt,
       weekId,
     }));
+}
+
+/**
+ * 手動登録した改修エントリから changeLog を生成
+ * @param {object[]} entries
+ */
+function buildChangeLogFromEntries(entries, weekId, confirmedAt) {
+  return (entries || [])
+    .filter((e) => e && (e.description || e.targetLabel))
+    .map((e) => {
+      const targetType = String(e.targetType || 'hub');
+      const targetLabel = String(e.targetLabel || e.sectionTitle || e.articleTitle || '柱記事全体').trim();
+      const description = String(e.description || '').trim() || targetLabel;
+      const expectedEffect = String(e.expectedEffect || '').trim() || null;
+      return {
+        sectionId: e.sectionId || e.articleId || null,
+        articleId: e.sectionId || e.articleId || null,
+        sectionTitle: targetType === 'product' ? null : targetLabel,
+        articleTitle: targetType === 'product' ? null : targetLabel,
+        productId: e.productId || null,
+        productLabel: targetType === 'product' ? targetLabel : e.productLabel || null,
+        menuHeadingId: e.menuHeadingId || null,
+        description: expectedEffect ? `${description}（期待: ${expectedEffect}）` : description,
+        changedAt: e.changedAt || null,
+        confirmedAt,
+        weekId,
+      };
+    });
+}
+
+/** 改修登録フォーム用の対象候補 */
+function buildChangeTargets(articleMaster) {
+  const targets = [{ value: 'hub', label: '柱記事全体', targetType: 'hub' }];
+  for (const s of getSections(articleMaster)) {
+    if (!s?.id && !s?.title) continue;
+    targets.push({
+      value: `section:${s.id || s.title}`,
+      label: s.title || s.id,
+      targetType: 'section',
+      sectionId: s.id || null,
+      menuHeadingId: s.menuHeadingId || null,
+    });
+  }
+  for (const m of articleMaster?.menuHeadings || []) {
+    if (!m?.id && !m?.label) continue;
+    const already = targets.some((t) => t.menuHeadingId && t.menuHeadingId === m.id);
+    if (already) continue;
+    targets.push({
+      value: `menu:${m.id || m.label}`,
+      label: `見出し: ${m.label || m.id}`,
+      targetType: 'menu',
+      menuHeadingId: m.id || null,
+    });
+  }
+  for (const p of articleMaster?.products || []) {
+    if (!p?.id && !p?.label) continue;
+    targets.push({
+      value: `product:${p.id || p.label}`,
+      label: `商品: ${p.label || p.id}`,
+      targetType: 'product',
+      productId: p.id || null,
+    });
+  }
+  return targets;
 }
 
 function buildNewArticleProposals(currentItems, articleMaster, comparison) {
@@ -1097,6 +1240,30 @@ function buildWeeklyPoints(articleMaster, comparison, replacements, priorityTask
   };
 }
 
+function normalizeTopicRows(rows) {
+  if (!Array.isArray(rows)) return [];
+  return rows
+    .filter((r) => r && typeof r === 'object')
+    .map((r) => ({
+      date: r.date || null,
+      content: r.content || r.topic || r.title || '',
+      impact: r.impact || null,
+      action: r.action || null,
+      source: r.source || r.platform || null,
+      url: r.url || null,
+    }))
+    .filter((r) => r.content);
+}
+
+function pickArticleTopics(articleMaster) {
+  const master = articleMaster || {};
+  return {
+    season: master.season && typeof master.season === 'object' ? master.season : {},
+    news: normalizeTopicRows(master.news),
+    snsTopics: normalizeTopicRows(master.snsTopics || master.sns || master.topics),
+  };
+}
+
 /**
  * ランキング取得結果から週次レポート JSON を組み立てる
  */
@@ -1223,7 +1390,8 @@ function buildWeeklyReport({
     priorityTasks,
     changeEffects,
     comparison,
-    news: articleMaster.news || [],
+    ...pickArticleTopics(articleMaster),
+    changeTargets: buildChangeTargets(articleMaster),
     compositeMeta: fetchResult?.compositeRanking?.stats || {},
     warnings: fetchResult?.warnings || [],
   };
@@ -1298,7 +1466,8 @@ function buildEmptyReport(category, articleMaster, previousSnapshot) {
     priorityTasks,
     changeEffects,
     comparison,
-    news: articleMaster.news || [],
+    ...pickArticleTopics(articleMaster),
+    changeTargets: buildChangeTargets(articleMaster),
   };
 }
 
@@ -1396,6 +1565,8 @@ function enrichReportWithSalesMetrics(report, articleMaster, previousSnapshot) {
     changeEffects,
     priorityTasks,
     tasks: sortedTasks,
+    ...pickArticleTopics(articleMaster),
+    changeTargets: buildChangeTargets(articleMaster),
   };
 }
 
@@ -1489,6 +1660,8 @@ module.exports = {
   buildPriorityTasks,
   buildChangeEffects,
   buildChangeLogFromTasks,
+  buildChangeLogFromEntries,
+  buildChangeTargets,
   extractHubPerformanceSnapshot,
   extractArticlePerformanceSnapshot,
   enrichReportWithSalesMetrics,

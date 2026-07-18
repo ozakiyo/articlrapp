@@ -122,32 +122,110 @@
           </div>
         </section>
 
-        <section class="panel weekly-points-panel">
-          <h2>今週のポイント</h2>
-          <ul class="weekly-points-list" id="weekly-points-list">
-            <li>読み込み中…</li>
-          </ul>
-          <div class="weekly-points-season" id="weekly-points-season">
-            <h3 class="weekly-subsection-title">季節・イベント</h3>
-            <p class="weekly-season-inline" id="weekly-season-inline">—</p>
-            <h3 class="weekly-subsection-title">ニュース・新製品</h3>
-            <div class="ranking-table-wrap">
-              <table class="ranking-table weekly-table weekly-news-table">
-                <thead>
-                  <tr><th>日付</th><th>内容</th><th>影響</th><th>記事アクション</th></tr>
-                </thead>
-                <tbody id="weekly-news-tbody">
-                  <tr><td colspan="4" class="weekly-empty-cell">ニュースなし</td></tr>
-                </tbody>
-              </table>
+        <section class="panel weekly-q-panel weekly-change-register-panel" id="weekly-change-register-panel">
+          <h2>記事改修を登録</h2>
+          <p class="field-hint">今週直した箇所を登録し、「週次レポートを確定」で保存します。来週「改修の結果」に前後比が出ます。</p>
+          <div class="weekly-change-form" id="weekly-change-form">
+            <label class="field weekly-field-inline">
+              <span>改修日</span>
+              <input type="date" id="weekly-change-date" />
+            </label>
+            <label class="field weekly-field-inline">
+              <span>対象</span>
+              <select id="weekly-change-target">
+                <option value="hub|柱記事全体">柱記事全体</option>
+              </select>
+            </label>
+            <label class="field weekly-field-grow">
+              <span>改修内容</span>
+              <input type="text" id="weekly-change-description" placeholder="例: 選び方に静音性を追加" />
+            </label>
+            <label class="field weekly-field-inline">
+              <span>期待する変化（任意）</span>
+              <input type="text" id="weekly-change-expected" placeholder="例: PV増 / 商品詳細遷移増 / CV増" />
+            </label>
+            <div class="actions">
+              <button type="button" class="secondary" id="weekly-change-add">行を追加</button>
             </div>
-            <p class="field-hint">※ ニュースは記事マスタで手動更新（将来はRSS連携）</p>
           </div>
-          <p class="field-hint" id="weekly-points-footnote" hidden></p>
+          <p class="field-hint" id="weekly-change-draft-msg"></p>
+          <h3 class="weekly-subsection-title">登録済み（今週・確定前）</h3>
+          <div class="ranking-table-wrap">
+            <table class="ranking-table weekly-table">
+              <thead>
+                <tr>
+                  <th>日付</th>
+                  <th>対象</th>
+                  <th>内容</th>
+                  <th>期待</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody id="weekly-change-draft-tbody">
+                <tr><td colspan="5" class="weekly-empty-cell">まだ登録がありません</td></tr>
+              </tbody>
+            </table>
+          </div>
         </section>
 
-        <section class="panel weekly-q-panel weekly-interest-panel" id="weekly-interest-panel">
-          <h2>関心・検索 <span class="weekly-q-hint">（Google サジェスト TOP10）</span></h2>
+        <section class="panel weekly-q-panel weekly-change-effects-panel" id="weekly-change-effects-panel">
+          <h2>改修の結果 <span class="weekly-q-hint">（先週登録分の前後比）</span></h2>
+          <p class="field-hint" id="weekly-change-effects-msg"></p>
+          <p class="field-hint">主要KPI: PV / 商品詳細ページへの遷移 / CV（売上）。記事マスタの <code>weeklyPv</code>・商品 <code>weeklyClicks</code>・<code>weeklyCv</code> を手動更新してください。</p>
+          <div class="ranking-table-wrap">
+            <table class="ranking-table weekly-table">
+              <thead>
+                <tr>
+                  <th>判定</th>
+                  <th>改修内容</th>
+                  <th>対象</th>
+                  <th>PV</th>
+                  <th>商品詳細遷移</th>
+                  <th>CV（売上）</th>
+                  <th>理由</th>
+                  <th>改修週</th>
+                </tr>
+              </thead>
+              <tbody id="weekly-change-effects-tbody">
+                <tr><td colspan="8" class="weekly-empty-cell">先週登録した改修がありません</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        <section class="panel weekly-topics-panel" id="weekly-topics-panel">
+          <h2>季節・ニュース・話題</h2>
+
+          <h3 class="weekly-subsection-title">季節・イベント</h3>
+          <p class="weekly-season-inline" id="weekly-season-inline">—</p>
+
+          <h3 class="weekly-subsection-title">ニュース・新製品</h3>
+          <div class="ranking-table-wrap">
+            <table class="ranking-table weekly-table weekly-news-table">
+              <thead>
+                <tr><th>日付</th><th>内容</th><th>影響</th><th>記事アクション</th></tr>
+              </thead>
+              <tbody id="weekly-news-tbody">
+                <tr><td colspan="4" class="weekly-empty-cell">ニュースなし</td></tr>
+              </tbody>
+            </table>
+          </div>
+          <p class="field-hint">※ ニュース・新製品は記事マスタ（`news`）で手動更新</p>
+
+          <h3 class="weekly-subsection-title">SNS・話題</h3>
+          <div class="ranking-table-wrap">
+            <table class="ranking-table weekly-table">
+              <thead>
+                <tr><th>日付</th><th>話題</th><th>出典</th><th>リンク</th></tr>
+              </thead>
+              <tbody id="weekly-sns-tbody">
+                <tr><td colspan="4" class="weekly-empty-cell">SNS・話題なし</td></tr>
+              </tbody>
+            </table>
+          </div>
+          <p class="field-hint">※ SNS話題は記事マスタ（`snsTopics`）で手動更新</p>
+
+          <h3 class="weekly-subsection-title">検索の話題 <span class="weekly-q-hint">（Google サジェスト）</span></h3>
           <div class="ranking-table-wrap">
             <table class="ranking-table weekly-table">
               <thead>
@@ -159,6 +237,7 @@
             </table>
           </div>
           <p class="field-hint" id="weekly-interest-footnote">※ Google サジェストから自動取得</p>
+          <p class="field-hint" id="weekly-topics-footnote" hidden></p>
         </section>
 
         <section class="panel weekly-footer-panel">

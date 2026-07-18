@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "updatedAt": "2026-07-17T13:14:29Z",
+  "updatedAt": "2026-07-18T00:03:35Z",
   "categories": {
     "掃除機": {
       "articles": [
@@ -505,6 +505,36 @@
         }
       ],
       "savedAt": "2026-07-17T13:14:29Z"
+    },
+    "窓用エアコン": {
+      "articles": [
+        {
+          "site": "ジョーシン",
+          "category": "窓用エアコン",
+          "url": "https://joshinweb.jp/season/win_air.html"
+        },
+        {
+          "site": "ヤマダ",
+          "category": "窓用エアコン",
+          "url": "https://www.yamada-denkiweb.com/media/4018/"
+        },
+        {
+          "site": "エディオン",
+          "category": "窓用エアコン",
+          "url": "https://www.edion.com/special.html?identificationid=windowaircon"
+        },
+        {
+          "site": "ビックカメラ",
+          "category": "窓用エアコン",
+          "url": "https://www.biccamera.com/bc/i/topics/osusume_window_ac/index.jsp"
+        },
+        {
+          "site": "SAKIDORI",
+          "category": "窓用エアコン",
+          "url": "https://sakidori.co/article/484829"
+        }
+      ],
+      "savedAt": "2026-07-18T00:03:35Z"
     },
     "空気清浄機": {
       "articles": [
