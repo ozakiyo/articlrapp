@@ -10,6 +10,8 @@
   let currentReport = null;
   let currentCompetitorAnalysis = null;
   let changeDraftEntries = [];
+  /** @type {{ before: object, now: object } | null} ブラウザメモリのみ。サーバーへ送らない */
+  let pastedKpiCompare = null;
 
   function esc(s) {
     const d = document.createElement('div');
@@ -109,6 +111,7 @@
         label: headingCandidate,
         headingCandidate,
       })),
+      compositeItems: report.bestsellers || report.compositeRanking?.items || [],
       savedAt: new Date().toISOString(),
       ...extra,
     };
@@ -705,22 +708,19 @@
     const tbody = document.getElementById('weekly-change-effects-tbody');
     if (!tbody) return;
 
-    const effects = report.changeEffects || {};
-    const rows = effects.items || [
-      ...(effects.articleItems || []),
-      ...(effects.productItems || []),
-    ];
+    const effects = buildClientChangeEffects(report, pastedKpiCompare);
+    const rows = effects.items || [];
 
     if (msg) {
       msg.textContent =
         effects.message ||
-        (rows.length ? `先週登録分 ${rows.length} 件の前後比` : '');
+        (rows.length ? `改修 ${rows.length} 件（貼り付けKPIで前後比）` : '');
     }
 
     if (!rows.length) {
       tbody.innerHTML = `<tr><td colspan="8" class="weekly-empty-cell">${esc(
         effects.message ||
-          '先週登録した改修がありません。上で登録して週次を確定すると、来週ここに結果が出ます。'
+          '先週登録した改修がありません。上で改修を登録して週次を確定すると、ここに一覧が出ます。KPI数値は毎回貼り付けてください。'
       )}</td></tr>`;
       return;
     }
@@ -763,6 +763,7 @@
       .toLowerCase()
       .replace(/\s+/g, '');
     if (!t) return null;
+    if (t === '指標' || t === '項目' || t === 'kpi') return null;
     if (
       t === 'pv' ||
       t.includes('ページビュー') ||
@@ -786,6 +787,17 @@
     return null;
   }
 
+  function splitPasteCols(line) {
+    return String(line || '')
+      .split(/\t+| {2,}/)
+      .map((c) => c.trim())
+      .filter(Boolean);
+  }
+
+  /**
+   * 前週・今週の2列必須。サーバーへは送らない。
+   * @returns {{ ok: boolean, error?: string, before?: object, now?: object }}
+   */
   function parseKpiPasteText(text) {
     const lines = String(text || '')
       .split(/\r?\n/)
@@ -795,60 +807,180 @@
       return { ok: false, error: '貼り付け内容が空です。' };
     }
 
-    const result = {
+    const before = {
+      weeklyPv: null,
+      weeklyProductDetailClicks: null,
+      weeklyCv: null,
+    };
+    const now = {
       weeklyPv: null,
       weeklyProductDetailClicks: null,
       weeklyCv: null,
     };
 
-    // 1行3列: PV / 商品詳細遷移 / CV
-    if (lines.length === 1) {
-      const cols = lines[0].split(/\t+| {2,}|,/).map((c) => c.trim()).filter(Boolean);
-      if (cols.length >= 3) {
-        const a = parseKpiNumber(cols[0]);
-        const b = parseKpiNumber(cols[1]);
-        const c = parseKpiNumber(cols[2]);
-        if (a == null || b == null || c == null) {
-          return { ok: false, error: '1行形式は「PV / 商品詳細遷移 / CV」の3数値である必要があります。' };
-        }
-        return {
-          ok: true,
-          values: { weeklyPv: a, weeklyProductDetailClicks: b, weeklyCv: c },
-        };
-      }
-    }
-
     for (const line of lines) {
-      const parts = line.split(/\t+/);
-      let label;
-      let valueRaw;
-      if (parts.length >= 2) {
-        label = parts[0];
-        valueRaw = parts.slice(1).join('\t');
-      } else {
-        const m = line.match(/^(.+?)[:：\s]+(.+)$/);
-        if (!m) continue;
-        label = m[1];
-        valueRaw = m[2];
-      }
-      const key = detectKpiLabel(label);
-      const num = parseKpiNumber(valueRaw);
-      if (key && num != null) result[key] = num;
+      const cols = splitPasteCols(line);
+      if (cols.length < 3) continue;
+      // ヘッダ行スキップ
+      if (/前週|今週|指標|項目/i.test(cols[0]) && detectKpiLabel(cols[0]) == null) continue;
+      if (/^前週$/i.test(cols[1]) || /^今週$/i.test(cols[2])) continue;
+
+      const key = detectKpiLabel(cols[0]);
+      if (!key) continue;
+      const prev = parseKpiNumber(cols[1]);
+      const curr = parseKpiNumber(cols[2]);
+      if (prev != null) before[key] = prev;
+      if (curr != null) now[key] = curr;
     }
 
-    if (
-      result.weeklyPv == null &&
-      result.weeklyProductDetailClicks == null &&
-      result.weeklyCv == null
-    ) {
+    const hasAny =
+      before.weeklyPv != null ||
+      before.weeklyProductDetailClicks != null ||
+      before.weeklyCv != null ||
+      now.weeklyPv != null ||
+      now.weeklyProductDetailClicks != null ||
+      now.weeklyCv != null;
+
+    if (!hasAny) {
       return {
         ok: false,
         error:
-          '解釈できませんでした。ラベル付き（PV / 商品詳細遷移 / CV）か、1行3数値で貼ってください。',
+          '解釈できませんでした。各行を「指標 / 前週 / 今週」の3列で貼ってください。',
       };
     }
 
-    return { ok: true, values: result };
+    return { ok: true, before, now };
+  }
+
+  function clientPctChange(now, before) {
+    const c = Number(now);
+    const p = Number(before);
+    if (!Number.isFinite(c) || !Number.isFinite(p)) return null;
+    if (p === 0) return c === 0 ? 0 : 100;
+    return Math.round(((c - p) / p) * 100);
+  }
+
+  function clientClassify(chg, improveAt, declineAt) {
+    if (chg == null) return null;
+    if (chg >= improveAt) return 'improved';
+    if (chg <= declineAt) return 'declined';
+    return 'flat';
+  }
+
+  function clientVerdict(signals) {
+    if (!signals.length) return { verdict: 'too_early', verdictLabel: 'まだ早い' };
+    if (signals.some((s) => s === 'declined')) {
+      return { verdict: 'declined', verdictLabel: '要見直し' };
+    }
+    if (signals.some((s) => s === 'improved')) {
+      return { verdict: 'improved', verdictLabel: 'うまくいっている' };
+    }
+    return { verdict: 'flat', verdictLabel: '横ばい' };
+  }
+
+  function applyPastedKpiToRow(row, kpi) {
+    if (!kpi?.before || !kpi?.now) return row;
+    const pvBefore = kpi.before.weeklyPv;
+    const pvNow = kpi.now.weeklyPv;
+    const clicksBefore = kpi.before.weeklyProductDetailClicks;
+    const clicksNow = kpi.now.weeklyProductDetailClicks;
+    const cvBefore = kpi.before.weeklyCv;
+    const cvNow = kpi.now.weeklyCv;
+
+    const pvChg = clientPctChange(pvNow, pvBefore);
+    const clickChg = clientPctChange(clicksNow, clicksBefore);
+    const cvChg = clientPctChange(cvNow, cvBefore);
+
+    const reasons = [];
+    const signals = [];
+    if (pvChg != null) {
+      reasons.push(
+        `PV ${formatPv(pvBefore)}→${formatPv(pvNow)}（${pvChg > 0 ? '+' : ''}${pvChg}%）`
+      );
+      signals.push(clientClassify(pvChg, 5, -10));
+    }
+    if (clickChg != null) {
+      reasons.push(
+        `商品詳細遷移 ${clicksBefore}→${clicksNow}（${clickChg > 0 ? '+' : ''}${clickChg}%）`
+      );
+      signals.push(clientClassify(clickChg, 10, -15));
+    }
+    if (cvChg != null) {
+      reasons.push(
+        `CV ${formatCv(cvBefore)}→${formatCv(cvNow)}（${cvChg > 0 ? '+' : ''}${cvChg}%）`
+      );
+      signals.push(clientClassify(cvChg, 5, -10));
+    }
+    if (!reasons.length) {
+      reasons.push('KPI未貼り付けのため数値比較なし');
+    }
+
+    const { verdict, verdictLabel } = clientVerdict(signals.filter(Boolean));
+    return {
+      ...row,
+      pvBefore,
+      pvNow,
+      pvChangePercent: pvChg,
+      productClicksBefore: clicksBefore,
+      productClicksNow: clicksNow,
+      productClickChangePercent: clickChg,
+      clicksBefore,
+      clicksNow,
+      clickChangePercent: clickChg,
+      cvBefore,
+      cvNow,
+      cvChangePercent: cvChg,
+      verdict,
+      verdictLabel,
+      reason: reasons.join('。') + '。',
+    };
+  }
+
+  function buildClientChangeEffects(report, kpi) {
+    const base = report?.changeEffects || {};
+    const rows = base.items || [
+      ...(base.articleItems || []),
+      ...(base.productItems || []),
+    ];
+
+    if (!rows.length) {
+      return {
+        items: [],
+        hasData: false,
+        message:
+          base.message ||
+          '先週登録した改修がありません。上で改修を登録して週次を確定すると、ここに一覧が出ます。',
+      };
+    }
+
+    if (!kpi?.before || !kpi?.now) {
+      return {
+        items: rows.map((r) => ({
+          ...r,
+          pvBefore: null,
+          pvNow: null,
+          pvChangePercent: null,
+          productClicksBefore: null,
+          productClicksNow: null,
+          productClickChangePercent: null,
+          cvBefore: null,
+          cvNow: null,
+          cvChangePercent: null,
+          verdict: 'too_early',
+          verdictLabel: 'まだ早い',
+          reason:
+            'KPI未貼り付け。上で前週・今週を貼り付けて「表示に反映」してください（サーバーには保存しません）。',
+        })),
+        hasData: true,
+        message: `改修 ${rows.length} 件（KPI未貼り付け）`,
+      };
+    }
+
+    return {
+      items: rows.map((r) => applyPastedKpiToRow(r, kpi)),
+      hasData: true,
+      message: `改修 ${rows.length} 件（貼り付けKPIで前後比・サーバー非保存）`,
+    };
   }
 
   let lastParsedKpi = null;
@@ -863,28 +995,33 @@
       lastParsedKpi = null;
       return null;
     }
-    lastParsedKpi = parsed.values;
-    if (msg) msg.textContent = '解釈OK。問題なければ「取り込む」を押してください。';
+    lastParsedKpi = { before: parsed.before, now: parsed.now };
+    if (msg) {
+      msg.textContent =
+        '解釈OK（サーバーには送りません）。問題なければ「表示に反映」を押してください。';
+    }
     if (tbody) {
       const rows = [
-        ['PV', parsed.values.weeklyPv],
-        ['商品詳細遷移', parsed.values.weeklyProductDetailClicks],
-        ['CV（売上）', parsed.values.weeklyCv],
+        ['PV', parsed.before.weeklyPv, parsed.now.weeklyPv],
+        [
+          '商品詳細遷移',
+          parsed.before.weeklyProductDetailClicks,
+          parsed.now.weeklyProductDetailClicks,
+        ],
+        ['CV（売上）', parsed.before.weeklyCv, parsed.now.weeklyCv],
       ];
       tbody.innerHTML = rows
-        .map(([label, val]) => {
-          const display =
-            label.startsWith('CV') && val != null
-              ? formatCv(val)
-              : val == null
-                ? '（未指定）'
-                : Number(val).toLocaleString('ja-JP');
-          return `<tr><td>${esc(label)}</td><td>${esc(display)}</td></tr>`;
+        .map(([label, prev, curr]) => {
+          const fmt = (v) => {
+            if (v == null) return '（未指定）';
+            return label.startsWith('CV') ? formatCv(v) : Number(v).toLocaleString('ja-JP');
+          };
+          return `<tr><td>${esc(label)}</td><td>${esc(fmt(prev))}</td><td>${esc(fmt(curr))}</td></tr>`;
         })
         .join('');
     }
     if (box) box.hidden = false;
-    return parsed.values;
+    return lastParsedKpi;
   }
 
   function previewKpiPaste() {
@@ -895,49 +1032,25 @@
     if (!parsed.ok) showError(parsed.error);
   }
 
-  async function applyKpiPaste() {
+  function applyKpiPaste() {
     showError('');
     const text = document.getElementById('weekly-kpi-paste')?.value || '';
     const parsed = lastParsedKpi
-      ? { ok: true, values: lastParsedKpi }
+      ? { ok: true, before: lastParsedKpi.before, now: lastParsedKpi.now }
       : parseKpiPasteText(text);
     renderKpiPreview(parsed);
     if (!parsed.ok) {
       showError(parsed.error);
       return;
     }
-
-    const category = currentReport?.category || getWeeklyCategory();
-    const weekId = currentReport?.weekId || '';
-    const compare = document.getElementById('weekly-compare')?.value || 'latest';
+    // メモリのみ。API・サーバーへは送らない
+    pastedKpiCompare = { before: parsed.before, now: parsed.now };
     const msg = document.getElementById('weekly-kpi-paste-msg');
-    if (msg) msg.textContent = '取り込み中…';
-
-    try {
-      const res = await fetch('/api/weekly/kpi', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          category,
-          weekId,
-          compare,
-          ...parsed.values,
-        }),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || data.details || '取り込みに失敗しました');
-      if (data.report) await renderReport(data.report);
-      else await loadReport();
-      if (msg) {
-        const hub = data.hubPage || {};
-        msg.textContent = `取り込み完了: PV ${hub.weeklyPv ?? '—'} / 商品詳細遷移 ${
-          hub.weeklyProductDetailClicks ?? '—'
-        } / CV ${hub.weeklyCv != null ? formatCv(hub.weeklyCv) : '—'}`;
-      }
-    } catch (err) {
-      showError(err.message);
-      if (msg) msg.textContent = '取り込み失敗';
+    if (msg) {
+      msg.textContent =
+        '表示に反映しました（このブラウザの表示のみ。サーバーには保存していません）。';
     }
+    if (currentReport) renderChangeEffects(currentReport);
   }
 
   function renderComparison(report) {
@@ -1142,6 +1255,9 @@
     initChangeRegisterForm(report);
     renderChangeEffects(report);
     renderTopics(report);
+    if (report?.bestsellers?.length || report?.compositeRanking?.items?.length) {
+      saveWeeklyContextToStorage(report);
+    }
   }
 
   function bindHeadingButtons() {
@@ -1334,6 +1450,8 @@
   });
 
   window.addEventListener('weekly-category-changed', () => {
+    pastedKpiCompare = null;
+    lastParsedKpi = null;
     loadReport();
   });
 

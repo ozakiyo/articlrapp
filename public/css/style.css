@@ -131,6 +131,60 @@ header p {
   max-width: 28rem;
 }
 
+.usecase-use-cases,
+.usecase-assignments {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  margin: 0.75rem 0 1rem;
+}
+
+.usecase-uc-card,
+.usecase-assign-block,
+.usecase-product-card {
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  padding: 0.75rem 1rem;
+  background: #fafafa;
+}
+
+.usecase-product-card {
+  margin-top: 0.5rem;
+}
+
+.usecase-product-card a {
+  display: inline-block;
+  margin: 0.25rem 0 0.5rem;
+}
+
+#usecase-html-output {
+  width: 100%;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 0.85rem;
+  margin-top: 0.5rem;
+}
+
+.usecase-html-preview {
+  margin-top: 1rem;
+  padding: 1rem;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  background: #fff;
+}
+
+.usecase-html-preview table {
+  border-collapse: collapse;
+  margin: 0.5rem 0 1rem;
+  width: auto;
+}
+
+.usecase-html-preview th,
+.usecase-html-preview td {
+  border: 1px solid #d1d5db;
+  padding: 0.35rem 0.6rem;
+  text-align: left;
+}
+
 .weekly-competitor-panel .weekly-subheading {
   margin: 1.25rem 0 0.5rem;
   font-size: 1rem;

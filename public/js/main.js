@@ -4,6 +4,7 @@
   const panels = {
     weekly: document.getElementById('panel-weekly'),
     kyoso: document.getElementById('panel-kyoso'),
+    usecase: document.getElementById('panel-usecase'),
     headings: document.getElementById('panel-headings'),
     article: document.getElementById('panel-article'),
   };
@@ -15,6 +16,7 @@
     pairs: [
       { selectId: 'weekly-category', otherId: 'weekly-category-other' },
       { selectId: 'kyoso-category', otherId: 'kyoso-category-other' },
+      { selectId: 'usecase-category', otherId: 'usecase-category-other' },
     ],
 
     get(selectId, otherId) {
@@ -1055,7 +1057,9 @@
       const rankingCtx = {
         category: kyosoPhase1Cache.category,
         pickedFeatures: kyosoPhase1Cache.pickedFeatures,
+        compositeItems: kyosoPhase1Cache.compositeItems,
         savedAt: Date.now(),
+        source: 'kyoso',
       };
       saveRankingContextToStorage(rankingCtx);
       renderKyosoPickedFeatures(rankingCtx.pickedFeatures, rankingCtx.category);

@@ -196,8 +196,6 @@ const {
   getIsoWeekId,
   getPreviousWeekId,
   loadArticleMaster,
-  saveArticleMaster,
-  applyHubWeeklyKpi,
   loadSnapshot,
   saveSnapshot,
   listSnapshots,
@@ -209,7 +207,6 @@ const {
   buildWeeklyReportWithComparison,
   normalizeCompareMode,
   buildChangeLogFromEntries,
-  extractHubPerformanceSnapshot,
 } = require('./weeklyReportEngine');
 
 async function attachGoogleSearchInterest(report, category) {
@@ -2142,16 +2139,15 @@ app.post('/api/weekly/confirm', (req, res) => {
   }
 
   const confirmedAt = new Date().toISOString();
-  const articleMaster = loadArticleMaster(category);
   const changeEntries = Array.isArray(req.body?.changeEntries) ? req.body.changeEntries : [];
   const changeLog = buildChangeLogFromEntries(changeEntries, weekId, confirmedAt);
 
   snapshot.confirmedAt = confirmedAt;
   snapshot.changeLog = changeLog;
-  const hubSnapshot = extractHubPerformanceSnapshot(articleMaster);
-  snapshot.hubPagePerformance = hubSnapshot.hubPagePerformance;
-  snapshot.productClicks = hubSnapshot.productClicks;
-  snapshot.menuClicks = hubSnapshot.menuClicks;
+  // 会社KPI（PV/遷移/CV）は個人サーバーに保存しない
+  delete snapshot.hubPagePerformance;
+  delete snapshot.productClicks;
+  delete snapshot.menuClicks;
   if (snapshot.report) {
     snapshot.report.confirmedAt = confirmedAt;
     snapshot.report.changeEffects = undefined;
@@ -2172,82 +2168,6 @@ app.post('/api/weekly/confirm', (req, res) => {
     confirmedAt,
     changeLogCount: changeLog.length,
   });
-});
-
-app.post('/api/weekly/kpi', async (req, res) => {
-  const category = String(req.body?.category || weeklyReportConfig.defaultCategory).trim();
-  const weekId = String(req.body?.weekId || '').trim() || getIsoWeekId();
-  const compareMode = normalizeCompareMode(req.body?.compare);
-
-  const weeklyPv = req.body?.weeklyPv;
-  const weeklyProductDetailClicks = req.body?.weeklyProductDetailClicks;
-  const weeklyCv = req.body?.weeklyCv;
-
-  const hasAny =
-    weeklyPv != null || weeklyProductDetailClicks != null || weeklyCv != null;
-  if (!hasAny) {
-    return res.status(400).json({
-      error: 'KPIが空です。PV / 商品詳細遷移 / CV のいずれかを指定してください。',
-    });
-  }
-
-  try {
-    const existing = loadArticleMaster(category);
-    const updated = applyHubWeeklyKpi(existing, {
-      weeklyPv,
-      weeklyProductDetailClicks,
-      weeklyCv,
-    });
-    saveArticleMaster(category, updated);
-
-    let snapshot = loadSnapshot(category, weekId);
-    if (!snapshot) {
-      const latest = findLatestSnapshot(category);
-      if (latest?.weekId === weekId) snapshot = latest;
-    }
-
-    const report = snapshot
-      ? await attachGoogleSearchInterest(
-          buildReportFromSnapshot(snapshot, updated, compareMode),
-          category
-        )
-      : await attachGoogleSearchInterest(
-          buildEmptyReportWithComparison(category, updated, weekId, compareMode),
-          category
-        );
-
-    console.log('✅ Weekly KPI pasted:', {
-      category,
-      weeklyPv: updated.hubPage?.weeklyPv,
-      weeklyProductDetailClicks: updated.hubPage?.weeklyProductDetailClicks,
-      weeklyCv: updated.hubPage?.weeklyCv,
-    });
-
-    return res.json({
-      ok: true,
-      category,
-      weekId,
-      hubPage: {
-        weeklyPv: updated.hubPage?.weeklyPv ?? null,
-        prevWeeklyPv: updated.hubPage?.prevWeeklyPv ?? null,
-        weeklyProductDetailClicks: updated.hubPage?.weeklyProductDetailClicks ?? null,
-        prevWeeklyProductDetailClicks:
-          updated.hubPage?.prevWeeklyProductDetailClicks ?? null,
-        weeklyCv: updated.hubPage?.weeklyCv ?? null,
-        prevWeeklyCv: updated.hubPage?.prevWeeklyCv ?? null,
-      },
-      report: {
-        ...report,
-        snapshots: listSnapshots(category),
-      },
-    });
-  } catch (err) {
-    console.error('💥 /api/weekly/kpi error:', err);
-    return res.status(500).json({
-      error: 'KPIの取り込みに失敗しました。',
-      details: err.message,
-    });
-  }
 });
 
 app.get('/api/download-category-ranking-csv/:filename', (req, res) => {
@@ -2911,6 +2831,160 @@ ${outlineJSON}
     /*スクレイピング中に発生した警告メッセージのリスト*/
     warnings,
   });
+});
+
+const {
+  filterKojimaProducts,
+  proposeUseCases,
+  assignProductsToUseCases,
+  generateCopyForProduct,
+  renderUseCaseHtml,
+} = require('./useCaseRecommendEngine');
+
+function normalizeUseCaseProductsPayload(items) {
+  return Array.isArray(items) ? items : [];
+}
+
+app.post('/api/usecase/propose', async (req, res) => {
+  const category = String(req.body?.category || '').trim();
+  const items = normalizeUseCaseProductsPayload(req.body?.items);
+  if (!category) {
+    return res.status(400).json({ error: 'カテゴリを指定してください。' });
+  }
+  if (!items.length) {
+    return res.status(400).json({
+      error: 'ランキング商品が空です。週次レポートまたは競合調査でランキングを取得してください。',
+    });
+  }
+  try {
+    const result = await proposeUseCases({
+      category,
+      products: items,
+      getGeminiModel,
+    });
+    return res.json({ ok: true, category, ...result });
+  } catch (err) {
+    console.error('💥 /api/usecase/propose error:', err);
+    return res.status(500).json({
+      error: '用途の提案に失敗しました。',
+      details: err.message,
+    });
+  }
+});
+
+app.post('/api/usecase/assign', async (req, res) => {
+  const category = String(req.body?.category || '').trim();
+  const items = normalizeUseCaseProductsPayload(req.body?.items);
+  const useCases = Array.isArray(req.body?.useCases) ? req.body.useCases : [];
+  if (!category) {
+    return res.status(400).json({ error: 'カテゴリを指定してください。' });
+  }
+  if (useCases.length < 1) {
+    return res.status(400).json({ error: '用途を1つ以上指定してください。' });
+  }
+  try {
+    const result = await assignProductsToUseCases({
+      useCases: useCases.slice(0, 3),
+      products: items,
+      getGeminiModel,
+    });
+    return res.json({
+      ok: true,
+      category,
+      kojimaPreview: filterKojimaProducts(items).slice(0, 20).map((p) => ({
+        key: p._key,
+        label: p.label,
+        rankKojima: p.rankKojima,
+        hrefKojima: p.hrefKojima,
+      })),
+      ...result,
+    });
+  } catch (err) {
+    console.error('💥 /api/usecase/assign error:', err);
+    return res.status(500).json({
+      error: '商品の振り分けに失敗しました。',
+      details: err.message,
+    });
+  }
+});
+
+app.post('/api/usecase/generate-copy', async (req, res) => {
+  const category = String(req.body?.category || '').trim();
+  const useCase = req.body?.useCase || {};
+  const product = req.body?.product || null;
+  const manufacturerUrl = String(req.body?.manufacturerUrl || '').trim() || null;
+  const sections = Array.isArray(req.body?.sections) ? req.body.sections : null;
+
+  if (!category) {
+    return res.status(400).json({ error: 'カテゴリを指定してください。' });
+  }
+
+  try {
+    // 一括: sections = [{ label, useCaseId, products: [{...}, manufacturerUrl?] }]
+    if (sections?.length) {
+      const outSections = [];
+      for (const sec of sections) {
+        const productsOut = [];
+        for (const p of sec.products || []) {
+          const generated = await generateCopyForProduct({
+            category,
+            useCase: {
+              id: sec.useCaseId,
+              label: sec.label,
+              rationale: sec.rationale,
+            },
+            product: p,
+            manufacturerUrl: p.manufacturerUrl || null,
+            scrape,
+            getGeminiModel,
+          });
+          productsOut.push({
+            ...p,
+            copy: generated.copy,
+            manufacturerUrl: generated.manufacturerUrl,
+            scrapeError: generated.scrapeError,
+            scrapeCharCount: generated.scrapeCharCount,
+          });
+        }
+        outSections.push({
+          useCaseId: sec.useCaseId,
+          label: sec.label,
+          rationale: sec.rationale || '',
+          products: productsOut,
+        });
+      }
+      return res.json({
+        ok: true,
+        category,
+        sections: outSections,
+        html: renderUseCaseHtml(outSections),
+      });
+    }
+
+    if (!product) {
+      return res.status(400).json({ error: 'product または sections を指定してください。' });
+    }
+
+    const generated = await generateCopyForProduct({
+      category,
+      useCase,
+      product,
+      manufacturerUrl,
+      scrape,
+      getGeminiModel,
+    });
+    return res.json({
+      ok: true,
+      category,
+      ...generated,
+    });
+  } catch (err) {
+    console.error('💥 /api/usecase/generate-copy error:', err);
+    return res.status(500).json({
+      error: '説明文・機能表の生成に失敗しました。',
+      details: err.message,
+    });
+  }
 });
 
 const registerArticleAppRoutes = require('./articleAppGenerate');

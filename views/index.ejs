@@ -14,6 +14,7 @@
           <div class="app-main-nav-buttons">
             <button type="button" data-tab="weekly" class="tab-btn">週次レポート</button>
             <button type="button" data-tab="kyoso" class="tab-btn secondary">競合調査（ランキング抽出）</button>
+            <button type="button" data-tab="usecase" class="tab-btn secondary">用途別おすすめ</button>
             <button type="button" data-tab="headings" class="tab-btn secondary">見出し生成</button>
             <button type="button" data-tab="article" class="tab-btn secondary">記事生成</button>
           </div>
@@ -169,22 +170,26 @@
         </section>
 
         <section class="panel weekly-q-panel weekly-kpi-paste-panel" id="weekly-kpi-paste-panel">
-          <h2>今週のKPIを貼り付け</h2>
-          <p class="field-hint">会社のExcel / スプレッドシートからコピーして貼るだけです（ファイル取込なし）。柱記事の3指標: PV / 商品詳細遷移 / CV（売上）。</p>
-          <p class="field-hint">例（ラベル付き）:<br><code>PV&#9;78700</code><br><code>商品詳細遷移&#9;2185</code><br><code>CV&#9;1850000</code><br>または1行: <code>78700&#9;2185&#9;1850000</code></p>
+          <h2>KPIを貼り付け（前週・今週）</h2>
+          <p class="field-hint"><strong>サーバーには保存しません。</strong>会社の数値はブラウザ上での表示専用です。毎回、前週分と今週分をまとめて貼り付けてください。</p>
+          <p class="field-hint">例（各行: 指標 / 前週 / 今週）:<br>
+            <code>PV&#9;82000&#9;78700</code><br>
+            <code>商品詳細遷移&#9;2115&#9;2185</code><br>
+            <code>CV&#9;1720000&#9;1850000</code>
+          </p>
           <label class="field">
             <span>貼り付け欄</span>
-            <textarea id="weekly-kpi-paste" rows="5" placeholder="ここに貼り付け…"></textarea>
+            <textarea id="weekly-kpi-paste" rows="6" placeholder="ここに前週・今週を貼り付け…"></textarea>
           </label>
           <div class="actions weekly-kpi-paste-actions">
             <button type="button" class="secondary" id="weekly-kpi-preview">解釈を確認</button>
-            <button type="button" id="weekly-kpi-apply">取り込む</button>
+            <button type="button" id="weekly-kpi-apply">表示に反映</button>
           </div>
           <p class="field-hint" id="weekly-kpi-paste-msg"></p>
           <div class="weekly-kpi-preview" id="weekly-kpi-preview-box" hidden>
             <table class="ranking-table weekly-table">
               <thead>
-                <tr><th>指標</th><th>解釈値</th></tr>
+                <tr><th>指標</th><th>前週</th><th>今週</th></tr>
               </thead>
               <tbody id="weekly-kpi-preview-tbody"></tbody>
             </table>
@@ -192,9 +197,9 @@
         </section>
 
         <section class="panel weekly-q-panel weekly-change-effects-panel" id="weekly-change-effects-panel">
-          <h2>改修の結果 <span class="weekly-q-hint">（先週登録分の前後比）</span></h2>
+          <h2>改修の結果 <span class="weekly-q-hint">（貼り付けKPIの前後比）</span></h2>
           <p class="field-hint" id="weekly-change-effects-msg"></p>
-          <p class="field-hint">主要KPI: PV / 商品詳細ページへの遷移 / CV（売上）。上の「今週のKPIを貼り付け」で取り込み、週次確定すると翌週に前後比が出ます。</p>
+          <p class="field-hint">主要KPIの数値は上で貼り付けた内容のみを使い、サーバーへは送りません。</p>
           <div class="ranking-table-wrap">
             <table class="ranking-table weekly-table">
               <thead>
@@ -272,6 +277,66 @@
             確定すると今週のスナップショットを保存し、来週の前週比に使います。
           </p>
         </section>
+      </section>
+
+      <!-- 用途別担当者おすすめ3選 -->
+      <section id="panel-usecase" class="tab-panel" hidden>
+        <header>
+          <h1>用途別おすすめ</h1>
+          <p>
+            商品ランキングから用途を3つに分け、コジマ取扱品で担当者おすすめ3選を作り、メーカー公式情報をもとに説明文と機能表を生成します。
+          </p>
+        </header>
+
+        <section class="panel">
+          <h2>1. ランキングを読み込む</h2>
+          <p class="field-hint">週次レポートまたは競合調査で取得済みのランキングを使います（新規取得はしません）。</p>
+          <div class="weekly-header-grid">
+            <label class="field weekly-field-inline">
+              <span>カテゴリ</span>
+              <select id="usecase-category"></select>
+              <input type="text" id="usecase-category-other" class="category-other-input" placeholder="カテゴリ名" hidden />
+            </label>
+          </div>
+          <div class="actions">
+            <button type="button" id="usecase-load-ranking">ランキングを読み込む</button>
+          </div>
+          <p class="field-hint" id="usecase-ranking-msg">未読込</p>
+        </section>
+
+        <section class="panel">
+          <h2>2. 用途を3つ提案・確定</h2>
+          <div class="actions">
+            <button type="button" id="usecase-propose" disabled>用途を3つ提案</button>
+          </div>
+          <p class="field-hint" id="usecase-propose-msg"></p>
+          <div id="usecase-use-cases" class="usecase-use-cases"></div>
+          <div class="actions">
+            <button type="button" id="usecase-confirm-use-cases" disabled>この用途で進む（商品を振り分け）</button>
+          </div>
+        </section>
+
+        <section class="panel">
+          <h2>3. 用途別おすすめ3選</h2>
+          <p class="field-hint" id="usecase-assign-msg"></p>
+          <div id="usecase-assignments" class="usecase-assignments"></div>
+          <div class="actions">
+            <button type="button" id="usecase-generate-all" disabled>説明文・機能表を一括生成</button>
+          </div>
+          <p class="field-hint" id="usecase-generate-msg"></p>
+        </section>
+
+        <section class="panel">
+          <h2>4. 出力HTML</h2>
+          <p class="field-hint">コジマ記事の用途別おすすめブロック向け。コピーしてCMSに貼れます。</p>
+          <div class="actions">
+            <button type="button" class="secondary" id="usecase-copy-html" disabled>HTMLをコピー</button>
+          </div>
+          <textarea id="usecase-html-output" rows="16" readonly placeholder="生成後にここに表示されます"></textarea>
+          <div id="usecase-html-preview" class="usecase-html-preview generated-article"></div>
+        </section>
+
+        <p id="usecase-error" class="error" hidden></p>
       </section>
 
       <!-- 競合調査 -->
@@ -656,5 +721,6 @@
     </div>
     <script src="/js/main.js"></script>
     <script src="/js/weeklyReport.js"></script>
+    <script src="/js/useCaseRecommend.js"></script>
   </body>
 </html>
