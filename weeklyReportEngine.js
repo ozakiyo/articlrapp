@@ -51,6 +51,54 @@ function loadArticleMaster(category) {
   return JSON.parse(fs.readFileSync(filePath, 'utf8'));
 }
 
+function saveArticleMaster(category, articleMaster) {
+  const label = normalizeCategoryLabel(category) || category;
+  const slug = getCategorySlug(label) || 'default';
+  const dir = path.join(DATA_DIR, 'articles');
+  ensureDir(dir);
+  const filePath = path.join(dir, `${slug}.json`);
+  const payload = {
+    ...articleMaster,
+    category: label,
+    updatedAt: new Date().toISOString().slice(0, 10),
+  };
+  fs.writeFileSync(filePath, JSON.stringify(payload, null, 2), 'utf8');
+  return filePath;
+}
+
+/**
+ * 柱記事の今週KPIを更新（旧値は prev へ退避）
+ * @param {object} articleMaster
+ * @param {{ weeklyPv?: number|null, weeklyProductDetailClicks?: number|null, weeklyCv?: number|null }} kpi
+ */
+function applyHubWeeklyKpi(articleMaster, kpi) {
+  const hub = { ...(articleMaster?.hubPage || {}) };
+  const next = { ...kpi };
+
+  if (next.weeklyPv != null && !Number.isNaN(Number(next.weeklyPv))) {
+    if (hub.weeklyPv != null) hub.prevWeeklyPv = hub.weeklyPv;
+    hub.weeklyPv = Number(next.weeklyPv);
+  }
+  if (
+    next.weeklyProductDetailClicks != null &&
+    !Number.isNaN(Number(next.weeklyProductDetailClicks))
+  ) {
+    if (hub.weeklyProductDetailClicks != null) {
+      hub.prevWeeklyProductDetailClicks = hub.weeklyProductDetailClicks;
+    }
+    hub.weeklyProductDetailClicks = Number(next.weeklyProductDetailClicks);
+  }
+  if (next.weeklyCv != null && !Number.isNaN(Number(next.weeklyCv))) {
+    if (hub.weeklyCv != null) hub.prevWeeklyCv = hub.weeklyCv;
+    hub.weeklyCv = Number(next.weeklyCv);
+  }
+
+  return {
+    ...articleMaster,
+    hubPage: hub,
+  };
+}
+
 function snapshotDirCandidates(category) {
   const slug = getCategorySlug(category) || 'default';
   const legacy = normalizeCategoryLabel(category).replace(/\s+/g, '') || 'default';
@@ -594,6 +642,8 @@ function extractHubPerformanceSnapshot(articleMaster) {
     hubPagePerformance: {
       weeklyPv: hub.weeklyPv ?? 0,
       prevWeeklyPv: hub.prevWeeklyPv ?? 0,
+      weeklyProductDetailClicks: hub.weeklyProductDetailClicks ?? null,
+      prevWeeklyProductDetailClicks: hub.prevWeeklyProductDetailClicks ?? null,
       weeklyCv: hub.weeklyCv ?? null,
       prevWeeklyCv: hub.prevWeeklyCv ?? null,
     },
@@ -771,6 +821,8 @@ function buildChangeEffectItem(log, articleMaster, context) {
     hubCvBefore,
     hubCvNow,
     hubCvChg,
+    hubProductDetailBefore,
+    hubProductDetailNow,
     prevProducts,
     productsNow,
   } = context;
@@ -789,6 +841,9 @@ function buildChangeEffectItem(log, articleMaster, context) {
   if (isProduct) {
     productClicksBefore = prevProd?.weeklyClicks ?? product?.prevWeeklyClicks ?? 0;
     productClicksNow = nowProd?.weeklyClicks ?? product?.weeklyClicks ?? 0;
+  } else if (hubProductDetailNow != null || hubProductDetailBefore != null) {
+    productClicksBefore = hubProductDetailBefore ?? 0;
+    productClicksNow = hubProductDetailNow ?? 0;
   } else {
     productClicksBefore =
       prevProducts.length > 0
@@ -847,7 +902,7 @@ function buildChangeEffectItem(log, articleMaster, context) {
       status: classifyKpiChange(cvChg, 5, -10),
     });
   } else {
-    reasons.push('比較用のCVデータ不足（記事マスタの weeklyCv を設定）');
+    reasons.push('比較用のCVデータ不足（「今週のKPIを貼り付け」で取り込み）');
   }
 
   const { verdict, verdictLabel } = resolveVerdictFromSignals(
@@ -915,6 +970,14 @@ function buildChangeEffects(previousSnapshot, articleMaster) {
       ? pvChangePercent(hubCvNow ?? 0, hubCvBefore ?? 0)
       : null;
 
+  const hubProductDetailBefore =
+    prevHubPerf?.weeklyProductDetailClicks ??
+    (hubNow.prevWeeklyProductDetailClicks != null
+      ? hubNow.prevWeeklyProductDetailClicks
+      : null);
+  const hubProductDetailNow =
+    hubNow.weeklyProductDetailClicks != null ? hubNow.weeklyProductDetailClicks : null;
+
   const productsNow = (articleMaster.products || []).map((p) => ({
     id: p.id,
     label: p.label,
@@ -931,6 +994,8 @@ function buildChangeEffects(previousSnapshot, articleMaster) {
     hubCvBefore,
     hubCvNow,
     hubCvChg,
+    hubProductDetailBefore,
+    hubProductDetailNow,
     prevProducts: previousSnapshot?.productClicks || [],
     productsNow,
   };
@@ -1640,6 +1705,8 @@ module.exports = {
   getPreviousWeekId,
   formatWeekLabel,
   loadArticleMaster,
+  saveArticleMaster,
+  applyHubWeeklyKpi,
   loadSnapshot,
   saveSnapshot,
   listSnapshots,

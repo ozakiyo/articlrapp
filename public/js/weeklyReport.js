@@ -746,6 +746,200 @@
       .join('');
   }
 
+  function parseKpiNumber(raw) {
+    if (raw == null) return null;
+    const cleaned = String(raw)
+      .replace(/[¥￥,，\s]/g, '')
+      .replace(/円/g, '')
+      .trim();
+    if (!cleaned) return null;
+    const n = Number(cleaned);
+    return Number.isFinite(n) ? n : null;
+  }
+
+  function detectKpiLabel(label) {
+    const t = String(label || '')
+      .trim()
+      .toLowerCase()
+      .replace(/\s+/g, '');
+    if (!t) return null;
+    if (
+      t === 'pv' ||
+      t.includes('ページビュー') ||
+      t.includes('pageview') ||
+      (t.includes('pv') && !t.includes('cv'))
+    ) {
+      return 'weeklyPv';
+    }
+    if (
+      t.includes('商品詳細') ||
+      t.includes('詳細遷移') ||
+      t.includes('遷移') ||
+      t.includes('productdetail') ||
+      t.includes('click')
+    ) {
+      return 'weeklyProductDetailClicks';
+    }
+    if (t === 'cv' || t.includes('売上') || t.includes('conversion') || t.includes('revenue')) {
+      return 'weeklyCv';
+    }
+    return null;
+  }
+
+  function parseKpiPasteText(text) {
+    const lines = String(text || '')
+      .split(/\r?\n/)
+      .map((l) => l.trim())
+      .filter(Boolean);
+    if (!lines.length) {
+      return { ok: false, error: '貼り付け内容が空です。' };
+    }
+
+    const result = {
+      weeklyPv: null,
+      weeklyProductDetailClicks: null,
+      weeklyCv: null,
+    };
+
+    // 1行3列: PV / 商品詳細遷移 / CV
+    if (lines.length === 1) {
+      const cols = lines[0].split(/\t+| {2,}|,/).map((c) => c.trim()).filter(Boolean);
+      if (cols.length >= 3) {
+        const a = parseKpiNumber(cols[0]);
+        const b = parseKpiNumber(cols[1]);
+        const c = parseKpiNumber(cols[2]);
+        if (a == null || b == null || c == null) {
+          return { ok: false, error: '1行形式は「PV / 商品詳細遷移 / CV」の3数値である必要があります。' };
+        }
+        return {
+          ok: true,
+          values: { weeklyPv: a, weeklyProductDetailClicks: b, weeklyCv: c },
+        };
+      }
+    }
+
+    for (const line of lines) {
+      const parts = line.split(/\t+/);
+      let label;
+      let valueRaw;
+      if (parts.length >= 2) {
+        label = parts[0];
+        valueRaw = parts.slice(1).join('\t');
+      } else {
+        const m = line.match(/^(.+?)[:：\s]+(.+)$/);
+        if (!m) continue;
+        label = m[1];
+        valueRaw = m[2];
+      }
+      const key = detectKpiLabel(label);
+      const num = parseKpiNumber(valueRaw);
+      if (key && num != null) result[key] = num;
+    }
+
+    if (
+      result.weeklyPv == null &&
+      result.weeklyProductDetailClicks == null &&
+      result.weeklyCv == null
+    ) {
+      return {
+        ok: false,
+        error:
+          '解釈できませんでした。ラベル付き（PV / 商品詳細遷移 / CV）か、1行3数値で貼ってください。',
+      };
+    }
+
+    return { ok: true, values: result };
+  }
+
+  let lastParsedKpi = null;
+
+  function renderKpiPreview(parsed) {
+    const box = document.getElementById('weekly-kpi-preview-box');
+    const tbody = document.getElementById('weekly-kpi-preview-tbody');
+    const msg = document.getElementById('weekly-kpi-paste-msg');
+    if (!parsed?.ok) {
+      if (box) box.hidden = true;
+      if (msg) msg.textContent = parsed?.error || '';
+      lastParsedKpi = null;
+      return null;
+    }
+    lastParsedKpi = parsed.values;
+    if (msg) msg.textContent = '解釈OK。問題なければ「取り込む」を押してください。';
+    if (tbody) {
+      const rows = [
+        ['PV', parsed.values.weeklyPv],
+        ['商品詳細遷移', parsed.values.weeklyProductDetailClicks],
+        ['CV（売上）', parsed.values.weeklyCv],
+      ];
+      tbody.innerHTML = rows
+        .map(([label, val]) => {
+          const display =
+            label.startsWith('CV') && val != null
+              ? formatCv(val)
+              : val == null
+                ? '（未指定）'
+                : Number(val).toLocaleString('ja-JP');
+          return `<tr><td>${esc(label)}</td><td>${esc(display)}</td></tr>`;
+        })
+        .join('');
+    }
+    if (box) box.hidden = false;
+    return parsed.values;
+  }
+
+  function previewKpiPaste() {
+    showError('');
+    const text = document.getElementById('weekly-kpi-paste')?.value || '';
+    const parsed = parseKpiPasteText(text);
+    renderKpiPreview(parsed);
+    if (!parsed.ok) showError(parsed.error);
+  }
+
+  async function applyKpiPaste() {
+    showError('');
+    const text = document.getElementById('weekly-kpi-paste')?.value || '';
+    const parsed = lastParsedKpi
+      ? { ok: true, values: lastParsedKpi }
+      : parseKpiPasteText(text);
+    renderKpiPreview(parsed);
+    if (!parsed.ok) {
+      showError(parsed.error);
+      return;
+    }
+
+    const category = currentReport?.category || getWeeklyCategory();
+    const weekId = currentReport?.weekId || '';
+    const compare = document.getElementById('weekly-compare')?.value || 'latest';
+    const msg = document.getElementById('weekly-kpi-paste-msg');
+    if (msg) msg.textContent = '取り込み中…';
+
+    try {
+      const res = await fetch('/api/weekly/kpi', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          category,
+          weekId,
+          compare,
+          ...parsed.values,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || data.details || '取り込みに失敗しました');
+      if (data.report) await renderReport(data.report);
+      else await loadReport();
+      if (msg) {
+        const hub = data.hubPage || {};
+        msg.textContent = `取り込み完了: PV ${hub.weeklyPv ?? '—'} / 商品詳細遷移 ${
+          hub.weeklyProductDetailClicks ?? '—'
+        } / CV ${hub.weeklyCv != null ? formatCv(hub.weeklyCv) : '—'}`;
+      }
+    } catch (err) {
+      showError(err.message);
+      if (msg) msg.textContent = '取り込み失敗';
+    }
+  }
+
   function renderComparison(report) {
     const tbody = document.getElementById('weekly-ranking-tbody');
     if (!tbody) return;
@@ -1153,6 +1347,11 @@
       ev.preventDefault();
       addChangeDraftEntry();
     }
+  });
+  document.getElementById('weekly-kpi-preview')?.addEventListener('click', previewKpiPaste);
+  document.getElementById('weekly-kpi-apply')?.addEventListener('click', applyKpiPaste);
+  document.getElementById('weekly-kpi-paste')?.addEventListener('paste', () => {
+    setTimeout(previewKpiPaste, 0);
   });
 
   document.getElementById('weekly-fetch')?.addEventListener('click', fetchRankings);

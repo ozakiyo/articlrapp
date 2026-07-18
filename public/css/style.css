@@ -111,6 +111,26 @@ header p {
   margin: 0;
 }
 
+.weekly-kpi-paste-panel textarea {
+  width: 100%;
+  min-height: 6.5rem;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 0.9rem;
+  line-height: 1.4;
+}
+
+.weekly-kpi-paste-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin: 0.75rem 0 0.5rem;
+}
+
+.weekly-kpi-preview {
+  margin-top: 0.75rem;
+  max-width: 28rem;
+}
+
 .weekly-competitor-panel .weekly-subheading {
   margin: 1.25rem 0 0.5rem;
   font-size: 1rem;

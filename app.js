@@ -196,6 +196,8 @@ const {
   getIsoWeekId,
   getPreviousWeekId,
   loadArticleMaster,
+  saveArticleMaster,
+  applyHubWeeklyKpi,
   loadSnapshot,
   saveSnapshot,
   listSnapshots,
@@ -2170,6 +2172,82 @@ app.post('/api/weekly/confirm', (req, res) => {
     confirmedAt,
     changeLogCount: changeLog.length,
   });
+});
+
+app.post('/api/weekly/kpi', async (req, res) => {
+  const category = String(req.body?.category || weeklyReportConfig.defaultCategory).trim();
+  const weekId = String(req.body?.weekId || '').trim() || getIsoWeekId();
+  const compareMode = normalizeCompareMode(req.body?.compare);
+
+  const weeklyPv = req.body?.weeklyPv;
+  const weeklyProductDetailClicks = req.body?.weeklyProductDetailClicks;
+  const weeklyCv = req.body?.weeklyCv;
+
+  const hasAny =
+    weeklyPv != null || weeklyProductDetailClicks != null || weeklyCv != null;
+  if (!hasAny) {
+    return res.status(400).json({
+      error: 'KPIが空です。PV / 商品詳細遷移 / CV のいずれかを指定してください。',
+    });
+  }
+
+  try {
+    const existing = loadArticleMaster(category);
+    const updated = applyHubWeeklyKpi(existing, {
+      weeklyPv,
+      weeklyProductDetailClicks,
+      weeklyCv,
+    });
+    saveArticleMaster(category, updated);
+
+    let snapshot = loadSnapshot(category, weekId);
+    if (!snapshot) {
+      const latest = findLatestSnapshot(category);
+      if (latest?.weekId === weekId) snapshot = latest;
+    }
+
+    const report = snapshot
+      ? await attachGoogleSearchInterest(
+          buildReportFromSnapshot(snapshot, updated, compareMode),
+          category
+        )
+      : await attachGoogleSearchInterest(
+          buildEmptyReportWithComparison(category, updated, weekId, compareMode),
+          category
+        );
+
+    console.log('✅ Weekly KPI pasted:', {
+      category,
+      weeklyPv: updated.hubPage?.weeklyPv,
+      weeklyProductDetailClicks: updated.hubPage?.weeklyProductDetailClicks,
+      weeklyCv: updated.hubPage?.weeklyCv,
+    });
+
+    return res.json({
+      ok: true,
+      category,
+      weekId,
+      hubPage: {
+        weeklyPv: updated.hubPage?.weeklyPv ?? null,
+        prevWeeklyPv: updated.hubPage?.prevWeeklyPv ?? null,
+        weeklyProductDetailClicks: updated.hubPage?.weeklyProductDetailClicks ?? null,
+        prevWeeklyProductDetailClicks:
+          updated.hubPage?.prevWeeklyProductDetailClicks ?? null,
+        weeklyCv: updated.hubPage?.weeklyCv ?? null,
+        prevWeeklyCv: updated.hubPage?.prevWeeklyCv ?? null,
+      },
+      report: {
+        ...report,
+        snapshots: listSnapshots(category),
+      },
+    });
+  } catch (err) {
+    console.error('💥 /api/weekly/kpi error:', err);
+    return res.status(500).json({
+      error: 'KPIの取り込みに失敗しました。',
+      details: err.message,
+    });
+  }
 });
 
 app.get('/api/download-category-ranking-csv/:filename', (req, res) => {

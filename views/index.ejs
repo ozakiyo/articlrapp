@@ -168,10 +168,33 @@
           </div>
         </section>
 
+        <section class="panel weekly-q-panel weekly-kpi-paste-panel" id="weekly-kpi-paste-panel">
+          <h2>今週のKPIを貼り付け</h2>
+          <p class="field-hint">会社のExcel / スプレッドシートからコピーして貼るだけです（ファイル取込なし）。柱記事の3指標: PV / 商品詳細遷移 / CV（売上）。</p>
+          <p class="field-hint">例（ラベル付き）:<br><code>PV&#9;78700</code><br><code>商品詳細遷移&#9;2185</code><br><code>CV&#9;1850000</code><br>または1行: <code>78700&#9;2185&#9;1850000</code></p>
+          <label class="field">
+            <span>貼り付け欄</span>
+            <textarea id="weekly-kpi-paste" rows="5" placeholder="ここに貼り付け…"></textarea>
+          </label>
+          <div class="actions weekly-kpi-paste-actions">
+            <button type="button" class="secondary" id="weekly-kpi-preview">解釈を確認</button>
+            <button type="button" id="weekly-kpi-apply">取り込む</button>
+          </div>
+          <p class="field-hint" id="weekly-kpi-paste-msg"></p>
+          <div class="weekly-kpi-preview" id="weekly-kpi-preview-box" hidden>
+            <table class="ranking-table weekly-table">
+              <thead>
+                <tr><th>指標</th><th>解釈値</th></tr>
+              </thead>
+              <tbody id="weekly-kpi-preview-tbody"></tbody>
+            </table>
+          </div>
+        </section>
+
         <section class="panel weekly-q-panel weekly-change-effects-panel" id="weekly-change-effects-panel">
           <h2>改修の結果 <span class="weekly-q-hint">（先週登録分の前後比）</span></h2>
           <p class="field-hint" id="weekly-change-effects-msg"></p>
-          <p class="field-hint">主要KPI: PV / 商品詳細ページへの遷移 / CV（売上）。記事マスタの <code>weeklyPv</code>・商品 <code>weeklyClicks</code>・<code>weeklyCv</code> を手動更新してください。</p>
+          <p class="field-hint">主要KPI: PV / 商品詳細ページへの遷移 / CV（売上）。上の「今週のKPIを貼り付け」で取り込み、週次確定すると翌週に前後比が出ます。</p>
           <div class="ranking-table-wrap">
             <table class="ranking-table weekly-table">
               <thead>
