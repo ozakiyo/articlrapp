@@ -174,7 +174,7 @@
         body: JSON.stringify({ category, items: rankingItems }),
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error || data.details || '提案に失敗しました');
+      if (!res.ok) throw new Error(data.details || data.error || '提案に失敗しました');
       useCases = data.useCases || [];
       renderUseCases(useCases);
       document.getElementById('usecase-confirm-use-cases').disabled = false;
@@ -274,7 +274,7 @@
         }),
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error || data.details || '振り分けに失敗しました');
+      if (!res.ok) throw new Error(data.details || data.error || '振り分けに失敗しました');
       assignments = data.assignments || [];
       renderAssignments(assignments);
       document.getElementById('usecase-generate-all').disabled = false;

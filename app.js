@@ -233,24 +233,71 @@ async function attachGoogleSearchInterest(report, category) {
 AIモデルの初期化（準備）は少し時間がかかる処理なので、APIリクエストのたびに毎回準備していると、アプリケーションの応答が遅くなってしまう。
 それを防ぐために、この関数は「一度だけ準備して、あとはそれを使い回す」という賢い仕組み（シングルトンパターンや遅延初期化と呼ばれる手法）を採用
 */
-const GEMINI_MODEL = 'gemini-2.5-flash-lite';
+const GEMINI_MODEL = process.env.GEMINI_MODEL || 'gemini-2.5-flash-lite';
+/** 無料枠切れ・モデル廃止時の代替（クォータはモデル別にカウントされる） */
+const GEMINI_FALLBACK_MODELS = [
+  GEMINI_MODEL,
+  'gemini-flash-latest',
+  'gemini-2.0-flash-lite',
+  'gemini-2.0-flash',
+].filter((name, i, arr) => name && arr.indexOf(name) === i);
 
+let geminiClient;
 let geminiModel;
 //geminiModelという変数は、AIモデルの本体を格納するためのもの
-async function getGeminiModel() {
-  if (!geminiModel) {
-    //「まだgeminiModelが空っぽ（未準備）ですか？」とチェック
-    //最初の呼び出し時: geminiModelは空なので、if文の中の処理が実行
+async function getGeminiClient() {
+  if (!geminiClient) {
     const apiKey = process.env.GEMINI_API_KEY;
     if (!apiKey) {
       throw new Error('GEMINI_API_KEY is not set');
     }
-    console.log('⚙️ Initializing Gemini model:', GEMINI_MODEL);
     const { GoogleGenerativeAI } = await import('@google/generative-ai');
-    const genAI = new GoogleGenerativeAI(apiKey);
-    geminiModel = genAI.getGenerativeModel({ model: GEMINI_MODEL });
+    geminiClient = new GoogleGenerativeAI(apiKey);
   }
-  /*2回目以降の呼び出し時: geminiModelには既に準備済みのモデルが入っているので、if文の中はスキップされ、すぐに最後のreturnに進む。*/
+  return geminiClient;
+}
+
+function isGeminiModelUnavailableError(err) {
+  const message = String(err?.message || '');
+  return (
+    message.includes('[404 Not Found]') ||
+    message.toLowerCase().includes('no longer available') ||
+    message.toLowerCase().includes('not found')
+  );
+}
+
+async function getGeminiModel() {
+  if (geminiModel) return geminiModel;
+
+  const genAI = await getGeminiClient();
+  console.log('⚙️ Initializing Gemini with fallbacks:', GEMINI_FALLBACK_MODELS.join(' → '));
+
+  // generateContent だけ使う薄いラッパー（429/404 時に次のモデルへ）
+  geminiModel = {
+    async generateContent(request) {
+      let lastErr;
+      for (const modelName of GEMINI_FALLBACK_MODELS) {
+        try {
+          const model = genAI.getGenerativeModel({ model: modelName });
+          const result = await model.generateContent(request);
+          if (modelName !== GEMINI_MODEL) {
+            console.log(`✅ Gemini fallback model used: ${modelName}`);
+          }
+          return result;
+        } catch (err) {
+          lastErr = err;
+          const canFallback =
+            isGeminiQuotaExceededError(err) || isGeminiModelUnavailableError(err);
+          console.warn(
+            `⚠️ Gemini model failed (${modelName}):`,
+            String(err?.message || err).slice(0, 180)
+          );
+          if (!canFallback) throw err;
+        }
+      }
+      throw lastErr;
+    },
+  };
   return geminiModel;
 }
 
@@ -2845,6 +2892,17 @@ function normalizeUseCaseProductsPayload(items) {
   return Array.isArray(items) ? items : [];
 }
 
+function geminiQuotaPayload(err) {
+  const retryAfterSec = parseRetryAfterSecondsFromMessage(err.message);
+  const payload = {
+    error:
+      'Gemini API の利用上限に達しました。しばらく待って再実行するか、APIキーの利用枠/課金設定を確認してください。',
+    details: err.message,
+  };
+  if (retryAfterSec) payload.retryAfterSeconds = retryAfterSec;
+  return payload;
+}
+
 app.post('/api/usecase/propose', async (req, res) => {
   const category = String(req.body?.category || '').trim();
   const items = normalizeUseCaseProductsPayload(req.body?.items);
@@ -2865,6 +2923,9 @@ app.post('/api/usecase/propose', async (req, res) => {
     return res.json({ ok: true, category, ...result });
   } catch (err) {
     console.error('💥 /api/usecase/propose error:', err);
+    if (isGeminiQuotaExceededError(err)) {
+      return res.status(429).json(geminiQuotaPayload(err));
+    }
     return res.status(500).json({
       error: '用途の提案に失敗しました。',
       details: err.message,
@@ -2901,6 +2962,9 @@ app.post('/api/usecase/assign', async (req, res) => {
     });
   } catch (err) {
     console.error('💥 /api/usecase/assign error:', err);
+    if (isGeminiQuotaExceededError(err)) {
+      return res.status(429).json(geminiQuotaPayload(err));
+    }
     return res.status(500).json({
       error: '商品の振り分けに失敗しました。',
       details: err.message,
@@ -3025,6 +3089,9 @@ app.post('/api/usecase/generate-copy', async (req, res) => {
     });
   } catch (err) {
     console.error('💥 /api/usecase/generate-copy error:', err);
+    if (isGeminiQuotaExceededError(err)) {
+      return res.status(429).json(geminiQuotaPayload(err));
+    }
     return res.status(500).json({
       error: '説明文・機能表の生成に失敗しました。',
       details: err.message,
