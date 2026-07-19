@@ -92,16 +92,55 @@
 
   function collectHeadings(report) {
     const set = new Set();
-    (report.priorityTasks || report.tasks || []).forEach((t) => t.headingCandidate && set.add(t.headingCandidate));
+    (report.priorityTasks || report.tasks || []).forEach(
+      (t) => t.headingCandidate && set.add(t.headingCandidate)
+    );
     (report.newArticles || []).forEach((a) => a.headingCandidate && set.add(a.headingCandidate));
     (report.articleChanges || [])
       .filter((c) => c.status === 'warn')
       .forEach((c) => c.headingCandidate && set.add(c.headingCandidate));
+    (report.sectionChanges || []).forEach(
+      (c) => c.headingCandidate && set.add(c.headingCandidate)
+    );
+
+    // 競合記事比較の提案・追加見出しも候補に含める
+    try {
+      const raw = sessionStorage.getItem(COMPETITOR_ANALYSIS_KEY);
+      const parsed = raw ? JSON.parse(raw) : null;
+      if (parsed?.data && (!report.category || parsed.category === report.category)) {
+        (parsed.data.proposals || []).forEach((p) => p.heading && set.add(p.heading));
+        (parsed.data.headingUpdates || [])
+          .filter((u) => u.type === 'added' || u.change === 'added')
+          .forEach((u) => u.heading && set.add(u.heading));
+      }
+    } catch {
+      /* ignore */
+    }
+
+    // それでも空なら、既存のランキング需要候補を維持
+    if (set.size === 0) {
+      try {
+        const raw = sessionStorage.getItem(RANKING_CONTEXT_KEY);
+        const prev = raw ? JSON.parse(raw) : null;
+        if (prev?.pickedFeatures?.length && prev.category === report.category) {
+          prev.pickedFeatures.forEach((f) => {
+            const h = f.headingCandidate || f.label;
+            if (h) set.add(h);
+          });
+        }
+      } catch {
+        /* ignore */
+      }
+    }
+
     return [...set];
   }
 
   function saveWeeklyContextToStorage(report, extra) {
-    const headings = collectHeadings(report);
+    let headings = collectHeadings(report);
+    if (extra?.headings?.length) {
+      headings = [...new Set([...(extra.headings || []), ...headings])];
+    }
     const ctx = {
       category: report.category,
       source: 'weekly',
@@ -114,6 +153,7 @@
       compositeItems: report.bestsellers || report.compositeRanking?.items || [],
       savedAt: new Date().toISOString(),
       ...extra,
+      headings,
     };
     try {
       sessionStorage.setItem(WEEKLY_CONTEXT_KEY, JSON.stringify(ctx));
@@ -131,7 +171,7 @@
       if (el) el.value = list[i - 1] || '';
     }
     const kw = document.getElementById('headings-keyword');
-    if (kw) kw.value = currentReport?.category || '掃除機';
+    if (kw) kw.value = currentReport?.category || '';
     const hint = document.getElementById('headings-candidates-hint');
     if (hint) {
       hint.textContent = list.length
@@ -145,6 +185,9 @@
     saveWeeklyContextToStorage(currentReport, { headings });
     applyToHeadingsTab(headings || collectHeadings(currentReport));
     document.querySelector('.tab-btn[data-tab="headings"]')?.click();
+    if (window.ArticleAppBridge?.syncHeadingsTabFromSources) {
+      window.ArticleAppBridge.syncHeadingsTabFromSources({ force: true });
+    }
   }
 
   function updateTaskProgress() {

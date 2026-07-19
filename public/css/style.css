@@ -172,17 +172,32 @@ header p {
   background: #fff;
 }
 
-.usecase-html-preview table {
+.usecase-html-preview table,
+.usecase-html-preview .usecase-feature-table,
+.usecase-feature-table {
   border-collapse: collapse;
   margin: 0.5rem 0 1rem;
-  width: auto;
+  width: 100%;
+  max-width: 36rem;
+  table-layout: fixed;
 }
 
 .usecase-html-preview th,
-.usecase-html-preview td {
+.usecase-html-preview td,
+.usecase-feature-table th,
+.usecase-feature-table td {
   border: 1px solid #d1d5db;
   padding: 0.35rem 0.6rem;
   text-align: left;
+  vertical-align: top;
+  word-break: break-word;
+}
+
+.usecase-html-preview th,
+.usecase-feature-table th {
+  width: 38%;
+  font-weight: 600;
+  background: #f9fafb;
 }
 
 .weekly-competitor-panel .weekly-subheading {

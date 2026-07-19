@@ -1,6 +1,7 @@
 (function () {
   const TAB_KEY = 'articleappNode-tab';
   const RANKING_CONTEXT_KEY = 'articleappNode.rankingContext';
+  const COMPETITOR_ANALYSIS_KEY = 'articleappNode.competitorAnalysis';
   const panels = {
     weekly: document.getElementById('panel-weekly'),
     kyoso: document.getElementById('panel-kyoso'),
@@ -145,12 +146,17 @@
       loadKyosoSavedRankingUrls();
       loadKyosoSavedCompetitorArticles();
     }
+    if (name === 'headings') {
+      syncHeadingsTabFromSources({ force: false });
+    }
+    if (name === 'article') {
+      syncArticleTabFromSources({ force: false });
+    }
   }
 
   tabButtons.forEach((btn) => {
     btn.addEventListener('click', () => {
       showTab(btn.dataset.tab);
-      if (btn.dataset.tab === 'headings') loadHeadingCandidatesFromStorage();
     });
   });
 
@@ -166,7 +172,8 @@
     .catch((err) => console.warn('CategorySelect.refresh:', err.message))
     .finally(() => {
       showTab(initialTab);
-      if (initialTab === 'headings') loadHeadingCandidatesFromStorage();
+      if (initialTab === 'headings') syncHeadingsTabFromSources({ force: false });
+      if (initialTab === 'article') syncArticleTabFromSources({ force: false });
       window.dispatchEvent(new CustomEvent('categories-ready'));
     });
 
@@ -321,18 +328,121 @@
     }
   }
 
-  function setHeadingCandidatesToForm(features) {
-    for (let i = 1; i <= 5; i++) {
-      const el = document.getElementById(`headings-candidate-${i}`);
-      const f = features[i - 1];
-      if (el) {
-        el.value =
-          f?.headingCandidate || f?.label || (typeof f === 'string' ? f : '') || '';
+  function loadCompetitorAnalysisFromStorage() {
+    try {
+      const raw = sessionStorage.getItem(COMPETITOR_ANALYSIS_KEY);
+      return raw ? JSON.parse(raw) : null;
+    } catch {
+      return null;
+    }
+  }
+
+  function resolveBridgeCategory() {
+    const ctx = loadRankingContextFromStorage();
+    if (ctx?.category) return String(ctx.category).trim();
+    const analysis = loadCompetitorAnalysisFromStorage();
+    if (analysis?.category) return String(analysis.category).trim();
+    const weekly = getWeeklyCategory();
+    if (weekly) return weekly;
+    const kyoso = getKyosoCategory();
+    if (kyoso) return kyoso;
+    const fromKw = document.getElementById('headings-keyword')?.value.trim();
+    if (fromKw) return fromKw;
+    const fromArticle = document.getElementById('article-keyword')?.value.trim();
+    if (fromArticle) return fromArticle;
+    return '';
+  }
+
+  function uniqueCandidateStrings(lists) {
+    const seen = new Set();
+    const out = [];
+    for (const list of lists) {
+      for (const item of list || []) {
+        const s = String(
+          typeof item === 'string'
+            ? item
+            : item?.headingCandidate || item?.heading || item?.label || ''
+        ).trim();
+        if (!s || seen.has(s)) continue;
+        seen.add(s);
+        out.push(s);
       }
     }
+    return out.slice(0, 5);
+  }
+
+  function collectBridgeHeadingCandidates(category) {
+    const ctx = loadRankingContextFromStorage();
+    const analysis = loadCompetitorAnalysisFromStorage();
+    const fromRanking =
+      !category || !ctx?.category || ctx.category === category
+        ? ctx?.pickedFeatures || []
+        : [];
+    const fromProposals =
+      analysis?.data && (!category || analysis.category === category)
+        ? analysis.data.proposals || []
+        : [];
+    const fromUpdates =
+      analysis?.data && (!category || analysis.category === category)
+        ? (analysis.data.headingUpdates || [])
+            .filter((u) => u.type === 'added' || u.change === 'added')
+            .map((u) => u.heading)
+        : [];
+    return uniqueCandidateStrings([fromRanking, fromProposals, fromUpdates]);
+  }
+
+  function setUrlFields(prefix, urls, { force = false } = {}) {
+    const list = (urls || []).filter(Boolean).slice(0, 3);
+    for (let i = 1; i <= 3; i++) {
+      const el = document.getElementById(`${prefix}-url${i}`);
+      if (!el) continue;
+      if (!force && el.value.trim()) continue;
+      el.value = list[i - 1] || (force ? '' : el.value);
+    }
+  }
+
+  function copyUrlFields(fromPrefix, toPrefix, { force = false } = {}) {
+    for (let i = 1; i <= 3; i++) {
+      const from = document.getElementById(`${fromPrefix}-url${i}`);
+      const to = document.getElementById(`${toPrefix}-url${i}`);
+      if (!from || !to) continue;
+      if (!force && to.value.trim()) continue;
+      if (from.value.trim()) to.value = from.value.trim();
+    }
+    const fromRef = document.getElementById(`${fromPrefix}-ref-url`);
+    const toRef = document.getElementById(`${toPrefix}-ref-url`);
+    if (fromRef && toRef && (force || !toRef.value.trim()) && fromRef.value.trim()) {
+      toRef.value = fromRef.value.trim();
+    }
+  }
+
+  async function fetchCompetitorArticleUrls(category) {
+    if (!category) return [];
+    try {
+      const res = await fetch(
+        `/api/competitor-articles?category=${encodeURIComponent(category)}`
+      );
+      const data = await res.json();
+      if (!Array.isArray(data.articles)) return [];
+      return data.articles.map((a) => a.url).filter(Boolean).slice(0, 3);
+    } catch {
+      return [];
+    }
+  }
+
+  function setHeadingCandidatesToForm(features, hintText) {
+    const list = uniqueCandidateStrings([features]);
+    for (let i = 1; i <= 5; i++) {
+      const el = document.getElementById(`headings-candidate-${i}`);
+      if (el) el.value = list[i - 1] || '';
+    }
     const hint = document.getElementById('headings-candidates-hint');
-    if (hint && features?.length) {
-      hint.textContent = `ランキング分析より ${features.length} 件を入力済み（編集してから見出し生成してください）`;
+    if (hint) {
+      hint.textContent =
+        hintText ||
+        (list.length
+          ? `週次・競合の結果より ${list.length} 件を入力済み（編集してから見出し生成してください）`
+          : '週次レポートまたは競合調査の結果を取り込むと、候補と他社URLが入ります。');
     }
   }
 
@@ -345,27 +455,114 @@
     return out;
   }
 
-  function loadHeadingCandidatesFromStorage() {
+  async function syncHeadingsTabFromSources({ force = true } = {}) {
     const ctx = loadRankingContextFromStorage();
-    if (ctx?.pickedFeatures?.length) {
-      setHeadingCandidatesToForm(ctx.pickedFeatures);
+    const category = resolveBridgeCategory() || ctx?.category || '';
+    const kw = document.getElementById('headings-keyword');
+    if (kw && category && (force || !kw.value.trim())) {
+      kw.value = category;
     }
-    if (ctx?.category) {
-      const kw = document.getElementById('headings-keyword');
-      if (kw && !kw.value.trim()) kw.value = ctx.category;
+    const candidates = collectBridgeHeadingCandidates(category);
+    const existing = getHeadingCandidatesFromForm();
+    if (force || !existing.length) {
+      setHeadingCandidatesToForm(
+        candidates,
+        candidates.length
+          ? `週次・競合の結果より ${candidates.length} 件を入力済み（編集してから見出し生成してください）`
+          : undefined
+      );
     }
+    const urls = await fetchCompetitorArticleUrls(category);
+    if (urls.length) setUrlFields('headings', urls, { force });
+    const status = document.getElementById('headings-bridge-msg');
+    if (status) {
+      status.textContent = category
+        ? `反映: ${category} / 候補 ${candidates.length} 件 / 競合URL ${urls.length} 件`
+        : '反映できる週次・競合データがありません。先に取得してください。';
+    }
+    return { category, candidates, urls };
+  }
+
+  async function syncArticleTabFromSources({ force = true } = {}) {
+    const ctx = loadRankingContextFromStorage();
+    const category =
+      resolveBridgeCategory() ||
+      document.getElementById('headings-keyword')?.value.trim() ||
+      ctx?.category ||
+      '';
+    const kw = document.getElementById('article-keyword');
+    if (kw && category && (force || !kw.value.trim())) {
+      kw.value = category;
+    }
+    const urls = await fetchCompetitorArticleUrls(category);
+    if (urls.length) setUrlFields('article', urls, { force });
+    // 見出しタブに既にURLがあれば記事側へもコピー
+    copyUrlFields('headings', 'article', { force: false });
+    const status = document.getElementById('article-bridge-msg');
+    if (status) {
+      status.textContent = category
+        ? `反映: ${category} / 競合URL ${urls.length} 件（見出し結果の引き継ぎは下のボタン）`
+        : '反映できる週次・競合データがありません。先に取得してください。';
+    }
+    return { category, urls };
+  }
+
+  function applyHeadingsResultToArticleForm() {
+    if (!lastHeadingsData) {
+      const status = document.getElementById('article-bridge-msg');
+      if (status) status.textContent = '先に見出し生成を実行してください。';
+      return false;
+    }
+    const kw = document.getElementById('article-keyword');
+    if (kw) kw.value = lastHeadingsKeyword || kw.value;
+    const title = document.getElementById('article-title');
+    if (title) title.value = lastHeadingsData.title || '';
+    const sections = lastHeadingsData.sections || [];
+    const first = sections[0] || {};
+    const h2 = document.getElementById('article-h2');
+    if (h2) h2.value = first.h2 || '';
+    const h3s = first.subsections || [];
+    for (let i = 1; i <= 5; i++) {
+      const el = document.getElementById(`article-h3-${i}`);
+      if (el) el.value = h3s[i - 1] || '';
+    }
+    copyUrlFields('headings', 'article', { force: true });
+    const status = document.getElementById('article-bridge-msg');
+    if (status) {
+      status.textContent = '見出し生成結果を記事フォームへ引き継ぎました。';
+    }
+    return true;
   }
 
   function applyRankingContextToHeadingsTab(ctx) {
-    if (!ctx) return;
+    if (!ctx) {
+      syncHeadingsTabFromSources({ force: true });
+      return;
+    }
     if (ctx.category) {
       const kw = document.getElementById('headings-keyword');
       if (kw) kw.value = ctx.category;
     }
-    if (ctx.pickedFeatures?.length) {
-      setHeadingCandidatesToForm(ctx.pickedFeatures);
-    }
+    const merged = uniqueCandidateStrings([
+      ctx.pickedFeatures || [],
+      collectBridgeHeadingCandidates(ctx.category),
+    ]);
+    if (merged.length) setHeadingCandidatesToForm(merged);
+    syncHeadingsTabFromSources({ force: true });
   }
+
+  // 後方互換
+  function loadHeadingCandidatesFromStorage() {
+    syncHeadingsTabFromSources({ force: false });
+  }
+
+  window.ArticleAppBridge = {
+    syncHeadingsTabFromSources,
+    syncArticleTabFromSources,
+    applyHeadingsResultToArticleForm,
+    applyRankingContextToHeadingsTab,
+    collectBridgeHeadingCandidates,
+  };
 
   function renderKyosoPickedFeatures(pickedFeatures, category) {
     const block = document.getElementById('kyoso-features-block');
@@ -674,7 +871,6 @@
   const kyosoArticleResult = document.getElementById('kyoso-article-result');
   const kyosoArticleMeta = document.getElementById('kyoso-article-meta');
   const kyosoArticleTbody = document.getElementById('kyoso-article-tbody');
-  const COMPETITOR_ANALYSIS_KEY = 'articleappNode.competitorAnalysis';
 
   function setKyosoArticleSavedHint(message) {
     if (kyosoArticleSavedHint) kyosoArticleSavedHint.textContent = message || '';
@@ -781,6 +977,32 @@
         COMPETITOR_ANALYSIS_KEY,
         JSON.stringify({ category, data, storedAt: Date.now() })
       );
+    } catch {
+      /* ignore */
+    }
+    // 見出し候補としても残す（週次・見出しタブが同じ rankingContext を読む）
+    try {
+      const prev = loadRankingContextFromStorage() || {};
+      if (!prev.category || prev.category === category) {
+        const merged = uniqueCandidateStrings([
+          prev.pickedFeatures || [],
+          data?.proposals || [],
+          (data?.headingUpdates || [])
+            .filter((u) => u.type === 'added' || u.change === 'added')
+            .map((u) => u.heading),
+        ]);
+        saveRankingContextToStorage({
+          ...prev,
+          category,
+          source: prev.source || 'competitor-articles',
+          pickedFeatures: merged.map((headingCandidate, i) => ({
+            id: `bridge-${i + 1}`,
+            label: headingCandidate,
+            headingCandidate,
+          })),
+          savedAt: new Date().toISOString(),
+        });
+      }
     } catch {
       /* ignore */
     }
@@ -1203,8 +1425,29 @@
   const headingsBody = document.getElementById('headings-body');
   const headingsWarnings = document.getElementById('headings-warnings');
   const headingsSubmit = document.getElementById('headings-submit');
-  let lastHeadingsData = null;
-  let lastHeadingsKeyword = '';
+  // applyHeadingsResultToArticleForm より前に宣言（同一スコープ）
+  var lastHeadingsData = null;
+  var lastHeadingsKeyword = '';
+
+  document.getElementById('headings-import-sources')?.addEventListener('click', () => {
+    syncHeadingsTabFromSources({ force: true });
+  });
+
+  document.getElementById('headings-to-article')?.addEventListener('click', () => {
+    if (!lastHeadingsData) {
+      const status = document.getElementById('headings-bridge-msg');
+      if (status) status.textContent = '先に見出しを生成してください。';
+      return;
+    }
+    applyHeadingsResultToArticleForm();
+    showTab('article');
+  });
+
+  window.addEventListener('competitor-analysis-updated', () => {
+    const active = localStorage.getItem(TAB_KEY);
+    if (active === 'headings') syncHeadingsTabFromSources({ force: false });
+    if (active === 'article') syncArticleTabFromSources({ force: false });
+  });
 
   formHeadings?.addEventListener('submit', async (e) => {
     e.preventDefault();
@@ -1362,6 +1605,14 @@
   const articleBody = document.getElementById('article-body');
   const articleWarnings = document.getElementById('article-warnings');
   const articleSubmit = document.getElementById('article-submit');
+
+  document.getElementById('article-import-sources')?.addEventListener('click', () => {
+    syncArticleTabFromSources({ force: true });
+  });
+
+  document.getElementById('article-import-headings')?.addEventListener('click', () => {
+    applyHeadingsResultToArticleForm();
+  });
 
   const ARTICLE_H3_SUFFIXES = ['first', 'second', 'third', 'fourth', 'fifth'];
 

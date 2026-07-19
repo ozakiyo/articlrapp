@@ -2886,6 +2886,9 @@ const {
   assignProductsToUseCases,
   generateCopyForProduct,
   renderUseCaseHtml,
+  resolveFeatureLabels,
+  normalizeFeatureRows,
+  productCacheKey,
 } = require('./useCaseRecommendEngine');
 
 function normalizeUseCaseProductsPayload(items) {
@@ -3000,28 +3003,43 @@ app.post('/api/usecase/generate-copy', async (req, res) => {
   try {
     // 一括: sections = [{ label, useCaseId, products: [{...}, manufacturerUrl?] }]
     if (sections?.length) {
+      const featureLabels = await resolveFeatureLabels({ category, getGeminiModel });
+      console.log('📋 usecase featureLabels (category):', featureLabels.join(' / '));
       const outSections = [];
       const errors = [];
+      // 同一型番が複数用途に出た場合は生成結果を再利用
+      const copyByProductKey = new Map();
       for (const sec of sections) {
         const productsOut = [];
         for (const p of sec.products || []) {
+          const cacheKey = productCacheKey(p);
           try {
-            // eslint-disable-next-line no-await-in-loop
-            const generated = await generateCopyForProduct({
-              category,
-              useCase: {
-                id: sec.useCaseId,
-                label: sec.label,
-                rationale: sec.rationale,
-              },
-              product: p,
-              manufacturerUrl: p.manufacturerUrl || null,
-              scrape: scrapeFast,
-              getGeminiModel,
-            });
+            let generated;
+            if (cacheKey && copyByProductKey.has(cacheKey)) {
+              generated = copyByProductKey.get(cacheKey);
+            } else {
+              // eslint-disable-next-line no-await-in-loop
+              generated = await generateCopyForProduct({
+                category,
+                useCase: {
+                  id: sec.useCaseId,
+                  label: sec.label,
+                  rationale: sec.rationale,
+                },
+                product: p,
+                manufacturerUrl: p.manufacturerUrl || null,
+                scrape: scrapeFast,
+                getGeminiModel,
+                featureLabels,
+              });
+              if (cacheKey) copyByProductKey.set(cacheKey, generated);
+            }
             productsOut.push({
               ...p,
-              copy: generated.copy,
+              copy: {
+                ...generated.copy,
+                featureRows: normalizeFeatureRows(generated.copy?.featureRows, featureLabels),
+              },
               manufacturerUrl: generated.manufacturerUrl,
               scrapeError: generated.scrapeError,
               scrapeCharCount: generated.scrapeCharCount,
@@ -3041,7 +3059,7 @@ app.post('/api/usecase/generate-copy', async (req, res) => {
               copy: {
                 heading: p?.label || p?.productName || '（生成失敗）',
                 description: `※この商品の生成に失敗しました: ${message}`,
-                featureRows: [],
+                featureRows: normalizeFeatureRows([], featureLabels),
                 linkLabel: '商品詳細はこちら',
                 hrefKojima: p?.hrefKojima || null,
                 manufacturerUrl: p?.manufacturerUrl || null,
@@ -3063,6 +3081,7 @@ app.post('/api/usecase/generate-copy', async (req, res) => {
       return res.json({
         ok: true,
         category,
+        featureLabels,
         sections: outSections,
         html: renderUseCaseHtml(outSections),
         errorCount: errors.length,
@@ -3074,6 +3093,7 @@ app.post('/api/usecase/generate-copy', async (req, res) => {
       return res.status(400).json({ error: 'product または sections を指定してください。' });
     }
 
+    const featureLabels = await resolveFeatureLabels({ category, getGeminiModel });
     const generated = await generateCopyForProduct({
       category,
       useCase,
@@ -3081,11 +3101,17 @@ app.post('/api/usecase/generate-copy', async (req, res) => {
       manufacturerUrl,
       scrape: scrapeFast,
       getGeminiModel,
+      featureLabels,
     });
     return res.json({
       ok: true,
       category,
+      featureLabels,
       ...generated,
+      copy: {
+        ...generated.copy,
+        featureRows: normalizeFeatureRows(generated.copy?.featureRows, featureLabels),
+      },
     });
   } catch (err) {
     console.error('💥 /api/usecase/generate-copy error:', err);

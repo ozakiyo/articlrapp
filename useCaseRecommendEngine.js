@@ -232,7 +232,99 @@ async function scrapeManufacturerFacts({ url, scrape, maxChars = 12000 }) {
 }
 
 /**
- * 説明文・機能表・見出しを生成
+ * 分類（カテゴリ）ごとの機能表項目。同じ分類内の全商品で同じラベル・同じ順序にする。
+ * 参考: コジマ冷蔵庫記事 = 容量 / 本体の大きさ / 扉の仕様 / 引出しレイアウト / 年間電気代目安
+ */
+const FEATURE_SCHEMA_BY_CATEGORY = {
+  冷蔵庫: ['容量', '本体の大きさ', '扉の仕様', '引出しレイアウト', '年間電気代目安'],
+  洗濯機: ['洗濯容量', '本体の大きさ', '乾燥機能', '洗浄機能', '年間電気代目安'],
+  掃除機: ['吸引方式', '本体の大きさ・重さ', '運転時間（充電式の場合）', '主な付属ノズル', '集じん方式'],
+  エアコン: ['対応畳数目安', '冷房能力', '暖房能力', '省エネ性能', '主な機能'],
+  電子レンジ: ['庫内容量', '本体の大きさ', '出力', '主な調理機能', '庫内の仕様'],
+  テレビ: ['画面サイズ', '解像度', 'チューナー', 'スマート機能', '外形寸法'],
+};
+
+function defaultFeatureLabelsForCategory(category) {
+  const key = String(category || '').trim();
+  if (FEATURE_SCHEMA_BY_CATEGORY[key]) return [...FEATURE_SCHEMA_BY_CATEGORY[key]];
+  const hit = Object.keys(FEATURE_SCHEMA_BY_CATEGORY).find((k) => key.includes(k));
+  if (hit) return [...FEATURE_SCHEMA_BY_CATEGORY[hit]];
+  return ['主なスペック1', '主なスペック2', '主なスペック3', '主なスペック4', '主なスペック5'];
+}
+
+/**
+ * 分類共通の機能表ラベルを決める（一括生成ではカテゴリにつき1回）
+ */
+async function resolveFeatureLabels({ category, getGeminiModel }) {
+  const key = String(category || '').trim();
+  if (FEATURE_SCHEMA_BY_CATEGORY[key]) {
+    return [...FEATURE_SCHEMA_BY_CATEGORY[key]];
+  }
+  const fallback = defaultFeatureLabelsForCategory(category);
+  const knownHit = Object.keys(FEATURE_SCHEMA_BY_CATEGORY).find((k) => key.includes(k));
+  if (knownHit) return [...FEATURE_SCHEMA_BY_CATEGORY[knownHit]];
+
+  try {
+    const prompt = `
+家電カテゴリ「${category}」の特集記事で、用途別おすすめの機能表に使う項目名をちょうど5つ決めてください。
+同じカテゴリ内の全商品で、同じ項目名・同じ順序を使います。購入比較に効く具体的な項目にしてください。
+
+# 出力（厳密にJSONのみ）
+{ "labels": ["項目1", "項目2", "項目3", "項目4", "項目5"] }
+`;
+    const data = await runGeminiJson(getGeminiModel, prompt, 'resolveFeatureLabels');
+    const labels = (Array.isArray(data?.labels) ? data.labels : [])
+      .map((l) => String(l || '').trim())
+      .filter(Boolean)
+      .slice(0, 5);
+    return labels.length >= 3 ? labels : fallback;
+  } catch (err) {
+    console.warn('resolveFeatureLabels fallback:', err.message);
+    return fallback;
+  }
+}
+
+/**
+ * 分類共通ラベルに合わせて機能表を揃える（不明は —）
+ */
+function normalizeFeatureRows(rows, labels) {
+  const list = Array.isArray(labels) && labels.length ? labels : [];
+  const byLabel = new Map();
+  for (const r of rows || []) {
+    const label = String(r?.label || '')
+      .trim()
+      .replace(/\s+/g, ' ');
+    const value = String(r?.value || '')
+      .trim()
+      .replace(/\s+/g, ' ');
+    if (label) byLabel.set(label, value || '—');
+  }
+  if (!list.length) {
+    return (rows || [])
+      .map((r) => ({
+        label: String(r?.label || '').trim(),
+        value: String(r?.value || '').trim() || '—',
+      }))
+      .filter((r) => r.label);
+  }
+  return list.map((label) => ({
+    label,
+    value: byLabel.get(label) || '—',
+  }));
+}
+
+function productCacheKey(product) {
+  return String(
+    product?.key ||
+      product?._key ||
+      product?.modelKey ||
+      product?.modelCode ||
+      `${product?.manufacturer || ''}|${product?.productName || product?.label || ''}`
+  ).trim();
+}
+
+/**
+ * 説明文・機能表・見出しを生成（機能表項目はカテゴリ共通）
  */
 async function generateProductCopy({
   category,
@@ -241,7 +333,14 @@ async function generateProductCopy({
   factsText,
   manufacturerUrl,
   getGeminiModel,
+  featureLabels,
 }) {
+  const labels =
+    Array.isArray(featureLabels) && featureLabels.length
+      ? featureLabels
+      : defaultFeatureLabelsForCategory(category);
+  const labelsJson = JSON.stringify(labels, null, 2);
+
   const prompt = `
 あなたはコジマネットの家電特集記事ライターです。
 参考形式（冷蔵庫記事）に合わせ、用途別おすすめ1商品の原稿を作ってください。
@@ -261,33 +360,36 @@ ${factsText ? factsText.slice(0, 10000) : '（取得なし）'}
 # メーカー公式URL
 ${manufacturerUrl || '（なし）'}
 
+# 機能表の項目（このカテゴリ共通。全商品で同じラベル・同じ順序）
+${labelsJson}
+
 # 出力（厳密にJSONのみ）
 {
   "heading": "メーカー「シリーズ」型番（主要スペック要約）",
   "description": "2〜4文の説明。機能名は「」で示す。用途に結び付ける。",
   "featureRows": [
-    { "label": "項目名", "value": "値" }
+    { "label": "上記の項目名と完全一致", "value": "値。不明なら —" }
   ],
   "linkLabel": "商品詳細はこちら"
 }
 
 # 制約
-- 取得テキストにないスペック・数値は書かない（不明なら featureRows から省く）
-- 冷蔵庫なら優先項目: 容量 / 本体の大きさ / 扉の仕様 / 引出しレイアウト / 年間電気代目安
-- 他カテゴリは購入判断に効く5項目前後
+- featureRows は上記ラベルをすべて、同じ順序で出力する（件数はラベル数と一致）
+- ラベル名を言い換えない・追加しない・省略しない
+- 取得テキストにないスペック・数値は捏造しない。不明な項目の value は「—」
+- 説明文に書いたスペックと機能表の値は矛盾させない
 - 誇大広告・最上級表現は避ける
 - 家電販売店向けの丁寧な文体
 `;
 
   const data = await runGeminiJson(getGeminiModel, prompt, 'generateProductCopy');
-  const featureRows = Array.isArray(data?.featureRows)
-    ? data.featureRows
-        .map((r) => ({
-          label: String(r.label || '').trim(),
-          value: String(r.value || '').trim(),
-        }))
-        .filter((r) => r.label && r.value)
+  const rawRows = Array.isArray(data?.featureRows)
+    ? data.featureRows.map((r) => ({
+        label: String(r.label || '').trim(),
+        value: String(r.value || '').trim(),
+      }))
     : [];
+  const featureRows = normalizeFeatureRows(rawRows, labels);
 
   return {
     heading: String(data?.heading || product.label || product.productName || '').trim(),
@@ -312,7 +414,7 @@ function renderProductBlockHtml(copy, rankIndex) {
   const rows = (copy.featureRows || [])
     .map(
       (r) =>
-        `<tr><th>${escapeHtml(r.label)}</th><td>${escapeHtml(r.value)}</td></tr>`
+        `<tr><th scope="row">${escapeHtml(r.label)}</th><td>${escapeHtml(r.value)}</td></tr>`
     )
     .join('');
   const link =
@@ -323,7 +425,7 @@ function renderProductBlockHtml(copy, rankIndex) {
 <p><strong>${rankIndex}</strong></p>
 <h4>${escapeHtml(copy.heading)}</h4>
 <p>${escapeHtml(copy.description)}</p>
-${rows ? `<table><tbody>${rows}</tbody></table>` : ''}
+${rows ? `<table class="usecase-feature-table"><tbody>${rows}</tbody></table>` : ''}
 ${link}
 `.trim();
 }
@@ -355,6 +457,7 @@ async function generateCopyForProduct({
   manufacturerUrl: forcedUrl,
   scrape,
   getGeminiModel,
+  featureLabels,
 }) {
   let manufacturerUrl = String(forcedUrl || '').trim() || null;
   let urlMeta = null;
@@ -382,6 +485,7 @@ async function generateCopyForProduct({
     factsText: scraped.text,
     manufacturerUrl,
     getGeminiModel,
+    featureLabels,
   });
 
   return {
@@ -399,6 +503,10 @@ module.exports = {
   assignProductsToUseCases,
   resolveManufacturerPageUrl,
   scrapeManufacturerFacts,
+  resolveFeatureLabels,
+  normalizeFeatureRows,
+  defaultFeatureLabelsForCategory,
+  productCacheKey,
   generateProductCopy,
   generateCopyForProduct,
   renderUseCaseHtml,

@@ -514,9 +514,20 @@
       <section id="panel-headings" class="tab-panel" hidden>
         <header>
           <h1>見出し生成</h1>
-          <p>キーワード・見出し候補（ランキング分析）・他社URL・参考URLから、H2×3・各H2にH3×3の案を作成します。</p>
+          <p>
+            週次レポート・競合調査の結果（見出し候補・競合記事URL）を取り込み、H2×3・各H2にH3×3の案を作成します。
+          </p>
         </header>
         <section class="panel">
+          <div class="actions">
+            <button type="button" class="secondary" id="headings-import-sources">
+              週次・競合の結果を取り込む
+            </button>
+            <button type="button" class="secondary" id="headings-to-article">
+              記事生成へ引き継ぐ
+            </button>
+          </div>
+          <p class="field-hint" id="headings-bridge-msg"></p>
           <form id="form-headings" class="form">
             <label class="field">
               <span>キーワード *</span>
@@ -539,9 +550,9 @@
               <input type="url" id="headings-ref-url" placeholder="https://example.com/reference" />
             </label>
             <div id="headings-candidates-panel" class="field">
-              <span>見出し候補（ランキング分析・最大5件）</span>
+              <span>見出し候補（週次・競合・最大5件）</span>
               <p class="field-hint" id="headings-candidates-hint">
-                競合調査でランキング取得後、需要の高い機能・切り口が自動入力されます。編集してから見出し生成してください。
+                週次レポートまたは競合調査の結果を取り込むと、候補と他社URLが自動入力されます。
               </p>
               <label class="field nested-field">
                 <span class="field-sub">候補 1</span>
@@ -606,9 +617,20 @@
       <section id="panel-article" class="tab-panel" hidden>
         <header>
           <h1>AI記事生成アプリ</h1>
-          <p>キーワードと他社URL・参考URLを入力して、記事の叩き台を作成します。</p>
+          <p>
+            週次・競合の他社URLと、見出し生成結果を引き継いで記事の叩き台を作成します。
+          </p>
         </header>
         <section class="panel">
+          <div class="actions">
+            <button type="button" class="secondary" id="article-import-sources">
+              週次・競合の結果を取り込む
+            </button>
+            <button type="button" class="secondary" id="article-import-headings">
+              見出し結果を取り込む
+            </button>
+          </div>
+          <p class="field-hint" id="article-bridge-msg"></p>
           <form id="form-article" class="form">
             <label class="field">
               <span>キーワード *</span>
