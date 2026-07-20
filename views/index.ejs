@@ -15,7 +15,7 @@
             <button type="button" data-tab="weekly" class="tab-btn">週次レポート</button>
             <button type="button" data-tab="kyoso" class="tab-btn secondary">競合調査（ランキング抽出）</button>
             <button type="button" data-tab="usecase" class="tab-btn secondary">用途別おすすめ</button>
-            <button type="button" data-tab="headings" class="tab-btn secondary">見出し生成</button>
+            <button type="button" data-tab="headings" class="tab-btn secondary">見出し生成（選び方）</button>
             <button type="button" data-tab="article" class="tab-btn secondary">記事生成</button>
           </div>
         </div>
@@ -513,14 +513,18 @@
       <!-- 見出し生成 -->
       <section id="panel-headings" class="tab-panel" hidden>
         <header>
-          <h1>見出し生成</h1>
+          <h1>見出し生成（選び方）</h1>
           <p>
-            週次レポート・競合調査の結果（見出し候補・競合記事URL）を取り込み、H2×3・各H2にH3×3の案を作成します。
+            商品のおすすめ見出しは「用途別おすすめ」で作成します。ここでは参考URLを踏まえ、<strong>選び方・比較の判断軸</strong>中心の見出し（H2×3・各H3×3）を作ります。
           </p>
         </header>
         <section class="panel">
+          <h2>週次・競合からの取り込み</h2>
+          <p class="field-hint">
+            週次・競合のニーズを「選び方の観点」として取り込みます。商品紹介の見出しには使いません。
+          </p>
           <div class="actions">
-            <button type="button" class="secondary" id="headings-import-sources">
+            <button type="button" id="headings-import-sources">
               週次・競合の結果を取り込む
             </button>
             <button type="button" class="secondary" id="headings-to-article">
@@ -528,55 +532,58 @@
             </button>
           </div>
           <p class="field-hint" id="headings-bridge-msg"></p>
+        </section>
+        <section class="panel">
           <form id="form-headings" class="form">
             <label class="field">
               <span>キーワード *</span>
-              <input type="text" id="headings-keyword" required placeholder="例: 洗濯機 おすすめ" />
+              <input type="text" id="headings-keyword" required placeholder="例: 冷蔵庫 選び方" />
             </label>
             <label class="field">
-              <span>他社URL 1</span>
+              <span>参考URL（推奨）</span>
+              <input type="url" id="headings-ref-url" placeholder="選び方記事の参考URL（構成の手本）" />
+            </label>
+            <p class="field-hint">参考URLの「選び方」構成を最優先で参照します。商品おすすめ部分は使いません。</p>
+            <label class="field">
+              <span>他社URL 1（任意）</span>
               <input type="url" id="headings-url1" placeholder="https://example.com/article" />
             </label>
             <label class="field">
-              <span>他社URL 2</span>
+              <span>他社URL 2（任意）</span>
               <input type="url" id="headings-url2" placeholder="https://example.com/article" />
             </label>
             <label class="field">
-              <span>他社URL 3</span>
+              <span>他社URL 3（任意）</span>
               <input type="url" id="headings-url3" placeholder="https://example.com/article" />
             </label>
-            <label class="field">
-              <span>参考URL</span>
-              <input type="url" id="headings-ref-url" placeholder="https://example.com/reference" />
-            </label>
             <div id="headings-candidates-panel" class="field">
-              <span>見出し候補（週次・競合・最大5件）</span>
+              <span>選び方の観点候補（最大5件）</span>
               <p class="field-hint" id="headings-candidates-hint">
-                週次レポートまたは競合調査の結果を取り込むと、候補と他社URLが自動入力されます。
+                容量・サイズ・機能・省エネなど、購入判断の軸を入力（または週次・競合から取り込み）してください。
               </p>
               <label class="field nested-field">
-                <span class="field-sub">候補 1</span>
-                <input type="text" id="headings-candidate-1" placeholder="例: 冷房専用・ノンドレンがおすすめ" />
+                <span class="field-sub">観点 1</span>
+                <input type="text" id="headings-candidate-1" placeholder="例: 容量の目安の見方" />
               </label>
               <label class="field nested-field">
-                <span class="field-sub">候補 2</span>
-                <input type="text" id="headings-candidate-2" placeholder="例: 冷暖房兼用の窓用エアコン" />
+                <span class="field-sub">観点 2</span>
+                <input type="text" id="headings-candidate-2" placeholder="例: 設置スペースとサイズの測り方" />
               </label>
               <label class="field nested-field">
-                <span class="field-sub">候補 3</span>
-                <input type="text" id="headings-candidate-3" placeholder="例: 7〜8畳向け 窓用エアコン" />
+                <span class="field-sub">観点 3</span>
+                <input type="text" id="headings-candidate-3" placeholder="例: 省エネ・電気代の比較ポイント" />
               </label>
               <label class="field nested-field">
-                <span class="field-sub">候補 4</span>
-                <input type="text" id="headings-candidate-4" />
+                <span class="field-sub">観点 4</span>
+                <input type="text" id="headings-candidate-4" placeholder="例: 扉の開き方・使い勝手" />
               </label>
               <label class="field nested-field">
-                <span class="field-sub">候補 5</span>
-                <input type="text" id="headings-candidate-5" />
+                <span class="field-sub">観点 5</span>
+                <input type="text" id="headings-candidate-5" placeholder="例: 失敗しやすい選び方" />
               </label>
             </div>
             <div class="actions">
-              <button type="submit" id="headings-submit">見出しを生成</button>
+              <button type="submit" id="headings-submit">選び方見出しを生成</button>
               <button type="button" class="secondary" id="headings-reset">リセット</button>
             </div>
           </form>

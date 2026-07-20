@@ -1458,7 +1458,7 @@
       return;
     }
 
-    setLoading(headingsSubmit, true, '見出しを生成', '生成中...');
+    setLoading(headingsSubmit, true, '選び方見出しを生成', '生成中...');
     try {
       const headingCandidates = getHeadingCandidatesFromForm();
       const data = await postJson('/api/article/generate-headings', {
@@ -1493,7 +1493,7 @@
       showError(headingsError, err.message);
       headingsResult.hidden = true;
     } finally {
-      setLoading(headingsSubmit, false, '見出しを生成', '生成中...');
+      setLoading(headingsSubmit, false, '選び方見出しを生成', '生成中...');
     }
   });
 

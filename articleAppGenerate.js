@@ -206,9 +206,63 @@ function buildHeadingCandidatesPromptSection(candidates) {
   if (!candidates?.length) return '';
   const lines = candidates.map((c, i) => `${i + 1}. ${c}`).join('\n');
   return `
-# 見出し候補（ランキング分析で抽出した読者ニーズ・機能切り口）
-以下を H2 のテーマとして優先的に反映してください（3件ある場合は各 H2 に1つずつ割り当て）。
+# 選び方の観点候補（週次・競合から拾った読者ニーズ）
+以下は「選び方」の観点として使う。商品ランキングやおすすめ商品の見出しにはしない。
+H2/H3 は購入判断の軸（比較ポイント・チェック項目）に変換して反映すること。
 ${lines}
+`;
+}
+
+function buildSelectionGuideHeadingPrompt({
+  keyword,
+  headingCandidates,
+  competitorTexts,
+  referenceOutputSection,
+}) {
+  return `
+あなたはコジマネットなど家電量販店の特集記事ライターです。
+キーワード「${keyword}」について、「選び方」中心の記事見出し案を作成してください。
+
+# 記事の役割分担（重要）
+- この見出し生成は「選び方・比較の仕方・購入前の判断軸」専用
+- 「用途別おすすめ」「担当者おすすめ○選」「ランキング掲載商品の紹介」見出しは作らない
+  （商品紹介ブロックは用途別おすすめ機能で別途作成する）
+- 特定の型番・メーカー推し・価格の羅列はしない
+
+# 参考URLの使い方（最優先）
+参考記事がある場合は、その「選び方」まわりの見出し構成・切り口の粒度・情報の出し方を最優先で参考にする。
+文言のコピーは禁止。キーワード「${keyword}」向けに再構成する。
+
+# 出力条件
+- JSON形式で出力
+- 形式:
+{
+  "h1": "タイトル案（選び方が伝わるもの。例: ○○の選び方｜失敗しないポイント）",
+  "sections": [
+    {
+      "h2": "選び方の大見出し1（H2）",
+      "subsections": ["判断ポイント1（H3）", "判断ポイント2（H3）", "判断ポイント3（H3）"]
+    },
+    {
+      "h2": "選び方の大見出し2（H2）",
+      "subsections": ["判断ポイント1（H3）", "判断ポイント2（H3）", "判断ポイント3（H3）"]
+    },
+    {
+      "h2": "選び方の大見出し3（H2）",
+      "subsections": ["判断ポイント1（H3）", "判断ポイント2（H3）", "判断ポイント3（H3）"]
+    }
+  ]
+}
+- H2は3つ、各H2に対してH3を3つ作成
+- H2例の方向性: サイズ・容量 / 機能の見分け方 / 設置・使い方 / 省エネ・コスト / 失敗しやすい点 など
+- H3は「何を見ればよいか」「どう比較するか」が分かる短文にする
+- 各見出しは本文を書かず、見出しテキストのみを出力する
+- キーワードとの関連性が高く、検索ユーザーの「どれを選べばいいか」意図を満たす
+- 家電販売店にふさわしい丁寧な文体
+- 製品名・価格・ランキング順位は直接記載しない
+- 「おすすめ3選」「人気商品」「この商品がおすすめ」系の見出しは禁止
+- 出力は厳密にJSONのみ
+${buildHeadingCandidatesPromptSection(headingCandidates)}${competitorTexts ? `\n# 他社記事（選び方・比較の切り口の参考。商品紹介部分は無視）\n${competitorTexts}` : ''}${referenceOutputSection}
 `;
 }
 
@@ -246,9 +300,10 @@ function buildReferenceOutputSection(keyword, referenceTexts) {
 
   return `
 # 出力の参考について
-以下の参考記事は、見出し構成・文体・記事の書き方・情報の出し方など「出力の仕方」を参考にするためのものです。
+以下の参考記事は、「選び方」セクションの見出し構成・切り口の粒度・文体・情報の出し方を参考にするためのものです。
 作成する記事のキーワードは「${keyword}」であり、参考記事のキーワード・テーマとは異なります。
-参考記事の文言や内容をそのまま流用せず、構成や文体のみを参考に、新しいキーワード向けのオリジナルな出力を作成してください。
+参考記事の文言や内容をそのまま流用せず、選び方の構成・観点のみを参考に、新しいキーワード向けのオリジナルな出力を作成してください。
+商品おすすめ・ランキング紹介の見出しは参考にしないでください。
 
 # 出力参考記事
 ${referenceTexts}
@@ -669,7 +724,7 @@ async function handleHeadingGenerate(
   if (candidateUrls.length === 0 && referenceUrls.length === 0) {
     console.warn('⚠️ No URLs provided');
     return res.status(400).json({
-      error: '他社URLまたは参考URLを少なくとも1つ入力してください。',
+      error: '参考URL（推奨）または他社URLを少なくとも1つ入力してください。選び方見出しの作成には参考URLがあると精度が上がります。',
     });
   }
 
@@ -697,6 +752,13 @@ async function handleHeadingGenerate(
     });
   }
 
+  if (scrapedReferenceArticles.length === 0) {
+    warnings.push({
+      message:
+        '参考URLが未取得です。選び方見出しは参考記事の構成を優先するため、参考URLの入力を推奨します。',
+    });
+  }
+
   console.log(
     '📚 Successfully scraped',
     scrapedArticles.length,
@@ -709,38 +771,12 @@ async function handleHeadingGenerate(
   const referenceTexts = formatScrapedTexts(scrapedReferenceArticles, '参考記事');
   const referenceOutputSection = buildReferenceOutputSection(keyword, referenceTexts);
 
-  const headingsPrompt = `
-あなたはSEOに強い家電専門ライターです。
-キーワード「${keyword}」の記事見出し案を作成してください。
-
-# 出力条件
-- JSON形式で出力
-- 形式:
-{
-  "h1": "タイトル案",
-  "sections": [
-    {
-      "h2": "大見出し1（H2）",
-      "subsections": ["小見出し1-1（H3）", "小見出し1-2（H3）", "小見出し1-3（H3）"]
-    },
-    {
-      "h2": "大見出し2（H2）",
-      "subsections": ["小見出し2-1（H3）", "小見出し2-2（H3）", "小見出し2-3（H3）"]
-    },
-    {
-      "h2": "大見出し3（H2）",
-      "subsections": ["小見出し3-1（H3）", "小見出し3-2（H3）", "小見出し3-3（H3）"]
-    }
-  ]
-}
-- H2は3つ、各H2に対してH3を3つ作成
-- 各見出しは本文を書かず、見出しテキストのみを出力する
-- キーワードとの関連性が高く、検索ユーザーの意図を満たす構成にする
-- 家電販売店にふさわしいフォーマルな文体
-- 製品名・価格は直接記載しない
-- 出力は厳密にJSONのみ
-${buildHeadingCandidatesPromptSection(headingCandidates)}${competitorTexts ? `\n# 他社記事\n${competitorTexts}` : ''}${referenceOutputSection}
-  `;
+  const headingsPrompt = buildSelectionGuideHeadingPrompt({
+    keyword,
+    headingCandidates,
+    competitorTexts,
+    referenceOutputSection,
+  });
 
   let headingData;
   try {
@@ -850,8 +886,12 @@ async function handleSubHeadingGenerate(
   const referenceOutputSection = buildReferenceOutputSection(keyword, referenceTexts);
 
   const prompt = `
-あなたはSEOに強い家電専門ライターです。
-キーワード「${keyword}」の記事において、H3見出し「${h3}」の配下に置くH4小見出しの案を作成してください。
+あなたはコジマネットなど家電量販店の特集記事ライターです。
+キーワード「${keyword}」の「選び方」記事において、H3見出し「${h3}」の配下に置くH4小見出しの案を作成してください。
+
+# 役割
+- 選び方・比較・判断ポイントを具体化する見出しのみ
+- 商品おすすめ・型番紹介・ランキング掲載の見出しは作らない
 
 # 出力条件
 - JSON形式で出力
@@ -861,13 +901,12 @@ async function handleSubHeadingGenerate(
   "subheadings": ["小見出し1（H4）", "小見出し2（H4）", "小見出し3（H4）", "小見出し4（H4）", "小見出し5（H4）"]
 }
 - H4は最大5つ作成
-- 各H4はH3の内容をさらに具体的に掘り下げたテーマにする
+- 各H4は「何を確認するか／どう比べるか」が分かる短文にする
 - 各見出しは本文を書かず、見出しテキストのみを出力する
-- キーワードとの関連性が高く、検索ユーザーの意図を満たす構成にする
-- 家電販売店にふさわしいフォーマルな文体
+- 家電販売店にふさわしい丁寧な文体
 - 製品名・価格は直接記載しない
 - 出力は厳密にJSONのみ
-${competitorTexts ? `\n# 他社記事\n${competitorTexts}` : ''}${referenceOutputSection}
+${competitorTexts ? `\n# 他社記事（選び方の切り口のみ参考）\n${competitorTexts}` : ''}${referenceOutputSection}
 `;
 
   let data;
