@@ -3,6 +3,7 @@
   const RANKING_CONTEXT_KEY = 'articleappNode.rankingContext';
   const COMPETITOR_ANALYSIS_KEY = 'articleappNode.competitorAnalysis';
   const panels = {
+    guide: document.getElementById('panel-guide'),
     weekly: document.getElementById('panel-weekly'),
     kyoso: document.getElementById('panel-kyoso'),
     usecase: document.getElementById('panel-usecase'),
@@ -157,6 +158,13 @@
   tabButtons.forEach((btn) => {
     btn.addEventListener('click', () => {
       showTab(btn.dataset.tab);
+    });
+  });
+
+  document.querySelectorAll('[data-guide-go]').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const name = btn.getAttribute('data-guide-go');
+      if (name && panels[name]) showTab(name);
     });
   });
 

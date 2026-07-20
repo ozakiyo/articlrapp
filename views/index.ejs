@@ -12,6 +12,7 @@
         <div class="app-main-nav-inner">
           <span class="app-main-nav-label">利用するアプリ</span>
           <div class="app-main-nav-buttons">
+            <button type="button" data-tab="guide" class="tab-btn secondary">使い方</button>
             <button type="button" data-tab="weekly" class="tab-btn">週次レポート</button>
             <button type="button" data-tab="kyoso" class="tab-btn secondary">競合調査（ランキング抽出）</button>
             <button type="button" data-tab="usecase" class="tab-btn secondary">用途別おすすめ</button>
@@ -20,6 +21,83 @@
           </div>
         </div>
       </nav>
+
+      <!-- 使い方ガイド -->
+      <section id="panel-guide" class="tab-panel" hidden>
+        <header>
+          <h1>記事アプリの使い方</h1>
+          <p>品質の良い記事を作るための推奨手順です。カテゴリの初回と2回目以降で進め方が少し違います。</p>
+        </header>
+
+        <section class="panel guide-panel">
+          <h2>役割の分担</h2>
+          <ul class="guide-list">
+            <li><strong>競合調査</strong> … ランキングURL・競合記事URLの準備と詳細取得（セットアップの本拠）</li>
+            <li><strong>週次レポート</strong> … 毎週の変化確認（売れ筋・競合見出し差分・改修）</li>
+            <li><strong>見出し生成（選び方）</strong> … 選び方・比較の判断軸の見出し（参考URLを重視）</li>
+            <li><strong>用途別おすすめ</strong> … 掲載商品の用途別3選と説明・機能表</li>
+            <li><strong>記事生成</strong> … 見出しを引き継いで本文の叩き台を作成</li>
+          </ul>
+        </section>
+
+        <section class="panel guide-panel">
+          <h2>初めてのカテゴリ</h2>
+          <ol class="guide-steps">
+            <li>
+              <strong>競合調査</strong>
+              <p>ランキングURLを解決・保存して取得する。競合記事URLも登録・保存する（比較できると尚可）。</p>
+            </li>
+            <li>
+              <strong>週次レポート</strong>
+              <p>同じカテゴリでランキング取得・競合記事比較を行い、必要なら改修登録・確定する。</p>
+            </li>
+            <li>
+              <strong>見出し生成（選び方）</strong>
+              <p>参考URLを入れて「選び方」見出しを作成する。週次・競合の結果は取り込み可（任意）。</p>
+            </li>
+            <li>
+              <strong>用途別おすすめ</strong>（商品ブロックが必要なとき）
+              <p>取得済みランキングから用途3つ→商品割当→説明文・機能表を生成する。</p>
+            </li>
+            <li>
+              <strong>記事生成</strong>
+              <p>見出し結果を引き継ぎ、必要なら導入文・まとめも作成する。</p>
+            </li>
+          </ol>
+        </section>
+
+        <section class="panel guide-panel">
+          <h2>2回目以降のカテゴリ（毎週）</h2>
+          <ol class="guide-steps">
+            <li>
+              <strong>週次レポート</strong>
+              <p>ランキング取得・競合記事比較・改修確認・確定。URLが変わったときだけ競合調査で編集・保存する。</p>
+            </li>
+            <li>
+              <strong>見出し生成（選び方）</strong>
+              <p>参考URLを入れて作成。必要なら「週次・競合の結果を取り込む」。</p>
+            </li>
+            <li>
+              必要に応じて<strong>用途別おすすめ</strong> → <strong>記事生成</strong>
+            </li>
+          </ol>
+        </section>
+
+        <section class="panel guide-panel">
+          <h2>品質を上げるポイント</h2>
+          <ul class="guide-list">
+            <li>見出し生成は<strong>参考URL</strong>がいちばん効きます（選び方構成の手本）。</li>
+            <li>商品のおすすめ見出し・説明は<strong>用途別おすすめ</strong>側で作ります。</li>
+            <li>競合調査は初回セットアップとURL変更時。毎週の本体は週次レポートです。</li>
+            <li>月が変わっただけでは競合調査のやり直しは不要です（URL変更時のみ）。</li>
+          </ul>
+          <div class="actions">
+            <button type="button" class="secondary" data-guide-go="weekly">週次レポートへ</button>
+            <button type="button" class="secondary" data-guide-go="kyoso">競合調査へ</button>
+            <button type="button" class="secondary" data-guide-go="headings">見出し生成へ</button>
+          </div>
+        </section>
+      </section>
 
       <!-- 週次レポート（②-A） -->
       <section id="panel-weekly" class="tab-panel">

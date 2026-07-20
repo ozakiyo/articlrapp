@@ -200,6 +200,31 @@ header p {
   background: #f9fafb;
 }
 
+.guide-panel h2 {
+  margin-top: 0;
+}
+
+.guide-list,
+.guide-steps {
+  margin: 0.75rem 0 0;
+  padding-left: 1.25rem;
+  line-height: 1.7;
+  color: #374151;
+}
+
+.guide-steps > li {
+  margin-bottom: 0.85rem;
+}
+
+.guide-steps > li > p,
+.guide-list > li {
+  margin: 0.25rem 0 0;
+}
+
+.guide-panel .actions {
+  margin-top: 1rem;
+}
+
 .weekly-competitor-panel .weekly-subheading {
   margin: 1.25rem 0 0.5rem;
   font-size: 1rem;
