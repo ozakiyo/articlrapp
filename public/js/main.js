@@ -2109,6 +2109,7 @@
         competitorUrl2: document.getElementById('article-url2').value.trim(),
         competitorUrl3: document.getElementById('article-url3').value.trim(),
         referenceUrl: document.getElementById('article-ref-url').value.trim(),
+        skipScrape: true,
         generateIntroduction: Boolean(document.getElementById('article-gen-intro')?.checked),
         generateSummary: Boolean(document.getElementById('article-gen-summary')?.checked),
       });

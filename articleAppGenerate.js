@@ -123,11 +123,7 @@ ${competitorTexts ? `\n# 他社記事\n${competitorTexts}` : ''}${referenceOutpu
 `;
 
   console.log(`🧠 Generating H3-${index} body with Gemini`);
-  const model = await getGeminiModel();
-  const result = await model.generateContent({
-    contents: [{ role: 'user', parts: [{ text: prompt }] }],
-  });
-  const raw = result.response?.text?.() || '';
+  const raw = await generateGeminiTextWithRetry(getGeminiModel, prompt);
   const data = parseJsonFromModelOutput(raw);
   console.log(`🧾 H3-${index} generated:`, data);
   return data;
@@ -195,11 +191,7 @@ ${competitorTexts ? `\n# 他社記事\n${competitorTexts}` : ''}${referenceOutpu
 `;
 
   console.log(`🧠 Generating H4-${index} body with Gemini`);
-  const model = await getGeminiModel();
-  const result = await model.generateContent({
-    contents: [{ role: 'user', parts: [{ text: prompt }] }],
-  });
-  const raw = result.response?.text?.() || '';
+  const raw = await generateGeminiTextWithRetry(getGeminiModel, prompt);
   const data = parseJsonFromModelOutput(raw);
   console.log(`🧾 H4-${index} generated:`, data);
   return data;
@@ -514,10 +506,10 @@ function sleep(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
-async function generateH4WithGemini(getGeminiModel, prompt) {
+async function generateGeminiTextWithRetry(getGeminiModel, prompt) {
   const model = await getGeminiModel();
   let lastErr;
-  // 2回目以降の連続呼び出しで 429 になりやすいため、短い待機付きで1回だけ再試行
+  // 連続呼び出しで 429 になりやすいため、短い待機付きで1回だけ再試行
   for (let attempt = 1; attempt <= 2; attempt += 1) {
     try {
       const result = await model.generateContent({
@@ -528,11 +520,15 @@ async function generateH4WithGemini(getGeminiModel, prompt) {
       lastErr = err;
       if (!isQuotaLikeError(err) || attempt >= 2) break;
       const waitSec = Math.min(parseRetryAfterSeconds(err) || 12, 25);
-      console.warn(`⚠️ H4 Gemini quota; retry in ${waitSec}s (attempt ${attempt})`);
+      console.warn(`⚠️ Gemini quota; retry in ${waitSec}s (attempt ${attempt})`);
       await sleep(waitSec * 1000);
     }
   }
   throw lastErr;
+}
+
+async function generateH4WithGemini(getGeminiModel, prompt) {
+  return generateGeminiTextWithRetry(getGeminiModel, prompt);
 }
 
 function registerArticleAppRoutes(app, { scrape, getGeminiModel }) {
@@ -637,10 +633,19 @@ async function handleArticleGenerate(
       return res.status(400).json({ error: 'キーワードを入力してください。' });
     }
 
+    const outlineSectionsEarly = collectOutlineSections(req.body);
     const candidateUrls = collectCandidateUrls(req.body);
     const referenceUrls = collectReferenceUrls(req.body);
+    const useArticleContext =
+      req.body.useArticleContext === true || req.body.useArticleContext === 'true';
+    // 確定アウトラインがある場合は既定でURL再取得しない（joshin等のタイムアウトで全体が落ちるのを防ぐ）
+    const skipScrape =
+      Boolean(outlineSectionsEarly?.length) &&
+      !useArticleContext &&
+      req.body.skipScrape !== false &&
+      req.body.skipScrape !== 'false';
 
-    if (candidateUrls.length === 0 && referenceUrls.length === 0) {
+    if (candidateUrls.length === 0 && referenceUrls.length === 0 && !outlineSectionsEarly?.length) {
       console.warn('⚠️ No URLs provided');
       return res.status(400).json({
         error: '他社URLまたは参考URLを少なくとも1つ入力してください。',
@@ -651,36 +656,40 @@ async function handleArticleGenerate(
     let scrapedArticles = [];
     let scrapedReferenceArticles = [];
 
-    if (candidateUrls.length > 0) {
-      const competitorResult = await scrapeCompetitorArticles(candidateUrls, scrape);
-      warnings.push(...competitorResult.warnings);
-      scrapedArticles = competitorResult.scrapedArticles;
+    if (skipScrape) {
+      console.log('⏭️ Skipping URL scrape for outline article generate');
+    } else {
+      if (candidateUrls.length > 0) {
+        const competitorResult = await scrapeCompetitorArticles(candidateUrls, scrape);
+        warnings.push(...competitorResult.warnings);
+        scrapedArticles = competitorResult.scrapedArticles;
+      }
+
+      if (referenceUrls.length > 0) {
+        const referenceResult = await scrapeCompetitorArticles(referenceUrls, scrape);
+        warnings.push(...referenceResult.warnings);
+        scrapedReferenceArticles = referenceResult.scrapedArticles;
+      }
+
+      if (scrapedArticles.length === 0 && scrapedReferenceArticles.length === 0) {
+        console.warn('⚠️ Scraping failed or skipped; continue with keyword + headings only');
+        warnings.push({
+          message:
+            '参考URL・他社URLの取得に失敗（または未入力）のため、確定見出しのみで本文を生成します。',
+        });
+      } else {
+        console.log(
+          '📚 Successfully scraped',
+          scrapedArticles.length,
+          'competitor sources and',
+          scrapedReferenceArticles.length,
+          'reference sources'
+        );
+      }
     }
 
-    if (referenceUrls.length > 0) {
-      const referenceResult = await scrapeCompetitorArticles(referenceUrls, scrape);
-      warnings.push(...referenceResult.warnings);
-      scrapedReferenceArticles = referenceResult.scrapedArticles;
-    }
-
-    if (scrapedArticles.length === 0 && scrapedReferenceArticles.length === 0) {
-      console.error('🚨 Scraping failed for all URLs');
-      return res.status(502).json({
-        error: '記事の取得に失敗しました。',
-        warnings,
-      });
-    }
-
-    console.log(
-      '📚 Successfully scraped',
-      scrapedArticles.length,
-      'competitor sources and',
-      scrapedReferenceArticles.length,
-      'reference sources'
-    );
-
-    const competitorTexts = formatScrapedTexts(scrapedArticles, '他社記事');
-    const referenceTexts = formatScrapedTexts(scrapedReferenceArticles, '参考記事');
+    const competitorTexts = formatScrapedTexts(scrapedArticles, '他社記事', 2500);
+    const referenceTexts = formatScrapedTexts(scrapedReferenceArticles, '参考記事', 2500);
     const referenceOutputSection = buildReferenceOutputSection(keyword, referenceTexts);
 
     let introductionData = {
@@ -738,10 +747,11 @@ ${competitorTexts ? `\n# 他社記事\n${competitorTexts}` : ''}${referenceOutpu
     const hasH4 = h4Headings.some((h) => h);
     const heading_h3_target = String(req.body.heading_h3_target || '').trim();
     const isH4Mode = hasH4 && heading_h3_target;
-    const outlineSections = collectOutlineSections(req.body);
+    const outlineSections = outlineSectionsEarly;
 
     const contentResults = [];
     let outlineResultSections = null;
+    const BODY_GAP_MS = 1000;
 
     if (outlineSections?.length) {
       outlineResultSections = [];
@@ -753,6 +763,10 @@ ${competitorTexts ? `\n# 他社記事\n${competitorTexts}` : ''}${referenceOutpu
             for (let i = 0; i < item.h4s.length; i++) {
               const h4Heading = item.h4s[i];
               try {
+                if (contentResults.length > 0) {
+                  // eslint-disable-next-line no-await-in-loop
+                  await sleep(BODY_GAP_MS);
+                }
                 // eslint-disable-next-line no-await-in-loop
                 const data = await generateH4BodyContent({
                   getGeminiModel,
@@ -772,15 +786,22 @@ ${competitorTexts ? `\n# 他社記事\n${competitorTexts}` : ''}${referenceOutpu
                 contentResults.push({ heading: h4Heading, data, level: 'h4' });
               } catch (err) {
                 console.error(`❌ outline H4 generation failed`, err.message);
-                return res.status(502).json({
-                  error: `H4「${h4Heading}」本文の生成に失敗しました。`,
-                  warnings,
+                warnings.push({
+                  message: `H4「${h4Heading}」本文の生成に失敗したため空欄にしました。（${String(err.message || '').slice(0, 120)}）`,
+                });
+                h4_items.push({
+                  h4: h4Heading,
+                  content: '',
                 });
               }
             }
             outItems.push({ h3: item.h3, content: '', h4_items });
           } else {
             try {
+              if (contentResults.length > 0) {
+                // eslint-disable-next-line no-await-in-loop
+                await sleep(BODY_GAP_MS);
+              }
               // eslint-disable-next-line no-await-in-loop
               const data = await generateH3BodyContent({
                 getGeminiModel,
@@ -800,9 +821,13 @@ ${competitorTexts ? `\n# 他社記事\n${competitorTexts}` : ''}${referenceOutpu
               contentResults.push({ heading: item.h3, data, level: 'h3' });
             } catch (err) {
               console.error(`❌ outline H3 generation failed`, err.message);
-              return res.status(502).json({
-                error: `H3「${item.h3}」本文の生成に失敗しました。`,
-                warnings,
+              warnings.push({
+                message: `H3「${item.h3}」本文の生成に失敗したため空欄にしました。（${String(err.message || '').slice(0, 120)}）`,
+              });
+              outItems.push({
+                h3: item.h3,
+                content: '',
+                h4_items: [],
               });
             }
           }

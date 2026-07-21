@@ -751,7 +751,7 @@ async function scrapeWithHttpClient(url) {
   const res = await gotScraping({
     url,
     timeout: {
-      request: 10000,
+      request: 20000,
     },
     retry: {
       limit: 2,
