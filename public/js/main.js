@@ -555,7 +555,7 @@
     });
   }
 
-  function saveOutlineToStorage(outline, keyword, title) {
+  function saveOutlineToStorage(outline, keyword, title, extra = {}) {
     try {
       sessionStorage.setItem(
         OUTLINE_STORAGE_KEY,
@@ -563,6 +563,7 @@
           keyword: keyword || '',
           title: title || '',
           outline,
+          enableH4: Boolean(extra.enableH4),
           savedAt: Date.now(),
         })
       );
@@ -583,7 +584,7 @@
     }
   }
 
-  function renderOutlineEditor(containerId, outline, { withH4 = false } = {}) {
+  function renderOutlineEditor(containerId, outline, { withH4 = false, allowSuggest = false } = {}) {
     const root = document.getElementById(containerId);
     if (!root) return;
     const sections = normalizeClientOutline('', outline);
@@ -597,14 +598,18 @@
                     .map(
                       (k) => `<label class="field nested-field outline-h4-field">
                         <span class="field-sub">H4-${k + 1}</span>
-                        <input type="text" class="outline-h4-input" data-sec="${si}" data-h3="${hi}" data-h4="${k}" value="${escapeHtml(item.h4s?.[k] || '')}" placeholder="任意（空ならH3本文のみ）" />
+                        <input type="text" class="outline-h4-input" data-sec="${si}" data-h3="${hi}" data-h4="${k}" value="${escapeHtml(item.h4s?.[k] || '')}" placeholder="${allowSuggest ? '提案後に編集可（空ならこのH4は使わない）' : '空ならH3本文のみ'}" />
                       </label>`
                     )
                     .join('')}
                 </div>
-                <div class="outline-h3-actions">
-                  <button type="button" class="secondary outline-suggest-h4" data-sec="${si}" data-h3="${hi}">H4を提案（最大3）</button>
+                ${
+                  allowSuggest
+                    ? `<div class="outline-h3-actions">
+                  <button type="button" class="secondary outline-suggest-h4" data-sec="${si}" data-h3="${hi}">このH3のH4を提案</button>
                 </div>`
+                    : ''
+                }`
               : '';
             return `<div class="outline-h3-block" data-sec="${si}" data-h3="${hi}">
               <label class="field nested-field">
@@ -624,6 +629,71 @@
         </div>`;
       })
       .join('');
+  }
+
+  function clearOutlineH4(outline) {
+    return (outline || []).map((sec) => ({
+      ...sec,
+      items: (sec.items || []).map((item) => ({
+        h3: item.h3 || '',
+        h4s: ['', '', ''],
+      })),
+      subsections: (sec.items || []).map((item) => item.h3 || ''),
+    }));
+  }
+
+  function outlineHasAnyH4(outline) {
+    return (outline || []).some((sec) =>
+      (sec.items || []).some((item) =>
+        (item.h4s || []).some((h) => String(h || '').trim())
+      )
+    );
+  }
+
+  function isHeadingsH4Enabled() {
+    return Boolean(document.getElementById('headings-enable-h4')?.checked);
+  }
+
+  function syncHeadingsH4Ui(outline) {
+    const enabled = isHeadingsH4Enabled();
+    const actions = document.getElementById('headings-h4-actions');
+    if (actions) actions.hidden = !enabled;
+    const current =
+      outline ||
+      readOutlineFromEditor('headings-outline-editor') ||
+      lastHeadingsData?.outline;
+    if (!current?.length) return;
+    const next = enabled ? current : clearOutlineH4(current);
+    if (lastHeadingsData) lastHeadingsData.outline = next;
+    renderOutlineEditor('headings-outline-editor', next, {
+      withH4: enabled,
+      allowSuggest: enabled,
+    });
+  }
+
+  async function suggestH4ForH3({ keyword, h3, urlPrefix = 'headings' }) {
+    const data = await postJson('/api/article/generate-sub-headings', {
+      keyword,
+      h3,
+      competitorUrl1: document.getElementById(`${urlPrefix}-url1`)?.value.trim() || '',
+      competitorUrl2: document.getElementById(`${urlPrefix}-url2`)?.value.trim() || '',
+      competitorUrl3: document.getElementById(`${urlPrefix}-url3`)?.value.trim() || '',
+      referenceUrl:
+        document.getElementById(`${urlPrefix}-ref-url`)?.value.trim() || '',
+    });
+    return (data.subheadings || [])
+      .map((s) => String(s || '').trim())
+      .filter(Boolean)
+      .slice(0, MAX_OUTLINE_H4);
+  }
+
+  function fillH4Inputs(editor, si, hi, suggested) {
+    for (let k = 0; k < MAX_OUTLINE_H4; k++) {
+      const input = editor.querySelector(
+        `.outline-h4-input[data-sec="${si}"][data-h3="${hi}"][data-h4="${k}"]`
+      );
+      if (input) input.value = suggested[k] || '';
+    }
   }
 
   function readOutlineFromEditor(containerId) {
@@ -675,7 +745,7 @@
   }
 
   function applyHeadingsResultToArticleForm() {
-    const outline =
+    let outline =
       readOutlineFromEditor('headings-outline-editor') ||
       lastHeadingsData?.outline ||
       normalizeClientOutline(lastHeadingsKeyword, lastHeadingsData?.sections);
@@ -684,6 +754,8 @@
       if (status) status.textContent = '先に見出し生成を実行してください。';
       return false;
     }
+    const enableH4 = isHeadingsH4Enabled();
+    if (!enableH4) outline = clearOutlineH4(outline);
     const kw = document.getElementById('article-keyword');
     if (kw) kw.value = lastHeadingsKeyword || kw.value;
     const title = document.getElementById('article-title');
@@ -692,12 +764,19 @@
     const refH = document.getElementById('headings-ref-url')?.value.trim();
     const refA = document.getElementById('article-ref-url');
     if (refA && refH) refA.value = refH;
-    renderOutlineEditor('article-outline-editor', outline, { withH4: true });
-    saveOutlineToStorage(outline, lastHeadingsKeyword, lastHeadingsData?.title || '');
+    const showH4 = enableH4 || outlineHasAnyH4(outline);
+    renderOutlineEditor('article-outline-editor', outline, {
+      withH4: showH4,
+      allowSuggest: false,
+    });
+    saveOutlineToStorage(outline, lastHeadingsKeyword, lastHeadingsData?.title || '', {
+      enableH4: showH4,
+    });
     const status = document.getElementById('article-bridge-msg');
     if (status) {
-      status.textContent =
-        '見出し（選びのポイント／人気メーカー）を記事フォームへ引き継ぎました。';
+      status.textContent = showH4
+        ? '見出し（H2／H3／H4）を確定して記事フォームへ引き継ぎました。本文を生成できます。'
+        : '見出し（H2／H3）を確定して記事フォームへ引き継ぎました。H4なしで本文を生成できます。';
     }
     return true;
   }
@@ -1605,6 +1684,7 @@
         sections: outline.map((s) => ({
           h2: s.h2,
           subsections: s.subsections || s.items?.map((it) => it.h3) || [],
+          items: s.items || [],
         })),
         title: lastHeadingsData?.title || '',
       };
@@ -1668,8 +1748,12 @@
       const outline =
         data.outline || normalizeClientOutline(keyword, data.sections);
       lastHeadingsData.outline = outline;
-      renderOutlineEditor('headings-outline-editor', outline, { withH4: false });
-      saveOutlineToStorage(outline, keyword, data.title || '');
+      const enableH4 = document.getElementById('headings-enable-h4');
+      if (enableH4) enableH4.checked = false;
+      syncHeadingsH4Ui(outline);
+      const h4Msg = document.getElementById('headings-h4-msg');
+      if (h4Msg) h4Msg.textContent = '';
+      saveOutlineToStorage(outline, keyword, data.title || '', { enableH4: false });
 
       const headingsBody = document.getElementById('headings-body');
       if (headingsBody) {
@@ -1700,6 +1784,129 @@
     lastHeadingsKeyword = '';
     const editor = document.getElementById('headings-outline-editor');
     if (editor) editor.innerHTML = '';
+    const enableH4 = document.getElementById('headings-enable-h4');
+    if (enableH4) enableH4.checked = false;
+    const h4Actions = document.getElementById('headings-h4-actions');
+    if (h4Actions) h4Actions.hidden = true;
+    const h4Msg = document.getElementById('headings-h4-msg');
+    if (h4Msg) h4Msg.textContent = '';
+  });
+
+  document.getElementById('headings-enable-h4')?.addEventListener('change', () => {
+    const current =
+      readOutlineFromEditor('headings-outline-editor') || lastHeadingsData?.outline;
+    syncHeadingsH4Ui(current);
+    const msg = document.getElementById('headings-h4-msg');
+    if (!msg) return;
+    msg.textContent = isHeadingsH4Enabled()
+      ? 'H4入力欄を表示しました。「このH3のH4を提案」または「全H3のH4を提案」で作成し、内容を確定してください。'
+      : 'H4なしで進めます。記事生成では H3 本文のみ作成されます。';
+  });
+
+  document.getElementById('headings-outline-editor')?.addEventListener('click', async (e) => {
+    const btn = e.target.closest('.outline-suggest-h4');
+    if (!btn) return;
+    if (!isHeadingsH4Enabled()) return;
+    const si = Number(btn.dataset.sec);
+    const hi = Number(btn.dataset.h3);
+    const editor = document.getElementById('headings-outline-editor');
+    const h3 =
+      editor
+        ?.querySelector(`.outline-h3-input[data-sec="${si}"][data-h3="${hi}"]`)
+        ?.value.trim() || '';
+    if (!h3) {
+      showError(headingsError, 'H4を提案する前に、対象のH3を入力してください。');
+      return;
+    }
+    const keyword =
+      document.getElementById('headings-keyword')?.value.trim() || lastHeadingsKeyword;
+    if (!keyword) {
+      showError(headingsError, 'キーワードを入力してください。');
+      return;
+    }
+    showError(headingsError, '');
+    const prevLabel = btn.textContent;
+    btn.disabled = true;
+    btn.textContent = '提案中...';
+    try {
+      const suggested = await suggestH4ForH3({ keyword, h3, urlPrefix: 'headings' });
+      fillH4Inputs(editor, si, hi, suggested);
+      const msg = document.getElementById('headings-h4-msg');
+      if (msg) {
+        msg.textContent = suggested.length
+          ? `「${h3}」の H4 を ${suggested.length} 件提案しました。必要なら編集してから記事へ進んでください。`
+          : 'H4案が空でした。手動入力するか、別の観点で再提案してください。';
+      }
+    } catch (err) {
+      showError(headingsError, err.message);
+    } finally {
+      btn.disabled = false;
+      btn.textContent = prevLabel;
+    }
+  });
+
+  document.getElementById('headings-suggest-all-h4')?.addEventListener('click', async () => {
+    if (!isHeadingsH4Enabled()) return;
+    const editor = document.getElementById('headings-outline-editor');
+    const outline = readOutlineFromEditor('headings-outline-editor');
+    if (!outline?.length) {
+      showError(headingsError, '先に H2／H3 見出しを生成してください。');
+      return;
+    }
+    const keyword =
+      document.getElementById('headings-keyword')?.value.trim() || lastHeadingsKeyword;
+    if (!keyword) {
+      showError(headingsError, 'キーワードを入力してください。');
+      return;
+    }
+    const btn = document.getElementById('headings-suggest-all-h4');
+    const msg = document.getElementById('headings-h4-msg');
+    showError(headingsError, '');
+    const targets = [];
+    outline.forEach((sec, si) => {
+      (sec.items || []).forEach((item, hi) => {
+        if (item.h3) targets.push({ si, hi, h3: item.h3 });
+      });
+    });
+    if (!targets.length) {
+      showError(headingsError, 'H3 が空です。先に H3 を入力してください。');
+      return;
+    }
+    const prevLabel = btn?.textContent || '';
+    if (btn) {
+      btn.disabled = true;
+      btn.textContent = `提案中... (0/${targets.length})`;
+    }
+    let done = 0;
+    let failed = 0;
+    try {
+      for (const t of targets) {
+        try {
+          // eslint-disable-next-line no-await-in-loop
+          const suggested = await suggestH4ForH3({
+            keyword,
+            h3: t.h3,
+            urlPrefix: 'headings',
+          });
+          fillH4Inputs(editor, t.si, t.hi, suggested);
+        } catch {
+          failed += 1;
+        }
+        done += 1;
+        if (btn) btn.textContent = `提案中... (${done}/${targets.length})`;
+      }
+      if (msg) {
+        msg.textContent =
+          failed > 0
+            ? `H4提案完了（成功 ${targets.length - failed} / 失敗 ${failed}）。内容を確認・編集してから記事へ進んでください。`
+            : `全 ${targets.length} 件の H3 に H4 を提案しました。内容を確認・編集してから「見出し確定 → 記事生成へ」を押してください。`;
+      }
+    } finally {
+      if (btn) {
+        btn.disabled = false;
+        btn.textContent = prevLabel;
+      }
+    }
   });
 
   document.getElementById('headings-clear')?.addEventListener('click', () => {
@@ -1721,6 +1928,12 @@
       lines.push(`H2-${i + 1}: ${section.h2 || ''}`);
       (section.items || []).forEach((item, j) => {
         lines.push(`  H3-${j + 1}: ${item.h3 || ''}`);
+        (item.h4s || [])
+          .map((h) => String(h || '').trim())
+          .filter(Boolean)
+          .forEach((h4, k) => {
+            lines.push(`    H4-${k + 1}: ${h4}`);
+          });
       });
     });
     try {
@@ -1747,7 +1960,11 @@
     if (!saved?.outline?.length) return;
     const editor = document.getElementById('article-outline-editor');
     if (!editor || editor.querySelector('.outline-section')) return;
-    renderOutlineEditor('article-outline-editor', saved.outline, { withH4: true });
+    const showH4 = Boolean(saved.enableH4) || outlineHasAnyH4(saved.outline);
+    renderOutlineEditor('article-outline-editor', saved.outline, {
+      withH4: showH4,
+      allowSuggest: false,
+    });
     const kw = document.getElementById('article-keyword');
     if (kw && saved.keyword && !kw.value.trim()) kw.value = saved.keyword;
     const title = document.getElementById('article-title');
@@ -1760,59 +1977,6 @@
 
   document.getElementById('article-import-headings')?.addEventListener('click', () => {
     applyHeadingsResultToArticleForm();
-  });
-
-  document.getElementById('article-outline-editor')?.addEventListener('click', async (e) => {
-    const btn = e.target.closest('.outline-suggest-h4');
-    if (!btn) return;
-    const si = Number(btn.dataset.sec);
-    const hi = Number(btn.dataset.h3);
-    const editor = document.getElementById('article-outline-editor');
-    const h3Input = editor?.querySelector(
-      `.outline-h3-input[data-sec="${si}"][data-h3="${hi}"]`
-    );
-    const h3 = h3Input?.value.trim() || '';
-    if (!h3) {
-      showError(articleError, 'H4を提案する前に、対象のH3を入力してください。');
-      return;
-    }
-    const keyword =
-      document.getElementById('article-keyword')?.value.trim() ||
-      document.getElementById('headings-keyword')?.value.trim() ||
-      '';
-    if (!keyword) {
-      showError(articleError, 'キーワードを入力してください。');
-      return;
-    }
-    showError(articleError, '');
-    const prevLabel = btn.textContent;
-    btn.disabled = true;
-    btn.textContent = '提案中...';
-    try {
-      const data = await postJson('/api/article/generate-sub-headings', {
-        keyword,
-        h3,
-        competitorUrl1: document.getElementById('article-url1')?.value.trim() || '',
-        competitorUrl2: document.getElementById('article-url2')?.value.trim() || '',
-        competitorUrl3: document.getElementById('article-url3')?.value.trim() || '',
-        referenceUrl: document.getElementById('article-ref-url')?.value.trim() || '',
-      });
-      const suggested = (data.subheadings || [])
-        .map((s) => String(s || '').trim())
-        .filter(Boolean)
-        .slice(0, MAX_OUTLINE_H4);
-      for (let k = 0; k < MAX_OUTLINE_H4; k++) {
-        const input = editor.querySelector(
-          `.outline-h4-input[data-sec="${si}"][data-h3="${hi}"][data-h4="${k}"]`
-        );
-        if (input) input.value = suggested[k] || '';
-      }
-    } catch (err) {
-      showError(articleError, err.message);
-    } finally {
-      btn.disabled = false;
-      btn.textContent = prevLabel;
-    }
   });
 
   function renderOutlineArticleResult(data) {
@@ -1865,7 +2029,7 @@
     if (!sections.length) {
       showError(
         articleError,
-        '見出しアウトラインが空です。見出し生成から引き継ぐか、H2/H3を入力してください。'
+        '見出しが空です。見出し生成タブで見出しを確定してから引き継いでください。'
       );
       return;
     }
@@ -1873,10 +2037,11 @@
     saveOutlineToStorage(
       outline,
       keyword,
-      document.getElementById('article-title')?.value.trim() || ''
+      document.getElementById('article-title')?.value.trim() || '',
+      { enableH4: outlineHasAnyH4(outline) }
     );
 
-    setLoading(articleSubmit, true, '見出し確定後：H3／H4の記事を生成', '生成中...');
+    setLoading(articleSubmit, true, '確定した見出しで記事を生成', '生成中...');
     try {
       const data = await postJson('/api/article/generate', {
         keyword,
@@ -1897,7 +2062,7 @@
       showError(articleError, err.message);
       articleResult.hidden = true;
     } finally {
-      setLoading(articleSubmit, false, '見出し確定後：H3／H4の記事を生成', '生成中...');
+      setLoading(articleSubmit, false, '確定した見出しで記事を生成', '生成中...');
     }
   });
 
@@ -1908,7 +2073,7 @@
     const editor = document.getElementById('article-outline-editor');
     if (editor) {
       editor.innerHTML =
-        '<p class="field-hint">見出し生成タブから引き継ぐか、「見出し結果を取り込む」を押してください。</p>';
+        '<p class="field-hint">見出し生成タブで見出しを確定し、「記事生成へ」を押してください。</p>';
     }
   });
 

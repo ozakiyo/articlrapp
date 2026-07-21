@@ -34,9 +34,9 @@
           <ul class="guide-list">
             <li><strong>競合調査</strong> … ランキングURL・競合記事URLの準備と詳細取得（セットアップの本拠）</li>
             <li><strong>週次レポート</strong> … 毎週の変化確認（売れ筋・競合見出し差分・改修）</li>
-            <li><strong>見出し生成</strong> … 「選びのポイント」「人気メーカー」のH2×2＋各H3×3（参考URLを重視）</li>
+            <li><strong>見出し生成</strong> … H2×2＋各H3×3を作成。必要なら H4 もここで提案・確定</li>
             <li><strong>用途別おすすめ</strong> … 掲載商品の用途別3選と説明・機能表</li>
-            <li><strong>記事生成</strong> … 見出し確定後、必要ならH4（最大3）を付けてH3／H4本文を一括作成</li>
+            <li><strong>記事生成</strong> … 確定済み見出しの本文を作成（導入文・まとめは任意）</li>
           </ul>
         </section>
 
@@ -53,7 +53,7 @@
             </li>
             <li>
               <strong>見出し生成</strong>
-              <p>参考URLを入れて「◯◯選びのポイント」「◯◯の人気メーカー」各H2＋H3×3を作成・編集する。週次・競合の取り込みは任意。</p>
+              <p>参考URLで H2／H3 を作成。H4 が必要なら「H4見出しを作成する」をオンにして提案・編集し、見出しを確定する。</p>
             </li>
             <li>
               <strong>用途別おすすめ</strong>（商品ブロックが必要なとき）
@@ -61,7 +61,7 @@
             </li>
             <li>
               <strong>記事生成</strong>
-              <p>見出しを引き継ぎ、必要なH3だけH4を最大3つ付けてから「記事を生成」。導入文・まとめは任意。</p>
+              <p>確定した見出しを引き継ぎ、本文のみ生成。導入文・まとめは任意。</p>
             </li>
           </ol>
         </section>
@@ -75,10 +75,10 @@
             </li>
             <li>
               <strong>見出し生成</strong>
-              <p>参考URLを入れて「選びのポイント／人気メーカー」構成を作成。必要なら週次・競合を取り込む。</p>
+              <p>参考URLで H2／H3 を作成。H4 が必要ならここで提案・確定してから記事へ。</p>
             </li>
             <li>
-              必要に応じて<strong>用途別おすすめ</strong> → <strong>記事生成</strong>（H4は必要なH3だけ）
+              必要に応じて<strong>用途別おすすめ</strong> → <strong>記事生成</strong>（本文のみ）
             </li>
           </ol>
         </section>
@@ -87,7 +87,7 @@
           <h2>品質を上げるポイント</h2>
           <ul class="guide-list">
             <li>見出し生成は<strong>参考URL</strong>がいちばん効きます（選びのポイント／人気メーカー構成の手本）。</li>
-            <li>記事のH4は必要なH3だけ付けます（例: 集じん方法の下のサイクロン式／紙パック式）。</li>
+            <li>H4 を作るかは見出しタブで指定。先に見出しを決め、記事生成は本文専用にします。</li>
             <li>商品のおすすめ見出し・説明は<strong>用途別おすすめ</strong>側で作ります。</li>
             <li>競合調査は初回セットアップとURL変更時。毎週の本体は週次レポートです。</li>
             <li>月が変わっただけでは競合調査のやり直しは不要です（URL変更時のみ）。</li>
@@ -607,7 +607,7 @@
               週次・競合の結果を取り込む
             </button>
             <button type="button" class="secondary" id="headings-to-article">
-              記事生成へ引き継ぐ
+              見出し確定 → 記事生成へ
             </button>
           </div>
           <p class="field-hint" id="headings-bridge-msg"></p>
@@ -674,10 +674,27 @@
         </section>
         <section id="headings-result" class="panel" hidden>
           <h2>見出し案（編集可）</h2>
-          <p class="field-hint">H2・H3を直してから「記事生成へ引き継ぐ」を押してください。H4は記事生成タブで必要に応じて追加します。</p>
+          <p class="field-hint">
+            ① H2・H3を確定 → ② 必要なら「H4見出しを作成する」でH4を提案・編集 → ③「記事生成へ引き継ぐ」
+          </p>
+          <div class="field">
+            <label class="checkbox-field">
+              <input type="checkbox" id="headings-enable-h4" />
+              <span>H4見出しを作成する（各H3あたり最大3つ）</span>
+            </label>
+            <p class="field-hint">
+              オフのままなら H3 本文のみの記事になります。オンにすると H4 を先に決めてから記事生成へ進めます。
+            </p>
+            <div id="headings-h4-actions" class="actions" hidden>
+              <button type="button" class="secondary" id="headings-suggest-all-h4">
+                全H3のH4を提案
+              </button>
+            </div>
+            <p class="field-hint" id="headings-h4-msg"></p>
+          </div>
           <div class="result-actions">
             <button type="button" class="secondary" id="headings-copy">テキストコピー</button>
-            <button type="button" id="headings-to-article-bottom">記事生成へ引き継ぐ</button>
+            <button type="button" id="headings-to-article-bottom">見出し確定 → 記事生成へ</button>
             <button type="button" class="secondary" id="headings-clear">クリア</button>
           </div>
           <p id="headings-copy-msg" class="field-hint" hidden></p>
@@ -692,7 +709,7 @@
         <header>
           <h1>記事生成</h1>
           <p>
-            見出し生成で決めた「選びのポイント／人気メーカー」を引き継ぎ、H3本文を作成します。必要なH3だけH4を最大3つ付けてから一括生成できます。
+            見出し生成で確定した H2／H3（と任意の H4）を引き継ぎ、本文だけを作成します。見出しの追加・変更は見出し生成タブで行ってください。
           </p>
         </header>
         <section class="panel">
@@ -743,17 +760,17 @@
             </div>
 
             <div class="field">
-              <span>見出しアウトライン（H2×2 / 各H3×3 / H4は任意で最大3）</span>
+              <span>確定済み見出し（確認・微修正可）</span>
               <p class="field-hint">
-                各H3の「H4を提案」で小見出しを付けられます。空のH4は無視され、H3本文のみ生成されます。
+                H4 の有無は見出し生成タブで指定済みです。ここでは誤字などの微修正のみ行い、本文を生成します。
               </p>
               <div id="article-outline-editor" class="outline-editor">
-                <p class="field-hint">見出し生成タブから引き継ぐか、「見出し結果を取り込む」を押してください。</p>
+                <p class="field-hint">見出し生成タブで見出しを確定し、「記事生成へ」を押してください。</p>
               </div>
             </div>
 
             <div class="actions">
-              <button type="submit" id="article-submit">見出し確定後：H3／H4の記事を生成</button>
+              <button type="submit" id="article-submit">確定した見出しで記事を生成</button>
               <button type="button" class="secondary" id="article-reset">リセット</button>
             </div>
           </form>
