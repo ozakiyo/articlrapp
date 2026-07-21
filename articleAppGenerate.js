@@ -197,6 +197,59 @@ ${competitorTexts ? `\n# 他社記事\n${competitorTexts}` : ''}${referenceOutpu
   return data;
 }
 
+/** 同一H3配下のH4本文を1回のGemini呼び出しでまとめて生成（API回数削減） */
+async function generateH4GroupBodyContent({
+  getGeminiModel,
+  keyword,
+  title,
+  heading_h2_first,
+  heading_h3,
+  h4Headings,
+  competitorTexts,
+  referenceOutputSection,
+}) {
+  const list = h4Headings.map((h, i) => `${i + 1}. ${h}`).join('\n');
+  const prompt = `
+あなたはSEOに強い家電専門ライターです。
+キーワード「${keyword}」、タイトル「${title}」、H2「${heading_h2_first}」、H3「${heading_h3}」の配下にある次のH4見出しそれぞれについて、本文を各200文字程度で作成してください。
+
+# 対象H4
+${list}
+
+# 出力条件
+- JSON形式で出力
+- 形式:
+{
+  "h4_items": [
+    { "h4": "対象H4と同じ文言", "content": "本文(200文字程度)" }
+  ]
+}
+- h4_items は対象H4と同じ件数・同じ順序
+- キーワードとの関連性が高く、検索ユーザーの意図を満たす
+- 家電販売店にふさわしいフォーマルな文体
+- 製品名・価格は直接記載しない
+- 出力は厳密にJSONのみ
+${competitorTexts ? `\n# 他社記事\n${competitorTexts}` : ''}${referenceOutputSection}
+`;
+
+  console.log(
+    `🧠 Generating H4 group (${h4Headings.length}) under「${heading_h3}」with Gemini`
+  );
+  const raw = await generateGeminiTextWithRetry(getGeminiModel, prompt);
+  const data = parseJsonFromModelOutput(raw);
+  const itemsRaw = Array.isArray(data?.h4_items) ? data.h4_items : [];
+  const byH4 = new Map();
+  itemsRaw.forEach((item) => {
+    const key = String(item?.h4 || '').trim();
+    if (!key) return;
+    byH4.set(key, String(item?.content || '').trim());
+  });
+  return h4Headings.map((h4, index) => ({
+    h4,
+    content: byH4.get(h4) || String(itemsRaw[index]?.content || '').trim(),
+  }));
+}
+
 /**
  * 記事生成 UI（client/src/App_BK20260113.jsx）向け API。
  * 旧 app_BK20260113.js の POST /api/generate と同等の処理を /api/article/generate に提供する。
@@ -488,10 +541,15 @@ function normalizeH4Subheadings(raw) {
 
 function isQuotaLikeError(err) {
   const message = String(err?.message || '');
+  const lower = message.toLowerCase();
   return (
     message.includes('[429 Too Many Requests]') ||
-    message.toLowerCase().includes('quota exceeded') ||
-    message.toLowerCase().includes('resource_exhausted')
+    lower.includes('quota exceeded') ||
+    lower.includes('resource_exhausted') ||
+    lower.includes('error fetching from') ||
+    lower.includes('fetch failed') ||
+    lower.includes('econnreset') ||
+    lower.includes('etimedout')
   );
 }
 
@@ -509,8 +567,8 @@ function sleep(ms) {
 async function generateGeminiTextWithRetry(getGeminiModel, prompt) {
   const model = await getGeminiModel();
   let lastErr;
-  // 連続呼び出しで 429 になりやすいため、短い待機付きで1回だけ再試行
-  for (let attempt = 1; attempt <= 2; attempt += 1) {
+  // 連続呼び出しで 429 / 一時通信エラーになりやすいため、待機付きで最大3回
+  for (let attempt = 1; attempt <= 3; attempt += 1) {
     try {
       const result = await model.generateContent({
         contents: [{ role: 'user', parts: [{ text: prompt }] }],
@@ -518,9 +576,9 @@ async function generateGeminiTextWithRetry(getGeminiModel, prompt) {
       return result.response?.text?.() || '';
     } catch (err) {
       lastErr = err;
-      if (!isQuotaLikeError(err) || attempt >= 2) break;
-      const waitSec = Math.min(parseRetryAfterSeconds(err) || 12, 25);
-      console.warn(`⚠️ Gemini quota; retry in ${waitSec}s (attempt ${attempt})`);
+      if (!isQuotaLikeError(err) || attempt >= 3) break;
+      const waitSec = Math.min(parseRetryAfterSeconds(err) || 10 + attempt * 4, 30);
+      console.warn(`⚠️ Gemini retry in ${waitSec}s (attempt ${attempt}/3)`);
       await sleep(waitSec * 1000);
     }
   }
@@ -751,7 +809,7 @@ ${competitorTexts ? `\n# 他社記事\n${competitorTexts}` : ''}${referenceOutpu
 
     const contentResults = [];
     let outlineResultSections = null;
-    const BODY_GAP_MS = 1000;
+    const BODY_GAP_MS = 2500;
 
     if (outlineSections?.length) {
       outlineResultSections = [];
@@ -759,46 +817,44 @@ ${competitorTexts ? `\n# 他社記事\n${competitorTexts}` : ''}${referenceOutpu
         const outItems = [];
         for (const item of sec.items) {
           if (item.h4s?.length) {
-            const h4_items = [];
-            for (let i = 0; i < item.h4s.length; i++) {
-              const h4Heading = item.h4s[i];
-              try {
-                if (contentResults.length > 0) {
-                  // eslint-disable-next-line no-await-in-loop
-                  await sleep(BODY_GAP_MS);
-                }
+            try {
+              if (contentResults.length > 0 || outItems.length > 0) {
                 // eslint-disable-next-line no-await-in-loop
-                const data = await generateH4BodyContent({
-                  getGeminiModel,
-                  keyword,
-                  title,
-                  heading_h2_first: sec.h2,
-                  heading_h3: item.h3,
-                  h4Heading,
-                  competitorTexts,
-                  referenceOutputSection,
-                  index: i + 1,
-                });
-                h4_items.push({
-                  h4: h4Heading,
-                  content: data?.content || '',
-                });
-                contentResults.push({ heading: h4Heading, data, level: 'h4' });
-              } catch (err) {
-                console.error(`❌ outline H4 generation failed`, err.message);
-                warnings.push({
-                  message: `H4「${h4Heading}」本文の生成に失敗したため空欄にしました。（${String(err.message || '').slice(0, 120)}）`,
-                });
-                h4_items.push({
-                  h4: h4Heading,
-                  content: '',
-                });
+                await sleep(BODY_GAP_MS);
               }
+              // eslint-disable-next-line no-await-in-loop
+              const h4_items = await generateH4GroupBodyContent({
+                getGeminiModel,
+                keyword,
+                title,
+                heading_h2_first: sec.h2,
+                heading_h3: item.h3,
+                h4Headings: item.h4s,
+                competitorTexts,
+                referenceOutputSection,
+              });
+              h4_items.forEach((row) => {
+                contentResults.push({
+                  heading: row.h4,
+                  data: { content: row.content },
+                  level: 'h4',
+                });
+              });
+              outItems.push({ h3: item.h3, content: '', h4_items });
+            } catch (err) {
+              console.error(`❌ outline H4 group generation failed`, err.message);
+              warnings.push({
+                message: `H3「${item.h3}」配下のH4本文生成に失敗したため空欄にしました。（${String(err.message || '').slice(0, 120)}）`,
+              });
+              outItems.push({
+                h3: item.h3,
+                content: '',
+                h4_items: item.h4s.map((h4) => ({ h4, content: '' })),
+              });
             }
-            outItems.push({ h3: item.h3, content: '', h4_items });
           } else {
             try {
-              if (contentResults.length > 0) {
+              if (contentResults.length > 0 || outItems.length > 0) {
                 // eslint-disable-next-line no-await-in-loop
                 await sleep(BODY_GAP_MS);
               }
@@ -894,10 +950,16 @@ ${competitorTexts ? `\n# 他社記事\n${competitorTexts}` : ''}${referenceOutpu
     let summaryData = { summary: '' };
 
     if (generateSummary) {
-      const introSection = introductionData.introduction
-        ? `# 導入文\n${introductionData.introduction}\n\n`
-        : '';
-      const summaryPrompt = `
+      if (!bodiesForSummary.trim()) {
+        warnings.push({
+          message:
+            'まとめ文は、本文がほぼ空のためスキップしました。先に本文が生成できた見出しから再実行してください。',
+        });
+      } else {
+        const introSection = introductionData.introduction
+          ? `# 導入文\n${introductionData.introduction}\n\n`
+          : '';
+        const summaryPrompt = `
 あなたはSEOに強い家電専門ライターです。
 キーワード「${keyword}」、タイトル「${title}」の記事について、${introSection ? '導入文と' : ''}各見出し本文を踏まえたまとめ文を150〜200文字で作成してください。
 
@@ -913,20 +975,17 @@ ${bodiesForSummary}
 ${competitorTexts ? `\n# 他社記事\n${competitorTexts}` : ''}${referenceOutputSection}
 `;
 
-      try {
-        console.log('📝 Generating summary with Gemini');
-        const model = await getGeminiModel();
-        const summaryResult = await model.generateContent({
-          contents: [{ role: 'user', parts: [{ text: summaryPrompt }] }],
-        });
-        const summaryRaw = summaryResult.response?.text?.() || '';
-        summaryData = parseJsonFromModelOutput(summaryRaw) || summaryData;
-      } catch (err) {
-        console.error('❌ Summary generation failed', err.message);
-        return res.status(502).json({
-          error: 'まとめ文の生成に失敗しました。',
-          warnings,
-        });
+        try {
+          console.log('📝 Generating summary with Gemini');
+          await sleep(BODY_GAP_MS);
+          const summaryRaw = await generateGeminiTextWithRetry(getGeminiModel, summaryPrompt);
+          summaryData = parseJsonFromModelOutput(summaryRaw) || summaryData;
+        } catch (err) {
+          console.error('❌ Summary generation failed', err.message);
+          warnings.push({
+            message: `まとめ文の生成に失敗したため空欄にしました。（${String(err.message || '').slice(0, 120)}）`,
+          });
+        }
       }
     } else {
       console.log('⏭️ Skipping summary generation (unchecked)');

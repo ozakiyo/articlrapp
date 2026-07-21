@@ -237,9 +237,9 @@ const GEMINI_MODEL = process.env.GEMINI_MODEL || 'gemini-2.5-flash-lite';
 /** 無料枠切れ・モデル廃止時の代替（クォータはモデル別にカウントされる） */
 const GEMINI_FALLBACK_MODELS = [
   GEMINI_MODEL,
+  'gemini-flash-lite-latest',
   'gemini-flash-latest',
-  'gemini-2.0-flash-lite',
-  'gemini-2.0-flash',
+  'gemini-2.5-flash',
 ].filter((name, i, arr) => name && arr.indexOf(name) === i);
 
 let geminiClient;
@@ -266,17 +266,34 @@ function isGeminiModelUnavailableError(err) {
   );
 }
 
+function isGeminiTransientFetchError(err) {
+  const message = String(err?.message || '').toLowerCase();
+  return (
+    message.includes('error fetching from') ||
+    message.includes('fetch failed') ||
+    message.includes('network') ||
+    message.includes('econnreset') ||
+    message.includes('etimedout') ||
+    message.includes('socket hang up')
+  );
+}
+
+function sleepMs(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
 async function getGeminiModel() {
   if (geminiModel) return geminiModel;
 
   const genAI = await getGeminiClient();
   console.log('⚙️ Initializing Gemini with fallbacks:', GEMINI_FALLBACK_MODELS.join(' → '));
 
-  // generateContent だけ使う薄いラッパー（429/404 時に次のモデルへ）
+  // generateContent だけ使う薄いラッパー（429/404/一時通信エラー時に次のモデルへ）
   geminiModel = {
     async generateContent(request) {
       let lastErr;
-      for (const modelName of GEMINI_FALLBACK_MODELS) {
+      for (let i = 0; i < GEMINI_FALLBACK_MODELS.length; i += 1) {
+        const modelName = GEMINI_FALLBACK_MODELS[i];
         try {
           const model = genAI.getGenerativeModel({ model: modelName });
           const result = await model.generateContent(request);
@@ -287,12 +304,22 @@ async function getGeminiModel() {
         } catch (err) {
           lastErr = err;
           const canFallback =
-            isGeminiQuotaExceededError(err) || isGeminiModelUnavailableError(err);
+            isGeminiQuotaExceededError(err) ||
+            isGeminiModelUnavailableError(err) ||
+            isGeminiTransientFetchError(err);
           console.warn(
             `⚠️ Gemini model failed (${modelName}):`,
             String(err?.message || err).slice(0, 180)
           );
           if (!canFallback) throw err;
+          if (isGeminiQuotaExceededError(err) && i < GEMINI_FALLBACK_MODELS.length - 1) {
+            const waitSec = Math.min(
+              parseRetryAfterSecondsFromMessage(err?.message) || 8,
+              20
+            );
+            console.warn(`⏳ Waiting ${waitSec}s before next Gemini model…`);
+            await sleepMs(waitSec * 1000);
+          }
         }
       }
       throw lastErr;
