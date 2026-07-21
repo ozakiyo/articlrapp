@@ -671,15 +671,11 @@
     });
   }
 
-  async function suggestH4ForH3({ keyword, h3, urlPrefix = 'headings' }) {
+  async function suggestH4ForH3({ keyword, h3 }) {
     const data = await postJson('/api/article/generate-sub-headings', {
       keyword,
       h3,
-      competitorUrl1: document.getElementById(`${urlPrefix}-url1`)?.value.trim() || '',
-      competitorUrl2: document.getElementById(`${urlPrefix}-url2`)?.value.trim() || '',
-      competitorUrl3: document.getElementById(`${urlPrefix}-url3`)?.value.trim() || '',
-      referenceUrl:
-        document.getElementById(`${urlPrefix}-ref-url`)?.value.trim() || '',
+      skipScrape: true,
     });
     return {
       subheadings: (data.subheadings || [])
@@ -690,20 +686,44 @@
     };
   }
 
-  async function suggestH4ForH3List({ keyword, h3List, urlPrefix = 'headings' }) {
+  async function suggestH4ForH3List({ keyword, h3List }) {
     const data = await postJson('/api/article/generate-sub-headings', {
       keyword,
       h3List,
-      competitorUrl1: document.getElementById(`${urlPrefix}-url1`)?.value.trim() || '',
-      competitorUrl2: document.getElementById(`${urlPrefix}-url2`)?.value.trim() || '',
-      competitorUrl3: document.getElementById(`${urlPrefix}-url3`)?.value.trim() || '',
-      referenceUrl:
-        document.getElementById(`${urlPrefix}-ref-url`)?.value.trim() || '',
+      skipScrape: true,
     });
     return {
       items: Array.isArray(data.items) ? data.items : [],
       warnings: data.warnings || [],
     };
+  }
+
+  let h4SuggestInFlight = false;
+  let lastH4SuggestAt = 0;
+  const H4_SUGGEST_COOLDOWN_MS = 4000;
+
+  async function withH4SuggestGate(run) {
+    if (h4SuggestInFlight) {
+      throw new Error('別のH4提案が実行中です。完了してから再度お試しください。');
+    }
+    const waitMs = lastH4SuggestAt
+      ? Math.max(0, H4_SUGGEST_COOLDOWN_MS - (Date.now() - lastH4SuggestAt))
+      : 0;
+    h4SuggestInFlight = true;
+    try {
+      if (waitMs > 0) {
+        const msg = document.getElementById('headings-h4-msg');
+        if (msg) {
+          msg.textContent = `API制限対策のため ${Math.ceil(waitMs / 1000)} 秒待ってから提案します…`;
+        }
+        await new Promise((r) => setTimeout(r, waitMs));
+      }
+      const result = await run();
+      lastH4SuggestAt = Date.now();
+      return result;
+    } finally {
+      h4SuggestInFlight = false;
+    }
   }
 
   function fillH4Inputs(editor, si, hi, suggested) {
@@ -1857,7 +1877,9 @@
     btn.disabled = true;
     btn.textContent = '提案中...';
     try {
-      const result = await suggestH4ForH3({ keyword, h3, urlPrefix: 'headings' });
+      const result = await withH4SuggestGate(() =>
+        suggestH4ForH3({ keyword, h3 })
+      );
       fillH4Inputs(editor, si, hi, result.subheadings);
       const msg = document.getElementById('headings-h4-msg');
       if (msg) {
@@ -1907,11 +1929,12 @@
       btn.textContent = '一括提案中...';
     }
     try {
-      const result = await suggestH4ForH3List({
-        keyword,
-        h3List: targets.map((t) => t.h3),
-        urlPrefix: 'headings',
-      });
+      const result = await withH4SuggestGate(() =>
+        suggestH4ForH3List({
+          keyword,
+          h3List: targets.map((t) => t.h3),
+        })
+      );
       const byH3 = new Map(
         (result.items || []).map((item) => [
           String(item.h3 || '').trim(),

@@ -494,6 +494,47 @@ function normalizeH4Subheadings(raw) {
     .slice(0, MAX_OUTLINE_H4);
 }
 
+function isQuotaLikeError(err) {
+  const message = String(err?.message || '');
+  return (
+    message.includes('[429 Too Many Requests]') ||
+    message.toLowerCase().includes('quota exceeded') ||
+    message.toLowerCase().includes('resource_exhausted')
+  );
+}
+
+function parseRetryAfterSeconds(err) {
+  const match = String(err?.message || '').match(/retry in\s+(\d+(?:\.\d+)?)s/i);
+  if (!match) return null;
+  const value = Number(match[1]);
+  return Number.isFinite(value) ? Math.max(1, Math.ceil(value)) : null;
+}
+
+function sleep(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+async function generateH4WithGemini(getGeminiModel, prompt) {
+  const model = await getGeminiModel();
+  let lastErr;
+  // 2回目以降の連続呼び出しで 429 になりやすいため、短い待機付きで1回だけ再試行
+  for (let attempt = 1; attempt <= 2; attempt += 1) {
+    try {
+      const result = await model.generateContent({
+        contents: [{ role: 'user', parts: [{ text: prompt }] }],
+      });
+      return result.response?.text?.() || '';
+    } catch (err) {
+      lastErr = err;
+      if (!isQuotaLikeError(err) || attempt >= 2) break;
+      const waitSec = Math.min(parseRetryAfterSeconds(err) || 12, 25);
+      console.warn(`⚠️ H4 Gemini quota; retry in ${waitSec}s (attempt ${attempt})`);
+      await sleep(waitSec * 1000);
+    }
+  }
+  throw lastErr;
+}
+
 function registerArticleAppRoutes(app, { scrape, getGeminiModel }) {
   app.post('/api/article/generate', async (req, res) => {
     const requestStartedAt = Date.now();
@@ -1114,21 +1155,37 @@ async function handleSubHeadingGenerate(
     return res.status(400).json({ error: 'H3見出しを入力してください。' });
   }
 
-  // H4提案は URL 取得に失敗してもキーワード＋H3 だけで続行する
-  // （取得失敗で 502 にすると、提案ボタンが使えなくなるため）
-  const ctx = await loadOptionalArticleContext(req.body, scrape, {
-    maxCharsPerArticle: 3500,
-  });
+  // H4提案はキーワード＋H3だけで十分。毎回のURL再取得は遅く、2回目以降の502原因になるため既定でスキップ。
+  // 明示的に useArticleContext=true のときだけ参考記事を取りに行く。
+  const useArticleContext =
+    req.body.useArticleContext === true || req.body.useArticleContext === 'true';
+  const skipScrape =
+    !useArticleContext ||
+    req.body.skipScrape === true ||
+    req.body.skipScrape === 'true';
+
+  let ctx = {
+    warnings: [],
+    competitorTexts: '',
+    referenceOutputSection: '',
+    hasScraped: false,
+  };
+  if (!skipScrape) {
+    ctx = await loadOptionalArticleContext(req.body, scrape, {
+      maxCharsPerArticle: 2500,
+    });
+  } else {
+    console.log('⏭️ Skipping URL scrape for H4 suggest (keyword + H3 only)');
+  }
   const warnings = [...ctx.warnings];
 
   let data;
   try {
     console.log(
       isBulk
-        ? `🧠 Generating bulk H4 sub-headings (${h3List.length}) with Gemini`
-        : '🧠 Generating H4 sub-headings with Gemini'
+        ? `🧠 Generating bulk H4 sub-headings (${h3List.length}) with Gemini (scrape=${!skipScrape})`
+        : `🧠 Generating H4 sub-headings with Gemini (scrape=${!skipScrape})`
     );
-    const model = await getGeminiModel();
     const prompt = isBulk
       ? buildBulkH4SuggestPrompt({
           keyword,
@@ -1142,18 +1199,15 @@ async function handleSubHeadingGenerate(
           competitorTexts: ctx.competitorTexts,
           referenceOutputSection: ctx.referenceOutputSection,
         });
-    const result = await model.generateContent({
-      contents: [{ role: 'user', parts: [{ text: prompt }] }],
-    });
-    const raw = result.response?.text?.() || '';
+    const raw = await generateH4WithGemini(getGeminiModel, prompt);
     data = parseJsonFromModelOutput(raw);
     console.log('🧾 H4 sub-headings generated:', data);
   } catch (err) {
     console.error('❌ H4 heading generation failed', err.message);
-    const retryAfter = String(err?.message || '').match(/retry in\s+(\d+(?:\.\d+)?)s/i);
+    const retryAfter = parseRetryAfterSeconds(err);
     return res.status(502).json({
       error: retryAfter
-        ? `H4見出しの生成に失敗しました（API制限）。約${Math.ceil(Number(retryAfter[1]))}秒後に再試行してください。`
+        ? `H4見出しの生成に失敗しました（API制限）。約${retryAfter}秒後に再試行してください。`
         : `H4見出しの生成に失敗しました。${err?.message ? `（${String(err.message).slice(0, 160)}）` : ''}`,
       warnings,
     });
