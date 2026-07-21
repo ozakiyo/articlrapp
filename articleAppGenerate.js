@@ -25,6 +25,59 @@ function normalizeSubsectionsList(v) {
 
 const MAX_ARTICLE_H3 = 5;
 const H3_SUFFIXES = ['first', 'second', 'third', 'fourth', 'fifth'];
+const MAX_OUTLINE_H4 = 3;
+
+function normalizeHeadingOutline(keyword, sectionsRaw) {
+  const kw = String(keyword || '').trim() || '商品';
+  const defaults = [
+    { h2: `${kw}選びのポイント`, subsections: ['', '', ''] },
+    { h2: `${kw}の人気メーカー`, subsections: ['', '', ''] },
+  ];
+  const list = Array.isArray(sectionsRaw) ? sectionsRaw : [];
+  return defaults.map((def, i) => {
+    const src = list[i] || {};
+    const subsRaw = normalizeSubsectionsList(src.subsections);
+    const subsections = [0, 1, 2].map((j) => {
+      const sub = subsRaw[j];
+      if (typeof sub === 'string') return sub.trim();
+      if (sub && typeof sub === 'object') {
+        return String(sub.h3 || sub.title || '').trim();
+      }
+      return '';
+    });
+    return {
+      h2: String(src.h2 || def.h2).trim() || def.h2,
+      subsections,
+      items: subsections.map((h3) => ({ h3, h4s: ['', '', ''] })),
+    };
+  });
+}
+
+function collectOutlineSections(body) {
+  if (!Array.isArray(body?.sections)) return null;
+  return body.sections
+    .map((sec) => {
+      const h2 = String(sec?.h2 || '').trim();
+      const itemsSrc = Array.isArray(sec?.items)
+        ? sec.items
+        : (Array.isArray(sec?.subsections) ? sec.subsections : []).map((h3) => ({
+            h3: typeof h3 === 'string' ? h3 : h3?.h3 || '',
+            h4s: [],
+          }));
+      const items = itemsSrc
+        .map((item) => {
+          const h3 = String(item?.h3 || item?.title || '').trim();
+          const h4s = (Array.isArray(item?.h4s) ? item.h4s : [])
+            .map((h) => String(h || '').trim())
+            .filter(Boolean)
+            .slice(0, MAX_OUTLINE_H4);
+          return { h3, h4s };
+        })
+        .filter((item) => item.h3);
+      return { h2, items };
+    })
+    .filter((sec) => sec.h2 && sec.items.length);
+}
 
 function collectArticleH3Headings(body) {
   if (Array.isArray(body.heading_h3_list)) {
@@ -219,50 +272,51 @@ function buildSelectionGuideHeadingPrompt({
   competitorTexts,
   referenceOutputSection,
 }) {
+  const pointsH2 = `${keyword}選びのポイント`;
+  const makersH2 = `${keyword}の人気メーカー`;
   return `
 あなたはコジマネットなど家電量販店の特集記事ライターです。
-キーワード「${keyword}」について、「選び方」中心の記事見出し案を作成してください。
+キーワード「${keyword}」について、参考記事（掃除機特集など）の構成に合わせた見出し案を作成してください。
 
-# 記事の役割分担（重要）
-- この見出し生成は「選び方・比較の仕方・購入前の判断軸」専用
-- 「用途別おすすめ」「担当者おすすめ○選」「ランキング掲載商品の紹介」見出しは作らない
-  （商品紹介ブロックは用途別おすすめ機能で別途作成する）
-- 特定の型番・メーカー推し・価格の羅列はしない
+# 必須構成（この2つのH2のみ。順番固定）
+1. H2「${pointsH2}」— 購入前の判断軸・チェック項目
+2. H2「${makersH2}」— 代表的なメーカー紹介（型番・個別商品のおすすめは書かない）
+
+# 禁止
+- 「用途別おすすめ」「おすすめ○選」「ランキング掲載商品紹介」の見出し
+- H2を3つ以上にする／上記以外のH2を追加する
+- 特定型番・価格の羅列
 
 # 参考URLの使い方（最優先）
-参考記事がある場合は、その「選び方」まわりの見出し構成・切り口の粒度・情報の出し方を最優先で参考にする。
+参考記事の「選びのポイント」「人気メーカー」の見出し粒度・切り口を最優先で参考にする。
 文言のコピーは禁止。キーワード「${keyword}」向けに再構成する。
+例（掃除機）: 選びのポイント配下に「集じん方法をチェック」など、必要ならその下にH4級の細分がある構成。
+ただしこの工程では H2 と H3 のみ出力する（H4は記事生成タブで任意追加）。
 
 # 出力条件
 - JSON形式で出力
 - 形式:
 {
-  "h1": "タイトル案（選び方が伝わるもの。例: ○○の選び方｜失敗しないポイント）",
+  "h1": "タイトル案（例: 【年】${keyword}のおすすめ…種類や選び方、人気メーカーを紹介）",
   "sections": [
     {
-      "h2": "選び方の大見出し1（H2）",
-      "subsections": ["判断ポイント1（H3）", "判断ポイント2（H3）", "判断ポイント3（H3）"]
+      "h2": "${pointsH2}",
+      "subsections": ["観点H3-1", "観点H3-2", "観点H3-3"]
     },
     {
-      "h2": "選び方の大見出し2（H2）",
-      "subsections": ["判断ポイント1（H3）", "判断ポイント2（H3）", "判断ポイント3（H3）"]
-    },
-    {
-      "h2": "選び方の大見出し3（H2）",
-      "subsections": ["判断ポイント1（H3）", "判断ポイント2（H3）", "判断ポイント3（H3）"]
+      "h2": "${makersH2}",
+      "subsections": ["メーカー名1", "メーカー名2", "メーカー名3"]
     }
   ]
 }
-- H2は3つ、各H2に対してH3を3つ作成
-- H2例の方向性: サイズ・容量 / 機能の見分け方 / 設置・使い方 / 省エネ・コスト / 失敗しやすい点 など
-- H3は「何を見ればよいか」「どう比較するか」が分かる短文にする
-- 各見出しは本文を書かず、見出しテキストのみを出力する
-- キーワードとの関連性が高く、検索ユーザーの「どれを選べばいいか」意図を満たす
-- 家電販売店にふさわしい丁寧な文体
-- 製品名・価格・ランキング順位は直接記載しない
-- 「おすすめ3選」「人気商品」「この商品がおすすめ」系の見出しは禁止
+- sections は必ず2件（上記H2文言をほぼこのまま使う。語尾の微調整のみ可）
+- 各H2に H3 をちょうど3つ
+- 「${pointsH2}」のH3は「〜をチェック」「〜の見方」など判断軸にする
+- 「${makersH2}」のH3はメーカー名（またはブランド名）にする
+- 見出しテキストのみ（本文禁止）
+- 家電販売店向けの丁寧な文体
 - 出力は厳密にJSONのみ
-${buildHeadingCandidatesPromptSection(headingCandidates)}${competitorTexts ? `\n# 他社記事（選び方・比較の切り口の参考。商品紹介部分は無視）\n${competitorTexts}` : ''}${referenceOutputSection}
+${buildHeadingCandidatesPromptSection(headingCandidates)}${competitorTexts ? `\n# 他社記事（切り口の参考。商品紹介部分は無視）\n${competitorTexts}` : ''}${referenceOutputSection}
 `;
 }
 
@@ -513,10 +567,78 @@ ${competitorTexts ? `\n# 他社記事\n${competitorTexts}` : ''}${referenceOutpu
     const hasH4 = h4Headings.some((h) => h);
     const heading_h3_target = String(req.body.heading_h3_target || '').trim();
     const isH4Mode = hasH4 && heading_h3_target;
+    const outlineSections = collectOutlineSections(req.body);
 
     const contentResults = [];
+    let outlineResultSections = null;
 
-    if (isH4Mode) {
+    if (outlineSections?.length) {
+      outlineResultSections = [];
+      for (const sec of outlineSections) {
+        const outItems = [];
+        for (const item of sec.items) {
+          if (item.h4s?.length) {
+            const h4_items = [];
+            for (let i = 0; i < item.h4s.length; i++) {
+              const h4Heading = item.h4s[i];
+              try {
+                // eslint-disable-next-line no-await-in-loop
+                const data = await generateH4BodyContent({
+                  getGeminiModel,
+                  keyword,
+                  title,
+                  heading_h2_first: sec.h2,
+                  heading_h3: item.h3,
+                  h4Heading,
+                  competitorTexts,
+                  referenceOutputSection,
+                  index: i + 1,
+                });
+                h4_items.push({
+                  h4: h4Heading,
+                  content: data?.content || '',
+                });
+                contentResults.push({ heading: h4Heading, data, level: 'h4' });
+              } catch (err) {
+                console.error(`❌ outline H4 generation failed`, err.message);
+                return res.status(502).json({
+                  error: `H4「${h4Heading}」本文の生成に失敗しました。`,
+                  warnings,
+                });
+              }
+            }
+            outItems.push({ h3: item.h3, content: '', h4_items });
+          } else {
+            try {
+              // eslint-disable-next-line no-await-in-loop
+              const data = await generateH3BodyContent({
+                getGeminiModel,
+                keyword,
+                title,
+                heading_h2_first: sec.h2,
+                h3Heading: item.h3,
+                competitorTexts,
+                referenceOutputSection,
+                index: outItems.length + 1,
+              });
+              outItems.push({
+                h3: item.h3,
+                content: data?.content || '',
+                h4_items: [],
+              });
+              contentResults.push({ heading: item.h3, data, level: 'h3' });
+            } catch (err) {
+              console.error(`❌ outline H3 generation failed`, err.message);
+              return res.status(502).json({
+                error: `H3「${item.h3}」本文の生成に失敗しました。`,
+                warnings,
+              });
+            }
+          }
+        }
+        outlineResultSections.push({ h2: sec.h2, items: outItems });
+      }
+    } else if (isH4Mode) {
       for (let i = 0; i < h4Headings.length; i++) {
         const h4Heading = h4Headings[i];
         if (!h4Heading) continue;
@@ -619,7 +741,24 @@ ${competitorTexts ? `\n# 他社記事\n${competitorTexts}` : ''}${referenceOutpu
       `${Date.now() - requestStartedAt}ms`
     );
 
-    if (isH4Mode) {
+    if (outlineResultSections?.length) {
+      res.json({
+        generateIntroduction,
+        generateSummary,
+        mode: 'outline',
+        title: introductionData.h1 || title || '',
+        introduction: introductionData.introduction || '',
+        summary: summaryData?.summary || '',
+        sections: outlineResultSections,
+        article: {
+          h1: introductionData.h1 || title || '',
+          introduction: introductionData.introduction || '',
+          summary: summaryData?.summary || '',
+          sections: outlineResultSections,
+        },
+        warnings,
+      });
+    } else if (isH4Mode) {
       const h4Items = contentResults
         .filter((r) => r.level === 'h4')
         .map((r) => ({
@@ -802,27 +941,15 @@ async function handleHeadingGenerate(
   );
 
   const sectionsRaw = normalizeSectionsArray(headingData.sections) || [];
-  const sectionsForClient = sectionsRaw.map((sec) => {
-    const subsectionsRaw = normalizeSubsectionsList(sec.subsections);
-    const subsections = subsectionsRaw
-      .map((sub) => {
-        if (typeof sub === 'string') return sub.trim();
-        if (sub && typeof sub === 'object') {
-          return String(sub.h3 || sub.title || '').trim();
-        }
-        return '';
-      })
-      .filter(Boolean);
-
-    return {
-      h2: String(sec.h2 || '').trim(),
-      subsections,
-    };
-  }).filter((sec) => sec.h2 || sec.subsections.length > 0);
+  const sectionsForClient = normalizeHeadingOutline(keyword, sectionsRaw).map((sec) => ({
+    h2: sec.h2,
+    subsections: sec.subsections,
+  }));
 
   res.json({
     title: headingData.h1 || '',
     sections: sectionsForClient,
+    outline: normalizeHeadingOutline(keyword, sectionsRaw),
     headingCandidatesUsed: headingCandidates,
     warnings,
   });
@@ -887,20 +1014,21 @@ async function handleSubHeadingGenerate(
 
   const prompt = `
 あなたはコジマネットなど家電量販店の特集記事ライターです。
-キーワード「${keyword}」の「選び方」記事において、H3見出し「${h3}」の配下に置くH4小見出しの案を作成してください。
+キーワード「${keyword}」の「選び方／人気メーカー」記事において、H3見出し「${h3}」の配下に置くH4小見出しの案を作成してください。
 
 # 役割
-- 選び方・比較・判断ポイントを具体化する見出しのみ
+- 選び方の細分（例: 集じん方法の下のサイクロン式／紙パック式）や補足観点を具体化する
 - 商品おすすめ・型番紹介・ランキング掲載の見出しは作らない
+- H4は必要なときだけ。最大3つ
 
 # 出力条件
 - JSON形式で出力
 - 形式:
 {
   "h3": "${h3}",
-  "subheadings": ["小見出し1（H4）", "小見出し2（H4）", "小見出し3（H4）", "小見出し4（H4）", "小見出し5（H4）"]
+  "subheadings": ["小見出し1（H4）", "小見出し2（H4）", "小見出し3（H4）"]
 }
-- H4は最大5つ作成
+- H4は1〜3つ（不要なら少なくてよい。最大3）
 - 各H4は「何を確認するか／どう比べるか」が分かる短文にする
 - 各見出しは本文を書かず、見出しテキストのみを出力する
 - 家電販売店にふさわしい丁寧な文体
@@ -933,7 +1061,10 @@ ${competitorTexts ? `\n# 他社記事（選び方の切り口のみ参考）\n${
   );
 
   const subheadings = Array.isArray(data?.subheadings)
-    ? data.subheadings.map((s) => String(s || '').trim()).filter(Boolean)
+    ? data.subheadings
+        .map((s) => String(s || '').trim())
+        .filter(Boolean)
+        .slice(0, MAX_OUTLINE_H4)
     : [];
 
   res.json({

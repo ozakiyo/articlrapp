@@ -16,7 +16,7 @@
             <button type="button" data-tab="weekly" class="tab-btn">週次レポート</button>
             <button type="button" data-tab="kyoso" class="tab-btn secondary">競合調査（ランキング抽出）</button>
             <button type="button" data-tab="usecase" class="tab-btn secondary">用途別おすすめ</button>
-            <button type="button" data-tab="headings" class="tab-btn secondary">見出し生成（選び方）</button>
+            <button type="button" data-tab="headings" class="tab-btn secondary">見出し生成</button>
             <button type="button" data-tab="article" class="tab-btn secondary">記事生成</button>
           </div>
         </div>
@@ -34,9 +34,9 @@
           <ul class="guide-list">
             <li><strong>競合調査</strong> … ランキングURL・競合記事URLの準備と詳細取得（セットアップの本拠）</li>
             <li><strong>週次レポート</strong> … 毎週の変化確認（売れ筋・競合見出し差分・改修）</li>
-            <li><strong>見出し生成（選び方）</strong> … 選び方・比較の判断軸の見出し（参考URLを重視）</li>
+            <li><strong>見出し生成</strong> … 「選びのポイント」「人気メーカー」のH2×2＋各H3×3（参考URLを重視）</li>
             <li><strong>用途別おすすめ</strong> … 掲載商品の用途別3選と説明・機能表</li>
-            <li><strong>記事生成</strong> … 見出しを引き継いで本文の叩き台を作成</li>
+            <li><strong>記事生成</strong> … 見出し確定後、必要ならH4（最大3）を付けてH3／H4本文を一括作成</li>
           </ul>
         </section>
 
@@ -52,8 +52,8 @@
               <p>同じカテゴリでランキング取得・競合記事比較を行い、必要なら改修登録・確定する。</p>
             </li>
             <li>
-              <strong>見出し生成（選び方）</strong>
-              <p>参考URLを入れて「選び方」見出しを作成する。週次・競合の結果は取り込み可（任意）。</p>
+              <strong>見出し生成</strong>
+              <p>参考URLを入れて「◯◯選びのポイント」「◯◯の人気メーカー」各H2＋H3×3を作成・編集する。週次・競合の取り込みは任意。</p>
             </li>
             <li>
               <strong>用途別おすすめ</strong>（商品ブロックが必要なとき）
@@ -61,7 +61,7 @@
             </li>
             <li>
               <strong>記事生成</strong>
-              <p>見出し結果を引き継ぎ、必要なら導入文・まとめも作成する。</p>
+              <p>見出しを引き継ぎ、必要なH3だけH4を最大3つ付けてから「記事を生成」。導入文・まとめは任意。</p>
             </li>
           </ol>
         </section>
@@ -74,11 +74,11 @@
               <p>ランキング取得・競合記事比較・改修確認・確定。URLが変わったときだけ競合調査で編集・保存する。</p>
             </li>
             <li>
-              <strong>見出し生成（選び方）</strong>
-              <p>参考URLを入れて作成。必要なら「週次・競合の結果を取り込む」。</p>
+              <strong>見出し生成</strong>
+              <p>参考URLを入れて「選びのポイント／人気メーカー」構成を作成。必要なら週次・競合を取り込む。</p>
             </li>
             <li>
-              必要に応じて<strong>用途別おすすめ</strong> → <strong>記事生成</strong>
+              必要に応じて<strong>用途別おすすめ</strong> → <strong>記事生成</strong>（H4は必要なH3だけ）
             </li>
           </ol>
         </section>
@@ -86,7 +86,8 @@
         <section class="panel guide-panel">
           <h2>品質を上げるポイント</h2>
           <ul class="guide-list">
-            <li>見出し生成は<strong>参考URL</strong>がいちばん効きます（選び方構成の手本）。</li>
+            <li>見出し生成は<strong>参考URL</strong>がいちばん効きます（選びのポイント／人気メーカー構成の手本）。</li>
+            <li>記事のH4は必要なH3だけ付けます（例: 集じん方法の下のサイクロン式／紙パック式）。</li>
             <li>商品のおすすめ見出し・説明は<strong>用途別おすすめ</strong>側で作ります。</li>
             <li>競合調査は初回セットアップとURL変更時。毎週の本体は週次レポートです。</li>
             <li>月が変わっただけでは競合調査のやり直しは不要です（URL変更時のみ）。</li>
@@ -591,15 +592,15 @@
       <!-- 見出し生成 -->
       <section id="panel-headings" class="tab-panel" hidden>
         <header>
-          <h1>見出し生成（選び方）</h1>
+          <h1>見出し生成</h1>
           <p>
-            商品のおすすめ見出しは「用途別おすすめ」で作成します。ここでは参考URLを踏まえ、<strong>選び方・比較の判断軸</strong>中心の見出し（H2×3・各H3×3）を作ります。
+            参考URL（例: コジマ掃除機特集）を踏まえ、<strong>「◯◯選びのポイント」</strong>と<strong>「◯◯の人気メーカー」</strong>のH2を各1つ、配下H3を各3つ作成します。商品おすすめは用途別おすすめタブで作成します。
           </p>
         </header>
         <section class="panel">
           <h2>週次・競合からの取り込み</h2>
           <p class="field-hint">
-            週次・競合のニーズを「選び方の観点」として取り込みます。商品紹介の見出しには使いません。
+            週次・競合のニーズを選び方の観点として取り込みます（任意）。
           </p>
           <div class="actions">
             <button type="button" id="headings-import-sources">
@@ -614,14 +615,18 @@
         <section class="panel">
           <form id="form-headings" class="form">
             <label class="field">
-              <span>キーワード *</span>
-              <input type="text" id="headings-keyword" required placeholder="例: 冷蔵庫 選び方" />
+              <span>キーワード（カテゴリ名）*</span>
+              <input type="text" id="headings-keyword" required placeholder="例: 掃除機" />
             </label>
             <label class="field">
               <span>参考URL（推奨）</span>
-              <input type="url" id="headings-ref-url" placeholder="選び方記事の参考URL（構成の手本）" />
+              <input
+                type="url"
+                id="headings-ref-url"
+                placeholder="https://www.kojima.net/ec/Special/feature/reading/housework/cleaner.html"
+              />
             </label>
-            <p class="field-hint">参考URLの「選び方」構成を最優先で参照します。商品おすすめ部分は使いません。</p>
+            <p class="field-hint">参考記事の「選びのポイント」「人気メーカー」構成を最優先で参照します。</p>
             <label class="field">
               <span>他社URL 1（任意）</span>
               <input type="url" id="headings-url1" placeholder="https://example.com/article" />
@@ -635,81 +640,65 @@
               <input type="url" id="headings-url3" placeholder="https://example.com/article" />
             </label>
             <div id="headings-candidates-panel" class="field">
-              <span>選び方の観点候補（最大5件）</span>
+              <span>選び方の観点候補（任意・最大5件）</span>
               <p class="field-hint" id="headings-candidates-hint">
-                容量・サイズ・機能・省エネなど、購入判断の軸を入力（または週次・競合から取り込み）してください。
+                週次・競合から取り込んだ観点を、選びのポイントのH3に活かします。
               </p>
               <label class="field nested-field">
                 <span class="field-sub">観点 1</span>
-                <input type="text" id="headings-candidate-1" placeholder="例: 容量の目安の見方" />
+                <input type="text" id="headings-candidate-1" placeholder="例: 集じん方法" />
               </label>
               <label class="field nested-field">
                 <span class="field-sub">観点 2</span>
-                <input type="text" id="headings-candidate-2" placeholder="例: 設置スペースとサイズの測り方" />
+                <input type="text" id="headings-candidate-2" placeholder="例: 電源タイプ" />
               </label>
               <label class="field nested-field">
                 <span class="field-sub">観点 3</span>
-                <input type="text" id="headings-candidate-3" placeholder="例: 省エネ・電気代の比較ポイント" />
+                <input type="text" id="headings-candidate-3" placeholder="例: ヘッドの種類" />
               </label>
               <label class="field nested-field">
                 <span class="field-sub">観点 4</span>
-                <input type="text" id="headings-candidate-4" placeholder="例: 扉の開き方・使い勝手" />
+                <input type="text" id="headings-candidate-4" />
               </label>
               <label class="field nested-field">
                 <span class="field-sub">観点 5</span>
-                <input type="text" id="headings-candidate-5" placeholder="例: 失敗しやすい選び方" />
+                <input type="text" id="headings-candidate-5" />
               </label>
             </div>
             <div class="actions">
-              <button type="submit" id="headings-submit">選び方見出しを生成</button>
+              <button type="submit" id="headings-submit">見出しを生成（選びのポイント／人気メーカー）</button>
               <button type="button" class="secondary" id="headings-reset">リセット</button>
             </div>
           </form>
           <p id="headings-error" class="error" hidden></p>
         </section>
         <section id="headings-result" class="panel" hidden>
-          <h2>見出し生成結果</h2>
+          <h2>見出し案（編集可）</h2>
+          <p class="field-hint">H2・H3を直してから「記事生成へ引き継ぐ」を押してください。H4は記事生成タブで必要に応じて追加します。</p>
           <div class="result-actions">
-            <button type="button" class="secondary" id="headings-copy">すべてコピー</button>
+            <button type="button" class="secondary" id="headings-copy">テキストコピー</button>
+            <button type="button" id="headings-to-article-bottom">記事生成へ引き継ぐ</button>
             <button type="button" class="secondary" id="headings-clear">クリア</button>
           </div>
           <p id="headings-copy-msg" class="field-hint" hidden></p>
           <div id="headings-warnings" class="warning" hidden></div>
-          <div id="headings-body" class="generated-article"></div>
-        </section>
-        <!-- H4見出し生成 -->
-        <section id="sub-headings-panel" class="panel" hidden>
-          <h2>H4見出し生成</h2>
-          <p class="field-hint">生成されたH3見出しをクリック、またはH3を入力してH4小見出しを生成します。</p>
-          <form id="form-sub-headings" class="form">
-            <label class="field">
-              <span>対象H3見出し *</span>
-              <input type="text" id="sub-headings-h3" required placeholder="H4を生成するH3見出しを入力" />
-            </label>
-            <div class="actions">
-              <button type="submit" id="sub-headings-submit">H4見出しを生成</button>
-              <button type="button" class="secondary" id="sub-headings-clear">クリア</button>
-            </div>
-          </form>
-          <p id="sub-headings-error" class="error" hidden></p>
-          <div id="sub-headings-result" hidden>
-            <div id="sub-headings-body" class="generated-article"></div>
-          </div>
+          <div id="headings-outline-editor" class="outline-editor"></div>
+          <div id="headings-body" class="generated-article" hidden></div>
         </section>
       </section>
 
       <!-- 記事生成 -->
       <section id="panel-article" class="tab-panel" hidden>
         <header>
-          <h1>AI記事生成アプリ</h1>
+          <h1>記事生成</h1>
           <p>
-            週次・競合の他社URLと、見出し生成結果を引き継いで記事の叩き台を作成します。
+            見出し生成で決めた「選びのポイント／人気メーカー」を引き継ぎ、H3本文を作成します。必要なH3だけH4を最大3つ付けてから一括生成できます。
           </p>
         </header>
         <section class="panel">
           <div class="actions">
             <button type="button" class="secondary" id="article-import-sources">
-              週次・競合の結果を取り込む
+              週次・競合のURLを取り込む
             </button>
             <button type="button" class="secondary" id="article-import-headings">
               見出し結果を取り込む
@@ -719,66 +708,12 @@
           <form id="form-article" class="form">
             <label class="field">
               <span>キーワード *</span>
-              <input type="text" id="article-keyword" required placeholder="例: AI ライティング" />
+              <input type="text" id="article-keyword" required placeholder="例: 掃除機" />
             </label>
             <label class="field">
               <span>タイトル（任意）</span>
-              <input type="text" id="article-title" placeholder="例: AIによる記事コンテンツ作成" />
+              <input type="text" id="article-title" placeholder="見出し生成のタイトル案が入ります" />
             </label>
-            <label class="field">
-              <span>H2:見出し１（任意）</span>
-              <input type="text" id="article-h2" placeholder="例: AIで記事を作成してみよう" />
-            </label>
-            <label class="field">
-              <span>H3:見出し１（任意）</span>
-              <input type="text" id="article-h3-1" />
-            </label>
-            <label class="field">
-              <span>H3:見出し2（任意）</span>
-              <input type="text" id="article-h3-2" />
-            </label>
-            <label class="field">
-              <span>H3:見出し3（任意）</span>
-              <input type="text" id="article-h3-3" />
-            </label>
-            <label class="field">
-              <span>H3:見出し4（任意）</span>
-              <input type="text" id="article-h3-4" />
-            </label>
-            <label class="field">
-              <span>H3:見出し5（任意）</span>
-              <input type="text" id="article-h3-5" />
-            </label>
-            <div id="article-h4-panel" class="field">
-              <span>H4で記事生成（任意 — H4が空の場合はH3で生成）</span>
-              <p class="field-hint">
-                特定のH3の下にH4見出しを入力すると、H4単位で記事が生成されます。
-              </p>
-              <label class="field nested-field">
-                <span class="field-sub">対象H3見出し</span>
-                <input type="text" id="article-h3-target" placeholder="H4を配置するH3見出しを入力" />
-              </label>
-              <label class="field nested-field">
-                <span class="field-sub">H4:見出し1</span>
-                <input type="text" id="article-h4-1" />
-              </label>
-              <label class="field nested-field">
-                <span class="field-sub">H4:見出し2</span>
-                <input type="text" id="article-h4-2" />
-              </label>
-              <label class="field nested-field">
-                <span class="field-sub">H4:見出し3</span>
-                <input type="text" id="article-h4-3" />
-              </label>
-              <label class="field nested-field">
-                <span class="field-sub">H4:見出し4</span>
-                <input type="text" id="article-h4-4" />
-              </label>
-              <label class="field nested-field">
-                <span class="field-sub">H4:見出し5</span>
-                <input type="text" id="article-h4-5" />
-              </label>
-            </div>
             <label class="field">
               <span>他社URL 1</span>
               <input type="url" id="article-url1" />
@@ -796,10 +731,7 @@
               <input type="url" id="article-ref-url" />
             </label>
             <div class="field">
-              <span>生成するブロック（H2×1・H3×最大5は毎回生成）</span>
-              <p class="field-hint">
-                見出しごとに何度か生成する場合、導入文・まとめは最初の1回だけチェックして生成するのがおすすめです。
-              </p>
+              <span>生成オプション</span>
               <label class="checkbox-field">
                 <input type="checkbox" id="article-gen-intro" />
                 <span>導入文を作成する</span>
@@ -809,8 +741,19 @@
                 <span>まとめを作成する</span>
               </label>
             </div>
+
+            <div class="field">
+              <span>見出しアウトライン（H2×2 / 各H3×3 / H4は任意で最大3）</span>
+              <p class="field-hint">
+                各H3の「H4を提案」で小見出しを付けられます。空のH4は無視され、H3本文のみ生成されます。
+              </p>
+              <div id="article-outline-editor" class="outline-editor">
+                <p class="field-hint">見出し生成タブから引き継ぐか、「見出し結果を取り込む」を押してください。</p>
+              </div>
+            </div>
+
             <div class="actions">
-              <button type="submit" id="article-submit">記事を生成</button>
+              <button type="submit" id="article-submit">見出し確定後：H3／H4の記事を生成</button>
               <button type="button" class="secondary" id="article-reset">リセット</button>
             </div>
           </form>

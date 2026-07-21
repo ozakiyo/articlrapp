@@ -515,8 +515,171 @@
     return { category, urls };
   }
 
+  const OUTLINE_STORAGE_KEY = 'articleAppOutline';
+  const MAX_OUTLINE_H4 = 3;
+
+  function normalizeClientOutline(keyword, sectionsRaw) {
+    const kw = String(keyword || '').trim() || '商品';
+    const defaults = [
+      { h2: `${kw}選びのポイント`, subsections: ['', '', ''] },
+      { h2: `${kw}の人気メーカー`, subsections: ['', '', ''] },
+    ];
+    const list = Array.isArray(sectionsRaw) ? sectionsRaw : [];
+    return defaults.map((def, i) => {
+      const src = list[i] || {};
+      const itemsSrc = Array.isArray(src.items) ? src.items : null;
+      const subsRaw = itemsSrc
+        ? itemsSrc.map((it) => (typeof it === 'string' ? it : it?.h3 || ''))
+        : Array.isArray(src.subsections)
+          ? src.subsections
+          : [];
+      const items = [0, 1, 2].map((j) => {
+        const raw = itemsSrc?.[j];
+        const h3Raw = subsRaw[j];
+        const h3 =
+          (raw && typeof raw === 'object' ? String(raw.h3 || '').trim() : '') ||
+          (typeof h3Raw === 'string'
+            ? h3Raw.trim()
+            : String(h3Raw?.h3 || h3Raw?.title || '').trim());
+        const h4s = [0, 1, 2].map((k) => {
+          const h4 = Array.isArray(raw?.h4s) ? raw.h4s[k] : '';
+          return String(h4 || '').trim();
+        });
+        return { h3, h4s };
+      });
+      return {
+        h2: String(src.h2 || def.h2).trim() || def.h2,
+        subsections: items.map((it) => it.h3),
+        items,
+      };
+    });
+  }
+
+  function saveOutlineToStorage(outline, keyword, title) {
+    try {
+      sessionStorage.setItem(
+        OUTLINE_STORAGE_KEY,
+        JSON.stringify({
+          keyword: keyword || '',
+          title: title || '',
+          outline,
+          savedAt: Date.now(),
+        })
+      );
+    } catch {
+      /* ignore */
+    }
+  }
+
+  function loadOutlineFromStorage() {
+    try {
+      const raw = sessionStorage.getItem(OUTLINE_STORAGE_KEY);
+      if (!raw) return null;
+      const parsed = JSON.parse(raw);
+      if (!parsed?.outline?.length) return null;
+      return parsed;
+    } catch {
+      return null;
+    }
+  }
+
+  function renderOutlineEditor(containerId, outline, { withH4 = false } = {}) {
+    const root = document.getElementById(containerId);
+    if (!root) return;
+    const sections = normalizeClientOutline('', outline);
+    root.innerHTML = sections
+      .map((sec, si) => {
+        const h3Html = (sec.items || [])
+          .map((item, hi) => {
+            const h4Fields = withH4
+              ? `<div class="outline-h4-list" data-sec="${si}" data-h3="${hi}">
+                  ${[0, 1, 2]
+                    .map(
+                      (k) => `<label class="field nested-field outline-h4-field">
+                        <span class="field-sub">H4-${k + 1}</span>
+                        <input type="text" class="outline-h4-input" data-sec="${si}" data-h3="${hi}" data-h4="${k}" value="${escapeHtml(item.h4s?.[k] || '')}" placeholder="任意（空ならH3本文のみ）" />
+                      </label>`
+                    )
+                    .join('')}
+                </div>
+                <div class="outline-h3-actions">
+                  <button type="button" class="secondary outline-suggest-h4" data-sec="${si}" data-h3="${hi}">H4を提案（最大3）</button>
+                </div>`
+              : '';
+            return `<div class="outline-h3-block" data-sec="${si}" data-h3="${hi}">
+              <label class="field nested-field">
+                <span class="field-sub">H3-${hi + 1}</span>
+                <input type="text" class="outline-h3-input" data-sec="${si}" data-h3="${hi}" value="${escapeHtml(item.h3 || '')}" placeholder="H3見出し" />
+              </label>
+              ${h4Fields}
+            </div>`;
+          })
+          .join('');
+        return `<div class="outline-section" data-sec="${si}">
+          <label class="field">
+            <span class="field-sub">H2-${si + 1}</span>
+            <input type="text" class="outline-h2-input" data-sec="${si}" value="${escapeHtml(sec.h2 || '')}" />
+          </label>
+          ${h3Html}
+        </div>`;
+      })
+      .join('');
+  }
+
+  function readOutlineFromEditor(containerId) {
+    const root = document.getElementById(containerId);
+    if (!root) return null;
+    const sections = [...root.querySelectorAll('.outline-section')];
+    if (!sections.length) return null;
+    return sections.map((secEl, si) => {
+      const h2 =
+        secEl.querySelector(`.outline-h2-input[data-sec="${si}"]`)?.value.trim() ||
+        '';
+      const items = [0, 1, 2].map((hi) => {
+        const h3 =
+          secEl.querySelector(`.outline-h3-input[data-sec="${si}"][data-h3="${hi}"]`)
+            ?.value.trim() || '';
+        const h4s = [0, 1, 2].map(
+          (k) =>
+            secEl
+              .querySelector(
+                `.outline-h4-input[data-sec="${si}"][data-h3="${hi}"][data-h4="${k}"]`
+              )
+              ?.value.trim() || ''
+        );
+        return { h3, h4s };
+      });
+      return {
+        h2,
+        subsections: items.map((it) => it.h3),
+        items,
+      };
+    });
+  }
+
+  function outlineToApiSections(outline) {
+    return (outline || [])
+      .map((sec) => ({
+        h2: String(sec.h2 || '').trim(),
+        items: (sec.items || [])
+          .map((item) => ({
+            h3: String(item.h3 || '').trim(),
+            h4s: (item.h4s || [])
+              .map((h) => String(h || '').trim())
+              .filter(Boolean)
+              .slice(0, MAX_OUTLINE_H4),
+          }))
+          .filter((item) => item.h3),
+      }))
+      .filter((sec) => sec.h2 && sec.items.length);
+  }
+
   function applyHeadingsResultToArticleForm() {
-    if (!lastHeadingsData) {
+    const outline =
+      readOutlineFromEditor('headings-outline-editor') ||
+      lastHeadingsData?.outline ||
+      normalizeClientOutline(lastHeadingsKeyword, lastHeadingsData?.sections);
+    if (!outline?.length) {
       const status = document.getElementById('article-bridge-msg');
       if (status) status.textContent = '先に見出し生成を実行してください。';
       return false;
@@ -524,20 +687,17 @@
     const kw = document.getElementById('article-keyword');
     if (kw) kw.value = lastHeadingsKeyword || kw.value;
     const title = document.getElementById('article-title');
-    if (title) title.value = lastHeadingsData.title || '';
-    const sections = lastHeadingsData.sections || [];
-    const first = sections[0] || {};
-    const h2 = document.getElementById('article-h2');
-    if (h2) h2.value = first.h2 || '';
-    const h3s = first.subsections || [];
-    for (let i = 1; i <= 5; i++) {
-      const el = document.getElementById(`article-h3-${i}`);
-      if (el) el.value = h3s[i - 1] || '';
-    }
+    if (title && lastHeadingsData?.title) title.value = lastHeadingsData.title;
     copyUrlFields('headings', 'article', { force: true });
+    const refH = document.getElementById('headings-ref-url')?.value.trim();
+    const refA = document.getElementById('article-ref-url');
+    if (refA && refH) refA.value = refH;
+    renderOutlineEditor('article-outline-editor', outline, { withH4: true });
+    saveOutlineToStorage(outline, lastHeadingsKeyword, lastHeadingsData?.title || '');
     const status = document.getElementById('article-bridge-msg');
     if (status) {
-      status.textContent = '見出し生成結果を記事フォームへ引き継ぎました。';
+      status.textContent =
+        '見出し（選びのポイント／人気メーカー）を記事フォームへ引き継ぎました。';
     }
     return true;
   }
@@ -1430,25 +1590,43 @@
   const formHeadings = document.getElementById('form-headings');
   const headingsError = document.getElementById('headings-error');
   const headingsResult = document.getElementById('headings-result');
-  const headingsBody = document.getElementById('headings-body');
   const headingsWarnings = document.getElementById('headings-warnings');
   const headingsSubmit = document.getElementById('headings-submit');
   // applyHeadingsResultToArticleForm より前に宣言（同一スコープ）
   var lastHeadingsData = null;
   var lastHeadingsKeyword = '';
 
-  document.getElementById('headings-import-sources')?.addEventListener('click', () => {
-    syncHeadingsTabFromSources({ force: true });
-  });
-
-  document.getElementById('headings-to-article')?.addEventListener('click', () => {
-    if (!lastHeadingsData) {
+  function transferHeadingsToArticle() {
+    const outline = readOutlineFromEditor('headings-outline-editor');
+    if (outline?.length) {
+      lastHeadingsData = {
+        ...(lastHeadingsData || {}),
+        outline,
+        sections: outline.map((s) => ({
+          h2: s.h2,
+          subsections: s.subsections || s.items?.map((it) => it.h3) || [],
+        })),
+        title: lastHeadingsData?.title || '',
+      };
+    }
+    if (!lastHeadingsData?.outline?.length && !outline?.length) {
       const status = document.getElementById('headings-bridge-msg');
       if (status) status.textContent = '先に見出しを生成してください。';
       return;
     }
     applyHeadingsResultToArticleForm();
     showTab('article');
+  }
+
+  document.getElementById('headings-import-sources')?.addEventListener('click', () => {
+    syncHeadingsTabFromSources({ force: true });
+  });
+
+  document.getElementById('headings-to-article')?.addEventListener('click', () => {
+    transferHeadingsToArticle();
+  });
+  document.getElementById('headings-to-article-bottom')?.addEventListener('click', () => {
+    transferHeadingsToArticle();
   });
 
   window.addEventListener('competitor-analysis-updated', () => {
@@ -1466,7 +1644,12 @@
       return;
     }
 
-    setLoading(headingsSubmit, true, '選び方見出しを生成', '生成中...');
+    setLoading(
+      headingsSubmit,
+      true,
+      '見出しを生成（選びのポイント／人気メーカー）',
+      '生成中...'
+    );
     try {
       const headingCandidates = getHeadingCandidatesFromForm();
       const data = await postJson('/api/article/generate-headings', {
@@ -1482,26 +1665,30 @@
 
       renderWarnings(headingsWarnings, data.warnings);
 
-      let html = '';
-      if (data.title) {
-        html += `<div class="generated-block"><h3>タイトル案</h3><p>${escapeHtml(data.title)}</p></div>`;
+      const outline =
+        data.outline || normalizeClientOutline(keyword, data.sections);
+      lastHeadingsData.outline = outline;
+      renderOutlineEditor('headings-outline-editor', outline, { withH4: false });
+      saveOutlineToStorage(outline, keyword, data.title || '');
+
+      const headingsBody = document.getElementById('headings-body');
+      if (headingsBody) {
+        headingsBody.hidden = false;
+        headingsBody.innerHTML = data.title
+          ? `<div class="generated-block"><h3>タイトル案</h3><p>${escapeHtml(data.title)}</p></div>`
+          : '';
       }
-      (data.sections || []).forEach((section, i) => {
-        html += `<div class="generated-block section-block"><h3>H2-${i + 1}: ${escapeHtml(section.h2 || '')}</h3>`;
-        (section.subsections || []).forEach((h3, j) => {
-          html += `<div class="generated-block"><h4>H3-${j + 1}</h4><p class="clickable-h3" data-h3="${escapeHtml(h3)}" title="クリックでH4生成へ">${escapeHtml(h3)}</p></div>`;
-        });
-        html += '</div>';
-      });
-      headingsBody.innerHTML = html;
       headingsResult.hidden = false;
-      const subPanel = document.getElementById('sub-headings-panel');
-      if (subPanel) subPanel.hidden = false;
     } catch (err) {
       showError(headingsError, err.message);
       headingsResult.hidden = true;
     } finally {
-      setLoading(headingsSubmit, false, '選び方見出しを生成', '生成中...');
+      setLoading(
+        headingsSubmit,
+        false,
+        '見出しを生成（選びのポイント／人気メーカー）',
+        '生成中...'
+      );
     }
   });
 
@@ -1510,6 +1697,9 @@
     showError(headingsError, '');
     headingsResult.hidden = true;
     lastHeadingsData = null;
+    lastHeadingsKeyword = '';
+    const editor = document.getElementById('headings-outline-editor');
+    if (editor) editor.innerHTML = '';
   });
 
   document.getElementById('headings-clear')?.addEventListener('click', () => {
@@ -1519,13 +1709,18 @@
 
   document.getElementById('headings-copy')?.addEventListener('click', async () => {
     const msg = document.getElementById('headings-copy-msg');
-    if (!lastHeadingsData) return;
-    const lines = [`キーワード: ${lastHeadingsKeyword}`, `タイトル: ${lastHeadingsData.title || ''}`];
-    (lastHeadingsData.sections || []).forEach((section, i) => {
+    const outline =
+      readOutlineFromEditor('headings-outline-editor') || lastHeadingsData?.outline;
+    if (!outline?.length) return;
+    const lines = [
+      `キーワード: ${lastHeadingsKeyword}`,
+      `タイトル: ${lastHeadingsData?.title || ''}`,
+    ];
+    outline.forEach((section, i) => {
       lines.push('');
       lines.push(`H2-${i + 1}: ${section.h2 || ''}`);
-      (section.subsections || []).forEach((h3, j) => {
-        lines.push(`  H3-${j + 1}: ${h3}`);
+      (section.items || []).forEach((item, j) => {
+        lines.push(`  H3-${j + 1}: ${item.h3 || ''}`);
       });
     });
     try {
@@ -1538,74 +1733,6 @@
     }
   });
 
-  // --- H4見出し生成 ---
-  const formSubHeadings = document.getElementById('form-sub-headings');
-  const subHeadingsError = document.getElementById('sub-headings-error');
-  const subHeadingsResult = document.getElementById('sub-headings-result');
-  const subHeadingsBody = document.getElementById('sub-headings-body');
-  const subHeadingsSubmit = document.getElementById('sub-headings-submit');
-  let lastSubHeadingsData = null;
-
-  headingsBody?.addEventListener('click', (e) => {
-    const target = e.target.closest('.clickable-h3');
-    if (!target) return;
-    const h3Text = target.dataset.h3;
-    const h3Input = document.getElementById('sub-headings-h3');
-    if (h3Input) h3Input.value = h3Text;
-    const subPanel = document.getElementById('sub-headings-panel');
-    if (subPanel) subPanel.hidden = false;
-    subPanel?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-  });
-
-  formSubHeadings?.addEventListener('submit', async (e) => {
-    e.preventDefault();
-    showError(subHeadingsError, '');
-    const h3 = document.getElementById('sub-headings-h3').value.trim();
-    if (!h3) {
-      showError(subHeadingsError, 'H3見出しを入力してください。');
-      return;
-    }
-
-    const keyword = document.getElementById('headings-keyword').value.trim();
-    if (!keyword) {
-      showError(subHeadingsError, '見出し生成タブのキーワードを入力してください。');
-      return;
-    }
-
-    setLoading(subHeadingsSubmit, true, 'H4見出しを生成', '生成中...');
-    try {
-      const data = await postJson('/api/article/generate-sub-headings', {
-        keyword,
-        h3,
-        competitorUrl1: document.getElementById('headings-url1').value.trim(),
-        competitorUrl2: document.getElementById('headings-url2').value.trim(),
-        competitorUrl3: document.getElementById('headings-url3').value.trim(),
-        referenceUrl: document.getElementById('headings-ref-url').value.trim(),
-      });
-      lastSubHeadingsData = data;
-
-      let html = `<div class="generated-block"><h3>H3: ${escapeHtml(data.h3 || h3)}</h3>`;
-      (data.subheadings || []).forEach((h4, j) => {
-        html += `<div class="generated-block"><h4>H4-${j + 1}: ${escapeHtml(h4)}</h4></div>`;
-      });
-      html += '</div>';
-      subHeadingsBody.innerHTML = html;
-      subHeadingsResult.hidden = false;
-    } catch (err) {
-      showError(subHeadingsError, err.message);
-      subHeadingsResult.hidden = true;
-    } finally {
-      setLoading(subHeadingsSubmit, false, 'H4見出しを生成', '生成中...');
-    }
-  });
-
-  document.getElementById('sub-headings-clear')?.addEventListener('click', () => {
-    showError(subHeadingsError, '');
-    if (subHeadingsResult) subHeadingsResult.hidden = true;
-    if (subHeadingsBody) subHeadingsBody.innerHTML = '';
-    lastSubHeadingsData = null;
-  });
-
   // --- 記事生成 ---
   const formArticle = document.getElementById('form-article');
   const articleError = document.getElementById('article-error');
@@ -1613,6 +1740,19 @@
   const articleBody = document.getElementById('article-body');
   const articleWarnings = document.getElementById('article-warnings');
   const articleSubmit = document.getElementById('article-submit');
+
+  // 保存済みアウトラインがあれば記事タブに復元
+  (() => {
+    const saved = loadOutlineFromStorage();
+    if (!saved?.outline?.length) return;
+    const editor = document.getElementById('article-outline-editor');
+    if (!editor || editor.querySelector('.outline-section')) return;
+    renderOutlineEditor('article-outline-editor', saved.outline, { withH4: true });
+    const kw = document.getElementById('article-keyword');
+    if (kw && saved.keyword && !kw.value.trim()) kw.value = saved.keyword;
+    const title = document.getElementById('article-title');
+    if (title && saved.title && !title.value.trim()) title.value = saved.title;
+  })();
 
   document.getElementById('article-import-sources')?.addEventListener('click', () => {
     syncArticleTabFromSources({ force: true });
@@ -1622,50 +1762,92 @@
     applyHeadingsResultToArticleForm();
   });
 
-  const ARTICLE_H3_SUFFIXES = ['first', 'second', 'third', 'fourth', 'fifth'];
-
-  function getArticleH3Payload() {
-    const payload = {};
-    ARTICLE_H3_SUFFIXES.forEach((suffix, i) => {
-      payload[`heading_h3_${suffix}`] =
-        document.getElementById(`article-h3-${i + 1}`)?.value.trim() || '';
-    });
-    return payload;
-  }
-
-  function getArticleH4Payload() {
-    const payload = {};
-    ARTICLE_H3_SUFFIXES.forEach((suffix, i) => {
-      payload[`heading_h4_${suffix}`] =
-        document.getElementById(`article-h4-${i + 1}`)?.value.trim() || '';
-    });
-    return payload;
-  }
-
-  function buildArticleH4Blocks(body) {
-    if (!Array.isArray(body?.h4_items)) return [];
-    return body.h4_items.map((item) => ({
-      title: item.h4 || '',
-      content: item.content || '',
-    }));
-  }
-
-  function buildArticleH3Blocks(body) {
-    if (Array.isArray(body?.h3_items) && body.h3_items.length) {
-      return body.h3_items.map((item) => ({
-        title: item.h3 || '',
-        content: item.content || '',
-      }));
+  document.getElementById('article-outline-editor')?.addEventListener('click', async (e) => {
+    const btn = e.target.closest('.outline-suggest-h4');
+    if (!btn) return;
+    const si = Number(btn.dataset.sec);
+    const hi = Number(btn.dataset.h3);
+    const editor = document.getElementById('article-outline-editor');
+    const h3Input = editor?.querySelector(
+      `.outline-h3-input[data-sec="${si}"][data-h3="${hi}"]`
+    );
+    const h3 = h3Input?.value.trim() || '';
+    if (!h3) {
+      showError(articleError, 'H4を提案する前に、対象のH3を入力してください。');
+      return;
     }
-    return ARTICLE_H3_SUFFIXES.map((suffix) => ({
-      title:
-        document.getElementById(
-          `article-h3-${ARTICLE_H3_SUFFIXES.indexOf(suffix) + 1}`
-        )?.value.trim() ||
-        body?.[`h3_${suffix}`] ||
-        '',
-      content: body?.[`h3_${suffix}_content`] || '',
-    })).filter((b) => b.title || b.content);
+    const keyword =
+      document.getElementById('article-keyword')?.value.trim() ||
+      document.getElementById('headings-keyword')?.value.trim() ||
+      '';
+    if (!keyword) {
+      showError(articleError, 'キーワードを入力してください。');
+      return;
+    }
+    showError(articleError, '');
+    const prevLabel = btn.textContent;
+    btn.disabled = true;
+    btn.textContent = '提案中...';
+    try {
+      const data = await postJson('/api/article/generate-sub-headings', {
+        keyword,
+        h3,
+        competitorUrl1: document.getElementById('article-url1')?.value.trim() || '',
+        competitorUrl2: document.getElementById('article-url2')?.value.trim() || '',
+        competitorUrl3: document.getElementById('article-url3')?.value.trim() || '',
+        referenceUrl: document.getElementById('article-ref-url')?.value.trim() || '',
+      });
+      const suggested = (data.subheadings || [])
+        .map((s) => String(s || '').trim())
+        .filter(Boolean)
+        .slice(0, MAX_OUTLINE_H4);
+      for (let k = 0; k < MAX_OUTLINE_H4; k++) {
+        const input = editor.querySelector(
+          `.outline-h4-input[data-sec="${si}"][data-h3="${hi}"][data-h4="${k}"]`
+        );
+        if (input) input.value = suggested[k] || '';
+      }
+    } catch (err) {
+      showError(articleError, err.message);
+    } finally {
+      btn.disabled = false;
+      btn.textContent = prevLabel;
+    }
+  });
+
+  function renderOutlineArticleResult(data) {
+    const intro = data.introduction || data.article?.introduction || '';
+    const summary = data.summary || data.article?.summary || '';
+    const sections = data.sections || data.article?.sections || [];
+    let html = '';
+    if (data.title || data.article?.h1) {
+      html += `<div class="generated-block"><h3>タイトル</h3><p>${escapeHtml(data.title || data.article?.h1 || '')}</p></div>`;
+    }
+    if (intro) {
+      html += `<div class="generated-block"><h3>導入文</h3><div class="generated-text">${paragraphsHtml(intro)}</div></div>`;
+    }
+    sections.forEach((sec) => {
+      html += `<div class="generated-block section-block"><h3>${escapeHtml(sec.h2 || '')}</h3>`;
+      (sec.items || []).forEach((item) => {
+        html += `<div class="generated-block"><h4>${escapeHtml(item.h3 || '')}</h4>`;
+        if (item.content) {
+          html += `<div class="generated-text">${paragraphsHtml(item.content)}</div>`;
+        }
+        (item.h4_items || []).forEach((h4item) => {
+          html += `<div class="generated-block outline-h4-result"><h5>${escapeHtml(h4item.h4 || '')}</h5>`;
+          if (h4item.content) {
+            html += `<div class="generated-text">${paragraphsHtml(h4item.content)}</div>`;
+          }
+          html += '</div>';
+        });
+        html += '</div>';
+      });
+      html += '</div>';
+    });
+    if (summary) {
+      html += `<div class="generated-block"><h3>まとめ</h3><div class="generated-text">${paragraphsHtml(summary)}</div></div>`;
+    }
+    return html;
   }
 
   formArticle?.addEventListener('submit', async (e) => {
@@ -1678,15 +1860,28 @@
       return;
     }
 
-    setLoading(articleSubmit, true, '記事を生成', '生成中...');
+    const outline = readOutlineFromEditor('article-outline-editor');
+    const sections = outlineToApiSections(outline);
+    if (!sections.length) {
+      showError(
+        articleError,
+        '見出しアウトラインが空です。見出し生成から引き継ぐか、H2/H3を入力してください。'
+      );
+      return;
+    }
+
+    saveOutlineToStorage(
+      outline,
+      keyword,
+      document.getElementById('article-title')?.value.trim() || ''
+    );
+
+    setLoading(articleSubmit, true, '見出し確定後：H3／H4の記事を生成', '生成中...');
     try {
       const data = await postJson('/api/article/generate', {
         keyword,
         title: document.getElementById('article-title').value.trim(),
-        heading_h2_first: document.getElementById('article-h2').value.trim(),
-        ...getArticleH3Payload(),
-        heading_h3_target: document.getElementById('article-h3-target')?.value.trim() || '',
-        ...getArticleH4Payload(),
+        sections,
         competitorUrl1: document.getElementById('article-url1').value.trim(),
         competitorUrl2: document.getElementById('article-url2').value.trim(),
         competitorUrl3: document.getElementById('article-url3').value.trim(),
@@ -1696,53 +1891,13 @@
       });
 
       renderWarnings(articleWarnings, data.warnings);
-
-      const body =
-        data.article && typeof data.article === 'object' && !Array.isArray(data.article)
-          ? data.article
-          : null;
-      const isH4Mode = data.mode === 'h4';
-      const blocks = isH4Mode ? buildArticleH4Blocks(body) : buildArticleH3Blocks(body);
-
-      const intro = body?.introduction ?? data.introduction ?? '';
-      const summary = body?.summary ?? data.summary ?? '';
-
-      let html = '';
-      if (intro) {
-        html += `<div class="generated-block"><h3>導入文</h3><div class="generated-text">${paragraphsHtml(intro)}</div></div>`;
-      }
-      if (isH4Mode && body?.h3_target) {
-        html += `<div class="generated-block section-block"><h3>H3: ${escapeHtml(body.h3_target)}</h3>`;
-        blocks.forEach((block) => {
-          html += '<div class="generated-block">';
-          if (block.title) html += `<h4>${escapeHtml(block.title)}</h4>`;
-          if (block.content) {
-            html += `<div class="generated-text">${paragraphsHtml(block.content)}</div>`;
-          }
-          html += '</div>';
-        });
-        html += '</div>';
-      } else {
-        blocks.forEach((block) => {
-          html += '<div class="generated-block section-block">';
-          if (block.title) html += `<h4>${escapeHtml(block.title)}</h4>`;
-          if (block.content) {
-            html += `<div class="generated-text">${paragraphsHtml(block.content)}</div>`;
-          }
-          html += '</div>';
-        });
-      }
-      if (summary) {
-        html += `<div class="generated-block"><h3>まとめ</h3><div class="generated-text">${paragraphsHtml(summary)}</div></div>`;
-      }
-
-      articleBody.innerHTML = html;
+      articleBody.innerHTML = renderOutlineArticleResult(data);
       articleResult.hidden = false;
     } catch (err) {
       showError(articleError, err.message);
       articleResult.hidden = true;
     } finally {
-      setLoading(articleSubmit, false, '記事を生成', '生成中...');
+      setLoading(articleSubmit, false, '見出し確定後：H3／H4の記事を生成', '生成中...');
     }
   });
 
@@ -1750,6 +1905,11 @@
     formArticle.reset();
     showError(articleError, '');
     articleResult.hidden = true;
+    const editor = document.getElementById('article-outline-editor');
+    if (editor) {
+      editor.innerHTML =
+        '<p class="field-hint">見出し生成タブから引き継ぐか、「見出し結果を取り込む」を押してください。</p>';
+    }
   });
 
   document.getElementById('article-clear')?.addEventListener('click', () => {
