@@ -340,12 +340,16 @@ function collectReferenceUrls(body) {
     .filter(Boolean);
 }
 
-function formatScrapedTexts(scrapedArticles, label) {
+function formatScrapedTexts(scrapedArticles, label, maxCharsPerArticle = 6000) {
   return scrapedArticles
-    .map(
-      ({ url, text }) => `【${label}】${url}
-${text}`
-    )
+    .map(({ url, text }) => {
+      const body = String(text || '');
+      const clipped =
+        body.length > maxCharsPerArticle
+          ? `${body.slice(0, maxCharsPerArticle)}\n…(省略)`
+          : body;
+      return `【${label}】${url}\n${clipped}`;
+    })
     .join('\n---\n');
 }
 
@@ -362,6 +366,132 @@ function buildReferenceOutputSection(keyword, referenceTexts) {
 # 出力参考記事
 ${referenceTexts}
 `;
+}
+
+async function loadOptionalArticleContext(body, scrape, { maxCharsPerArticle = 4000 } = {}) {
+  const warnings = [];
+  const candidateUrls = collectCandidateUrls(body);
+  const referenceUrls = collectReferenceUrls(body);
+  let scrapedArticles = [];
+  let scrapedReferenceArticles = [];
+
+  if (candidateUrls.length > 0) {
+    const r = await scrapeCompetitorArticles(candidateUrls, scrape);
+    warnings.push(...r.warnings);
+    scrapedArticles = r.scrapedArticles;
+  }
+  if (referenceUrls.length > 0) {
+    const r = await scrapeCompetitorArticles(referenceUrls, scrape);
+    warnings.push(...r.warnings);
+    scrapedReferenceArticles = r.scrapedArticles;
+  }
+
+  if (
+    (candidateUrls.length > 0 || referenceUrls.length > 0) &&
+    scrapedArticles.length === 0 &&
+    scrapedReferenceArticles.length === 0
+  ) {
+    warnings.push({
+      message:
+        '参考URL・他社URLの取得に失敗したため、キーワードとH3のみでH4を提案します。',
+    });
+  }
+
+  const competitorTexts = formatScrapedTexts(
+    scrapedArticles,
+    '他社記事',
+    maxCharsPerArticle
+  );
+  const referenceTexts = formatScrapedTexts(
+    scrapedReferenceArticles,
+    '参考記事',
+    maxCharsPerArticle
+  );
+  const keyword = String(body?.keyword || '').trim();
+  const referenceOutputSection = buildReferenceOutputSection(keyword, referenceTexts);
+
+  return {
+    warnings,
+    competitorTexts,
+    referenceOutputSection,
+    hasScraped: scrapedArticles.length > 0 || scrapedReferenceArticles.length > 0,
+  };
+}
+
+function buildH4SuggestPrompt({
+  keyword,
+  h3,
+  competitorTexts,
+  referenceOutputSection,
+}) {
+  return `
+あなたはコジマネットなど家電量販店の特集記事ライターです。
+キーワード「${keyword}」の「選び方／人気メーカー」記事において、H3見出し「${h3}」の配下に置くH4小見出しの案を作成してください。
+
+# 役割
+- 選び方の細分（例: 集じん方法の下のサイクロン式／紙パック式）や補足観点を具体化する
+- 商品おすすめ・型番紹介・ランキング掲載の見出しは作らない
+- H4は必要なときだけ。最大3つ
+
+# 出力条件
+- JSON形式で出力
+- 形式:
+{
+  "h3": "${h3}",
+  "subheadings": ["小見出し1（H4）", "小見出し2（H4）", "小見出し3（H4）"]
+}
+- H4は1〜3つ（不要なら少なくてよい。最大3）
+- 各H4は「何を確認するか／どう比べるか」が分かる短文にする
+- 各見出しは本文を書かず、見出しテキストのみを出力する
+- 家電販売店にふさわしい丁寧な文体
+- 製品名・価格は直接記載しない
+- 出力は厳密にJSONのみ
+${competitorTexts ? `\n# 他社記事（選び方の切り口のみ参考）\n${competitorTexts}` : ''}${referenceOutputSection}
+`;
+}
+
+function buildBulkH4SuggestPrompt({
+  keyword,
+  h3List,
+  competitorTexts,
+  referenceOutputSection,
+}) {
+  const list = h3List.map((h, i) => `${i + 1}. ${h}`).join('\n');
+  return `
+あなたはコジマネットなど家電量販店の特集記事ライターです。
+キーワード「${keyword}」の「選び方／人気メーカー」記事について、次の各H3配下に置くH4小見出し案を作成してください。
+
+# 対象H3
+${list}
+
+# 役割
+- 選び方の細分や補足観点を具体化する
+- 商品おすすめ・型番紹介・ランキング掲載の見出しは作らない
+- 各H3あたりH4は最大3つ（不要なら少なくてよい）
+
+# 出力条件
+- JSON形式で出力
+- 形式:
+{
+  "items": [
+    { "h3": "対象H3と同じ文言", "subheadings": ["H4-1", "H4-2", "H4-3"] }
+  ]
+}
+- items は対象H3と同じ件数・同じ順序
+- 各見出しは本文を書かず、見出しテキストのみ
+- 家電販売店にふさわしい丁寧な文体
+- 製品名・価格は直接記載しない
+- 出力は厳密にJSONのみ
+${competitorTexts ? `\n# 他社記事（選び方の切り口のみ参考）\n${competitorTexts}` : ''}${referenceOutputSection}
+`;
+}
+
+function normalizeH4Subheadings(raw) {
+  if (!Array.isArray(raw)) return [];
+  return raw
+    .map((s) => String(s || '').trim())
+    .filter(Boolean)
+    .slice(0, MAX_OUTLINE_H4);
 }
 
 function registerArticleAppRoutes(app, { scrape, getGeminiModel }) {
@@ -961,11 +1091,18 @@ async function handleSubHeadingGenerate(
   requestStartedAt,
   { scrape, getGeminiModel }
 ) {
-  const { keyword, h3 } = req.body;
+  const keyword = String(req.body?.keyword || '').trim();
+  const h3 = String(req.body?.h3 || '').trim();
+  const h3ListRaw = Array.isArray(req.body?.h3List) ? req.body.h3List : null;
+  const h3List = h3ListRaw
+    ? h3ListRaw.map((s) => String(s || '').trim()).filter(Boolean).slice(0, 12)
+    : null;
+  const isBulk = Boolean(h3List?.length);
 
   console.log('🛎️ POST /api/article/generate-sub-headings called with:', {
     keyword,
-    h3,
+    h3: isBulk ? undefined : h3,
+    h3Count: isBulk ? h3List.length : h3 ? 1 : 0,
     competitorUrls: collectCandidateUrls(req.body),
     referenceUrls: collectReferenceUrls(req.body),
   });
@@ -973,74 +1110,38 @@ async function handleSubHeadingGenerate(
   if (!keyword) {
     return res.status(400).json({ error: 'キーワードを入力してください。' });
   }
-  if (!h3) {
+  if (!isBulk && !h3) {
     return res.status(400).json({ error: 'H3見出しを入力してください。' });
   }
 
-  const candidateUrls = collectCandidateUrls(req.body);
-  const referenceUrls = collectReferenceUrls(req.body);
-
-  if (candidateUrls.length === 0 && referenceUrls.length === 0) {
-    return res.status(400).json({
-      error: '他社URLまたは参考URLを少なくとも1つ入力してください。',
-    });
-  }
-
-  const warnings = [];
-  let scrapedArticles = [];
-  let scrapedReferenceArticles = [];
-
-  if (candidateUrls.length > 0) {
-    const r = await scrapeCompetitorArticles(candidateUrls, scrape);
-    warnings.push(...r.warnings);
-    scrapedArticles = r.scrapedArticles;
-  }
-  if (referenceUrls.length > 0) {
-    const r = await scrapeCompetitorArticles(referenceUrls, scrape);
-    warnings.push(...r.warnings);
-    scrapedReferenceArticles = r.scrapedArticles;
-  }
-
-  if (scrapedArticles.length === 0 && scrapedReferenceArticles.length === 0) {
-    return res.status(502).json({
-      error: '記事の取得に失敗しました。',
-      warnings,
-    });
-  }
-
-  const competitorTexts = formatScrapedTexts(scrapedArticles, '他社記事');
-  const referenceTexts = formatScrapedTexts(scrapedReferenceArticles, '参考記事');
-  const referenceOutputSection = buildReferenceOutputSection(keyword, referenceTexts);
-
-  const prompt = `
-あなたはコジマネットなど家電量販店の特集記事ライターです。
-キーワード「${keyword}」の「選び方／人気メーカー」記事において、H3見出し「${h3}」の配下に置くH4小見出しの案を作成してください。
-
-# 役割
-- 選び方の細分（例: 集じん方法の下のサイクロン式／紙パック式）や補足観点を具体化する
-- 商品おすすめ・型番紹介・ランキング掲載の見出しは作らない
-- H4は必要なときだけ。最大3つ
-
-# 出力条件
-- JSON形式で出力
-- 形式:
-{
-  "h3": "${h3}",
-  "subheadings": ["小見出し1（H4）", "小見出し2（H4）", "小見出し3（H4）"]
-}
-- H4は1〜3つ（不要なら少なくてよい。最大3）
-- 各H4は「何を確認するか／どう比べるか」が分かる短文にする
-- 各見出しは本文を書かず、見出しテキストのみを出力する
-- 家電販売店にふさわしい丁寧な文体
-- 製品名・価格は直接記載しない
-- 出力は厳密にJSONのみ
-${competitorTexts ? `\n# 他社記事（選び方の切り口のみ参考）\n${competitorTexts}` : ''}${referenceOutputSection}
-`;
+  // H4提案は URL 取得に失敗してもキーワード＋H3 だけで続行する
+  // （取得失敗で 502 にすると、提案ボタンが使えなくなるため）
+  const ctx = await loadOptionalArticleContext(req.body, scrape, {
+    maxCharsPerArticle: 3500,
+  });
+  const warnings = [...ctx.warnings];
 
   let data;
   try {
-    console.log('🧠 Generating H4 sub-headings with Gemini');
+    console.log(
+      isBulk
+        ? `🧠 Generating bulk H4 sub-headings (${h3List.length}) with Gemini`
+        : '🧠 Generating H4 sub-headings with Gemini'
+    );
     const model = await getGeminiModel();
+    const prompt = isBulk
+      ? buildBulkH4SuggestPrompt({
+          keyword,
+          h3List,
+          competitorTexts: ctx.competitorTexts,
+          referenceOutputSection: ctx.referenceOutputSection,
+        })
+      : buildH4SuggestPrompt({
+          keyword,
+          h3,
+          competitorTexts: ctx.competitorTexts,
+          referenceOutputSection: ctx.referenceOutputSection,
+        });
     const result = await model.generateContent({
       contents: [{ role: 'user', parts: [{ text: prompt }] }],
     });
@@ -1049,8 +1150,11 @@ ${competitorTexts ? `\n# 他社記事（選び方の切り口のみ参考）\n${
     console.log('🧾 H4 sub-headings generated:', data);
   } catch (err) {
     console.error('❌ H4 heading generation failed', err.message);
+    const retryAfter = String(err?.message || '').match(/retry in\s+(\d+(?:\.\d+)?)s/i);
     return res.status(502).json({
-      error: 'H4見出しの生成に失敗しました。',
+      error: retryAfter
+        ? `H4見出しの生成に失敗しました（API制限）。約${Math.ceil(Number(retryAfter[1]))}秒後に再試行してください。`
+        : `H4見出しの生成に失敗しました。${err?.message ? `（${String(err.message).slice(0, 160)}）` : ''}`,
       warnings,
     });
   }
@@ -1060,12 +1164,27 @@ ${competitorTexts ? `\n# 他社記事（選び方の切り口のみ参考）\n${
     `${Date.now() - requestStartedAt}ms`
   );
 
-  const subheadings = Array.isArray(data?.subheadings)
-    ? data.subheadings
-        .map((s) => String(s || '').trim())
-        .filter(Boolean)
-        .slice(0, MAX_OUTLINE_H4)
-    : [];
+  if (isBulk) {
+    const byH3 = new Map();
+    const itemsRaw = Array.isArray(data?.items) ? data.items : [];
+    itemsRaw.forEach((item) => {
+      const key = String(item?.h3 || '').trim();
+      if (!key) return;
+      byH3.set(key, normalizeH4Subheadings(item?.subheadings));
+    });
+    const items = h3List.map((targetH3, index) => {
+      const matched =
+        byH3.get(targetH3) ||
+        normalizeH4Subheadings(itemsRaw[index]?.subheadings);
+      return {
+        h3: targetH3,
+        subheadings: matched,
+      };
+    });
+    return res.json({ items, warnings });
+  }
+
+  const subheadings = normalizeH4Subheadings(data?.subheadings);
 
   res.json({
     h3: data?.h3 || h3,

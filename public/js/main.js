@@ -681,10 +681,29 @@
       referenceUrl:
         document.getElementById(`${urlPrefix}-ref-url`)?.value.trim() || '',
     });
-    return (data.subheadings || [])
-      .map((s) => String(s || '').trim())
-      .filter(Boolean)
-      .slice(0, MAX_OUTLINE_H4);
+    return {
+      subheadings: (data.subheadings || [])
+        .map((s) => String(s || '').trim())
+        .filter(Boolean)
+        .slice(0, MAX_OUTLINE_H4),
+      warnings: data.warnings || [],
+    };
+  }
+
+  async function suggestH4ForH3List({ keyword, h3List, urlPrefix = 'headings' }) {
+    const data = await postJson('/api/article/generate-sub-headings', {
+      keyword,
+      h3List,
+      competitorUrl1: document.getElementById(`${urlPrefix}-url1`)?.value.trim() || '',
+      competitorUrl2: document.getElementById(`${urlPrefix}-url2`)?.value.trim() || '',
+      competitorUrl3: document.getElementById(`${urlPrefix}-url3`)?.value.trim() || '',
+      referenceUrl:
+        document.getElementById(`${urlPrefix}-ref-url`)?.value.trim() || '',
+    });
+    return {
+      items: Array.isArray(data.items) ? data.items : [],
+      warnings: data.warnings || [],
+    };
   }
 
   function fillH4Inputs(editor, si, hi, suggested) {
@@ -694,6 +713,15 @@
       );
       if (input) input.value = suggested[k] || '';
     }
+  }
+
+  function formatWarningHint(warnings) {
+    if (!Array.isArray(warnings) || !warnings.length) return '';
+    const detail = warnings
+      .map((w) => (w.url ? `${w.url}: ${w.message}` : w.message))
+      .filter(Boolean)
+      .join(' / ');
+    return detail ? `（注意: ${detail}）` : '';
   }
 
   function readOutlineFromEditor(containerId) {
@@ -1829,13 +1857,14 @@
     btn.disabled = true;
     btn.textContent = '提案中...';
     try {
-      const suggested = await suggestH4ForH3({ keyword, h3, urlPrefix: 'headings' });
-      fillH4Inputs(editor, si, hi, suggested);
+      const result = await suggestH4ForH3({ keyword, h3, urlPrefix: 'headings' });
+      fillH4Inputs(editor, si, hi, result.subheadings);
       const msg = document.getElementById('headings-h4-msg');
       if (msg) {
-        msg.textContent = suggested.length
-          ? `「${h3}」の H4 を ${suggested.length} 件提案しました。必要なら編集してから記事へ進んでください。`
-          : 'H4案が空でした。手動入力するか、別の観点で再提案してください。';
+        const warn = formatWarningHint(result.warnings);
+        msg.textContent = result.subheadings.length
+          ? `「${h3}」の H4 を ${result.subheadings.length} 件提案しました。必要なら編集してから記事へ進んでください。${warn}`
+          : `H4案が空でした。手動入力するか、別の観点で再提案してください。${warn}`;
       }
     } catch (err) {
       showError(headingsError, err.message);
@@ -1875,32 +1904,38 @@
     const prevLabel = btn?.textContent || '';
     if (btn) {
       btn.disabled = true;
-      btn.textContent = `提案中... (0/${targets.length})`;
+      btn.textContent = '一括提案中...';
     }
-    let done = 0;
-    let failed = 0;
     try {
-      for (const t of targets) {
-        try {
-          // eslint-disable-next-line no-await-in-loop
-          const suggested = await suggestH4ForH3({
-            keyword,
-            h3: t.h3,
-            urlPrefix: 'headings',
-          });
-          fillH4Inputs(editor, t.si, t.hi, suggested);
-        } catch {
-          failed += 1;
-        }
-        done += 1;
-        if (btn) btn.textContent = `提案中... (${done}/${targets.length})`;
-      }
+      const result = await suggestH4ForH3List({
+        keyword,
+        h3List: targets.map((t) => t.h3),
+        urlPrefix: 'headings',
+      });
+      const byH3 = new Map(
+        (result.items || []).map((item) => [
+          String(item.h3 || '').trim(),
+          (item.subheadings || [])
+            .map((s) => String(s || '').trim())
+            .filter(Boolean)
+            .slice(0, MAX_OUTLINE_H4),
+        ])
+      );
+      targets.forEach((t, index) => {
+        const suggested =
+          byH3.get(t.h3) ||
+          (result.items?.[index]?.subheadings || [])
+            .map((s) => String(s || '').trim())
+            .filter(Boolean)
+            .slice(0, MAX_OUTLINE_H4);
+        fillH4Inputs(editor, t.si, t.hi, suggested);
+      });
       if (msg) {
-        msg.textContent =
-          failed > 0
-            ? `H4提案完了（成功 ${targets.length - failed} / 失敗 ${failed}）。内容を確認・編集してから記事へ進んでください。`
-            : `全 ${targets.length} 件の H3 に H4 を提案しました。内容を確認・編集してから「見出し確定 → 記事生成へ」を押してください。`;
+        const warn = formatWarningHint(result.warnings);
+        msg.textContent = `全 ${targets.length} 件の H3 に H4 を提案しました。内容を確認・編集してから「見出し確定 → 記事生成へ」を押してください。${warn}`;
       }
+    } catch (err) {
+      showError(headingsError, err.message);
     } finally {
       if (btn) {
         btn.disabled = false;
