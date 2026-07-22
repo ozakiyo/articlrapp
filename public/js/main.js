@@ -525,13 +525,18 @@
   function normalizeClientOutline(keyword, sectionsRaw) {
     const kw = String(keyword || '').trim() || '商品';
     const defaults = [
-      { h2: `${kw}選びのポイント`, subsections: ['', '', ''] },
-      { h2: `${kw}の人気メーカー`, subsections: ['', '', ''] },
+      { h2: `${kw}選びのポイント`, subsections: ['', '', ''], searchIntent: '選び方' },
+      { h2: `${kw}の人気メーカー`, subsections: ['', '', ''], searchIntent: 'メーカー' },
     ];
     const list = Array.isArray(sectionsRaw) ? sectionsRaw : [];
     return defaults.map((def, i) => {
       const src = list[i] || {};
-      const itemsSrc = Array.isArray(src.items) ? src.items : null;
+      const itemsSrc = Array.isArray(src.items)
+        ? src.items
+        : Array.isArray(src.subsections) &&
+            src.subsections.some((x) => x && typeof x === 'object' && (x.h3 || x.intent))
+          ? src.subsections
+          : null;
       const subsRaw = itemsSrc
         ? itemsSrc.map((it) => (typeof it === 'string' ? it : it?.h3 || ''))
         : Array.isArray(src.subsections)
@@ -549,10 +554,16 @@
           const h4 = Array.isArray(raw?.h4s) ? raw.h4s[k] : '';
           return String(h4 || '').trim();
         });
-        return { h3, h4s };
+        const intent = String(
+          (raw && typeof raw === 'object' ? raw.intent || raw.searchIntent : '') ||
+            (typeof h3Raw === 'object' ? h3Raw?.intent || '' : '') ||
+            ''
+        ).trim();
+        return { h3, h4s, intent };
       });
       return {
         h2: String(src.h2 || def.h2).trim() || def.h2,
+        searchIntent: String(src.searchIntent || src.intent || def.searchIntent || '').trim(),
         subsections: items.map((it) => it.h3),
         items,
       };
@@ -617,8 +628,9 @@
               : '';
             return `<div class="outline-h3-block" data-sec="${si}" data-h3="${hi}">
               <label class="field nested-field">
-                <span class="field-sub">H3-${hi + 1}</span>
+                <span class="field-sub">H3-${hi + 1}${item.intent ? ` <span class="intent-badge">${escapeHtml(item.intent)}</span>` : ''}</span>
                 <input type="text" class="outline-h3-input" data-sec="${si}" data-h3="${hi}" value="${escapeHtml(item.h3 || '')}" placeholder="H3見出し" />
+                <input type="hidden" class="outline-h3-intent" data-sec="${si}" data-h3="${hi}" value="${escapeHtml(item.intent || '')}" />
               </label>
               ${h4Fields}
             </div>`;
@@ -626,8 +638,9 @@
           .join('');
         return `<div class="outline-section" data-sec="${si}">
           <label class="field">
-            <span class="field-sub">H2-${si + 1}</span>
+            <span class="field-sub">H2-${si + 1}${sec.searchIntent ? ` <span class="intent-badge">${escapeHtml(sec.searchIntent)}</span>` : ''}</span>
             <input type="text" class="outline-h2-input" data-sec="${si}" value="${escapeHtml(sec.h2 || '')}" />
+            <input type="hidden" class="outline-h2-intent" data-sec="${si}" value="${escapeHtml(sec.searchIntent || '')}" />
           </label>
           ${h3Html}
         </div>`;
@@ -638,8 +651,10 @@
   function clearOutlineH4(outline) {
     return (outline || []).map((sec) => ({
       ...sec,
+      searchIntent: sec.searchIntent || '',
       items: (sec.items || []).map((item) => ({
         h3: item.h3 || '',
+        intent: item.intent || '',
         h4s: ['', '', ''],
       })),
       subsections: (sec.items || []).map((item) => item.h3 || ''),
@@ -757,9 +772,16 @@
       const h2 =
         secEl.querySelector(`.outline-h2-input[data-sec="${si}"]`)?.value.trim() ||
         '';
+      const searchIntent =
+        secEl.querySelector(`.outline-h2-intent[data-sec="${si}"]`)?.value.trim() ||
+        '';
       const items = [0, 1, 2].map((hi) => {
         const h3 =
           secEl.querySelector(`.outline-h3-input[data-sec="${si}"][data-h3="${hi}"]`)
+            ?.value.trim() || '';
+        const intent =
+          secEl
+            .querySelector(`.outline-h3-intent[data-sec="${si}"][data-h3="${hi}"]`)
             ?.value.trim() || '';
         const h4s = [0, 1, 2].map(
           (k) =>
@@ -769,10 +791,11 @@
               )
               ?.value.trim() || ''
         );
-        return { h3, h4s };
+        return { h3, h4s, intent };
       });
       return {
         h2,
+        searchIntent,
         subsections: items.map((it) => it.h3),
         items,
       };
@@ -783,9 +806,11 @@
     return (outline || [])
       .map((sec) => ({
         h2: String(sec.h2 || '').trim(),
+        searchIntent: String(sec.searchIntent || '').trim(),
         items: (sec.items || [])
           .map((item) => ({
             h3: String(item.h3 || '').trim(),
+            intent: String(item.intent || '').trim(),
             h4s: (item.h4s || [])
               .map((h) => String(h || '').trim())
               .filter(Boolean)
@@ -2036,19 +2061,145 @@
     applyHeadingsResultToArticleForm();
   });
 
+  function renderAeoChecklist(checklist) {
+    const el = document.getElementById('article-aeo-checklist');
+    if (!el) return;
+    if (!Array.isArray(checklist) || !checklist.length) {
+      el.hidden = true;
+      el.innerHTML = '';
+      return;
+    }
+    const items = checklist
+      .map((c) => {
+        const pillar = String(c.pillar || '').toLowerCase();
+        const tagClass =
+          pillar === 'aeo'
+            ? 'pillar-aeo'
+            : pillar === 'geo'
+              ? 'pillar-geo'
+              : 'pillar-seo';
+        const purpose = c.purpose
+          ? `<span class="aeo-check-purpose">${escapeHtml(c.purpose)}</span>`
+          : '';
+        return `<li class="${c.ok ? 'ok' : 'ng'}">
+          <span class="pillar-tag ${tagClass}">${escapeHtml(c.pillar || '')}</span>
+          ${c.ok ? '✓' : '×'} ${escapeHtml(c.label || '')}
+          ${purpose}
+        </li>`;
+      })
+      .join('');
+    el.innerHTML = `
+      <h3>組み立てチェック（意図どおり揃っているか）</h3>
+      <p class="field-hint aeo-check-lead">緑=揃っている / 赤=不足。タグは何のための項目かを示します。</p>
+      <ul>${items}</ul>`;
+    el.hidden = false;
+  }
+
+  function buildCmsHtmlFromArticle(data) {
+    const parts = [];
+    const seoTitle = data.seoTitle || '';
+    const meta = data.metaDescription || '';
+    const direct = data.directAnswer || data.article?.directAnswer || '';
+    const intro = data.introduction || data.article?.introduction || '';
+    const summary = data.summary || data.article?.summary || '';
+    const sections = data.sections || data.article?.sections || [];
+    const faq = data.faq || data.article?.faq || [];
+    const related = data.relatedLinks || data.article?.relatedLinks || [];
+    const sources = data.sourcesNote || data.article?.sourcesNote || '';
+
+    if (seoTitle) parts.push(`<!-- SEO title: ${seoTitle} -->`);
+    if (meta) parts.push(`<!-- meta description: ${meta} -->`);
+    if (data.title || data.article?.h1) {
+      parts.push(`<h1>${escapeHtml(data.title || data.article?.h1 || '')}</h1>`);
+    }
+    if (direct) {
+      parts.push(`<p class="direct-answer"><strong>結論:</strong> ${escapeHtml(direct)}</p>`);
+    }
+    if (intro) {
+      parts.push(`<p>${escapeHtml(intro).replace(/\n\n/g, '</p><p>')}</p>`);
+    }
+    sections.forEach((sec) => {
+      parts.push(`<h2>${escapeHtml(sec.h2 || '')}</h2>`);
+      (sec.items || []).forEach((item) => {
+        parts.push(`<h3>${escapeHtml(item.h3 || '')}</h3>`);
+        if (item.content) {
+          parts.push(
+            `<p>${escapeHtml(item.content).replace(/\n\n/g, '</p><p>').replace(/\n/g, '<br>')}</p>`
+          );
+        }
+        (item.h4_items || []).forEach((h4item) => {
+          parts.push(`<h4>${escapeHtml(h4item.h4 || '')}</h4>`);
+          if (h4item.content) {
+            parts.push(
+              `<p>${escapeHtml(h4item.content).replace(/\n\n/g, '</p><p>').replace(/\n/g, '<br>')}</p>`
+            );
+          }
+        });
+      });
+    });
+    if (summary) {
+      parts.push(`<h2>まとめ</h2>`);
+      parts.push(`<p>${escapeHtml(summary).replace(/\n\n/g, '</p><p>')}</p>`);
+    }
+    if (faq.length) {
+      parts.push(`<h2>よくある質問</h2>`);
+      faq.forEach((q) => {
+        parts.push(`<h3>${escapeHtml(q.question)}</h3>`);
+        parts.push(`<p>${escapeHtml(q.answer)}</p>`);
+      });
+    }
+    if (related.length) {
+      parts.push(`<h2>関連記事（候補）</h2><ul>`);
+      related.forEach((r) => {
+        parts.push(
+          `<li>${escapeHtml(r.anchor)}${r.hint ? ` — ${escapeHtml(r.hint)}` : ''}</li>`
+        );
+      });
+      parts.push(`</ul>`);
+    }
+    if (sources) {
+      parts.push(`<p class="sources-note"><small>${escapeHtml(sources)}</small></p>`);
+    }
+    return parts.join('\n');
+  }
+
   function renderOutlineArticleResult(data) {
     const intro = data.introduction || data.article?.introduction || '';
     const summary = data.summary || data.article?.summary || '';
     const sections = data.sections || data.article?.sections || [];
+    const direct = data.directAnswer || data.article?.directAnswer || '';
+    const seoTitle = data.seoTitle || '';
+    const meta = data.metaDescription || '';
+    const faq = data.faq || data.article?.faq || [];
+    const related = data.relatedLinks || data.article?.relatedLinks || [];
+    const sources = data.sourcesNote || data.article?.sourcesNote || '';
     let html = '';
+    if (seoTitle || meta) {
+      html += `<div class="generated-block"><h3><span class="pillar-tag pillar-seo">SEO</span> タイトル／メタ候補</h3>
+        <p class="field-hint">検索結果に出す表示用。クリックされやすい要約を意図しています。</p>`;
+      if (seoTitle) html += `<p><strong>title:</strong> ${escapeHtml(seoTitle)}</p>`;
+      if (meta) html += `<p><strong>description:</strong> ${escapeHtml(meta)}</p>`;
+      html += `</div>`;
+    }
     if (data.title || data.article?.h1) {
-      html += `<div class="generated-block"><h3>タイトル</h3><p>${escapeHtml(data.title || data.article?.h1 || '')}</p></div>`;
+      html += `<div class="generated-block"><h3>タイトル（H1）</h3><p>${escapeHtml(data.title || data.article?.h1 || '')}</p></div>`;
+    }
+    if (direct) {
+      html += `<div class="generated-block"><h3><span class="pillar-tag pillar-aeo">AEO</span> 直接回答</h3>
+        <p class="field-hint">検索クエリへの一文答え。AI Overview 等が抜き出しやすい位置に置きます。</p>
+        <div class="direct-answer-block generated-text">${paragraphsHtml(direct)}</div></div>`;
     }
     if (intro) {
-      html += `<div class="generated-block"><h3>導入文</h3><div class="generated-text">${paragraphsHtml(intro)}</div></div>`;
+      html += `<div class="generated-block"><h3><span class="pillar-tag pillar-seo">SEO</span> 導入文</h3>
+        <p class="field-hint">続きを読む導線。直接回答のあとに詳しく説明する想定です。</p>
+        <div class="generated-text">${paragraphsHtml(intro)}</div></div>`;
     }
     sections.forEach((sec) => {
-      html += `<div class="generated-block section-block"><h3>${escapeHtml(sec.h2 || '')}</h3>`;
+      const intent = sec.searchIntent
+        ? ` <span class="intent-badge">${escapeHtml(sec.searchIntent)}</span>`
+        : '';
+      html += `<div class="generated-block section-block"><h3>${escapeHtml(sec.h2 || '')}${intent}</h3>
+        <p class="field-hint">本文先頭の「結論:」は AEO（段落抜き出し）向け。意図タグは SEO/GEO の切り口固定です。</p>`;
       (sec.items || []).forEach((item) => {
         html += `<div class="generated-block"><h4>${escapeHtml(item.h3 || '')}</h4>`;
         if (item.content) {
@@ -2066,10 +2217,35 @@
       html += '</div>';
     });
     if (summary) {
-      html += `<div class="generated-block"><h3>まとめ</h3><div class="generated-text">${paragraphsHtml(summary)}</div></div>`;
+      html += `<div class="generated-block"><h3><span class="pillar-tag pillar-seo">SEO</span> / <span class="pillar-tag pillar-geo">GEO</span> まとめ</h3>
+        <p class="field-hint">記事の要点再提示。引用・要約の材料にもなります。</p>
+        <div class="generated-text">${paragraphsHtml(summary)}</div></div>`;
+    }
+    if (faq.length) {
+      html += `<div class="generated-block"><h3><span class="pillar-tag pillar-aeo">AEO</span> FAQ</h3>
+        <p class="field-hint">よくある質問単位で答えを渡すためのブロックです。</p>`;
+      faq.forEach((q) => {
+        html += `<div class="generated-block"><h4>${escapeHtml(q.question)}</h4><div class="generated-text">${paragraphsHtml(q.answer)}</div></div>`;
+      });
+      html += `</div>`;
+    }
+    if (related.length) {
+      html += `<div class="generated-block"><h3><span class="pillar-tag pillar-seo">SEO</span> 内部リンク候補</h3>
+        <p class="field-hint">同カテゴリ・関連意図への回遊用（CMSで実URLに差し替え）。</p><ul>`;
+      related.forEach((r) => {
+        html += `<li><strong>${escapeHtml(r.anchor)}</strong>${r.hint ? ` — ${escapeHtml(r.hint)}` : ''}</li>`;
+      });
+      html += `</ul></div>`;
+    }
+    if (sources) {
+      html += `<div class="generated-block"><h3><span class="pillar-tag pillar-geo">GEO</span> 出典・更新メモ</h3>
+        <p class="field-hint">生成AIが根拠付きで扱いやすい注記です。架空の日付は付けません。</p>
+        <div class="generated-text">${paragraphsHtml(sources)}</div></div>`;
     }
     return html;
   }
+
+  let lastArticleData = null;
 
   formArticle?.addEventListener('submit', async (e) => {
     e.preventDefault();
@@ -2111,16 +2287,55 @@
         skipScrape: true,
         generateIntroduction: Boolean(document.getElementById('article-gen-intro')?.checked),
         generateSummary: Boolean(document.getElementById('article-gen-summary')?.checked),
+        generateAeoPack: Boolean(document.getElementById('article-gen-aeo')?.checked),
+        generateFaq: Boolean(document.getElementById('article-gen-faq')?.checked),
       });
 
+      lastArticleData = data;
       renderWarnings(articleWarnings, data.warnings);
+      renderAeoChecklist(data.aeoChecklist);
       articleBody.innerHTML = renderOutlineArticleResult(data);
+      const htmlOut = document.getElementById('article-html-output');
+      if (htmlOut) {
+        htmlOut.value = buildCmsHtmlFromArticle(data);
+        htmlOut.hidden = false;
+      }
       articleResult.hidden = false;
     } catch (err) {
       showError(articleError, err.message);
       articleResult.hidden = true;
+      lastArticleData = null;
     } finally {
       setLoading(articleSubmit, false, '確定した見出しで記事を生成', '生成中...');
+    }
+  });
+
+  document.getElementById('article-copy-html')?.addEventListener('click', async () => {
+    const htmlOut = document.getElementById('article-html-output');
+    const msg = document.getElementById('article-copy-msg');
+    const text = htmlOut?.value || (lastArticleData ? buildCmsHtmlFromArticle(lastArticleData) : '');
+    if (!text) {
+      if (msg) {
+        msg.hidden = false;
+        msg.textContent = 'コピーするHTMLがありません。先に記事を生成してください。';
+      }
+      return;
+    }
+    try {
+      await navigator.clipboard.writeText(text);
+      if (msg) {
+        msg.hidden = false;
+        msg.textContent = 'CMS用HTMLをコピーしました。';
+      }
+    } catch {
+      if (htmlOut) {
+        htmlOut.hidden = false;
+        htmlOut.select();
+      }
+      if (msg) {
+        msg.hidden = false;
+        msg.textContent = '自動コピーに失敗しました。下のテキストを手動でコピーしてください。';
+      }
     }
   });
 
@@ -2138,5 +2353,14 @@
   document.getElementById('article-clear')?.addEventListener('click', () => {
     articleResult.hidden = true;
     showError(articleError, '');
+    if (articleBody) articleBody.innerHTML = '';
+    lastArticleData = null;
+    renderAeoChecklist([]);
+    const htmlOut = document.getElementById('article-html-output');
+    if (htmlOut) {
+      htmlOut.value = '';
+      htmlOut.hidden = true;
+    }
   });
+
 })();

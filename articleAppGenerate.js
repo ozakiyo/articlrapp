@@ -34,7 +34,12 @@ function normalizeHeadingOutline(keyword, sectionsRaw) {
   const list = Array.isArray(sectionsRaw) ? sectionsRaw : [];
   return defaults.map((def, i) => {
     const src = list[i] || {};
-    const itemsSrc = Array.isArray(src.items) ? src.items : null;
+    const itemsSrc = Array.isArray(src.items)
+      ? src.items
+      : Array.isArray(src.subsections) &&
+          src.subsections.some((x) => x && typeof x === 'object' && (x.h3 || x.title || x.intent))
+        ? src.subsections
+        : null;
     const subsRaw = itemsSrc
       ? itemsSrc.map((it) => (typeof it === 'string' ? it : it?.h3 || ''))
       : normalizeSubsectionsList(src.subsections);
@@ -50,14 +55,26 @@ function normalizeHeadingOutline(keyword, sectionsRaw) {
         const h4 = Array.isArray(raw?.h4s) ? raw.h4s[k] : '';
         return String(h4 || '').trim();
       });
-      return { h3, h4s };
+      const intent = String(
+        (raw && typeof raw === 'object' ? raw.intent || raw.searchIntent : '') ||
+          (typeof h3Raw === 'object' ? h3Raw?.intent || h3Raw?.searchIntent : '') ||
+          ''
+      ).trim();
+      return { h3, h4s, intent };
     });
     return {
       h2: String(src.h2 || def.h2).trim() || def.h2,
+      searchIntent: String(src.searchIntent || src.intent || defIntentForH2(def.h2, i)).trim(),
       subsections: items.map((it) => it.h3),
       items,
     };
   });
+}
+
+function defIntentForH2(h2, index) {
+  if (index === 0 || /選び|ポイント|比較|基準/.test(String(h2 || ''))) return '選び方';
+  if (/メーカー|ブランド/.test(String(h2 || ''))) return 'メーカー';
+  return 'おすすめ';
 }
 
 function collectOutlineSections(body) {
@@ -65,23 +82,26 @@ function collectOutlineSections(body) {
   return body.sections
     .map((sec) => {
       const h2 = String(sec?.h2 || '').trim();
+      const searchIntent = String(sec?.searchIntent || sec?.intent || '').trim();
       const itemsSrc = Array.isArray(sec?.items)
         ? sec.items
         : (Array.isArray(sec?.subsections) ? sec.subsections : []).map((h3) => ({
             h3: typeof h3 === 'string' ? h3 : h3?.h3 || '',
             h4s: [],
+            intent: typeof h3 === 'object' ? h3?.intent || '' : '',
           }));
       const items = itemsSrc
         .map((item) => {
           const h3 = String(item?.h3 || item?.title || '').trim();
+          const intent = String(item?.intent || item?.searchIntent || '').trim();
           const h4s = (Array.isArray(item?.h4s) ? item.h4s : [])
             .map((h) => String(h || '').trim())
             .filter(Boolean)
             .slice(0, MAX_OUTLINE_H4);
-          return { h3, h4s };
+          return { h3, h4s, intent };
         })
         .filter((item) => item.h3);
-      return { h2, items };
+      return { h2, searchIntent, items };
     })
     .filter((sec) => sec.h2 && sec.items.length);
 }
@@ -92,7 +112,22 @@ function bodyPromptRules() {
 - 家電販売店にふさわしいフォーマルな文体
 - 数値・比較・用途別の提案など、検索ユーザーの満足度を意識
 - 製品名・価格は直接記載しない
+- AEO/GEO向け: content の先頭は必ず「結論: …」の1文（40字前後）から始め、空行のあとに本文を続ける
+- 曖昧語（おすすめ・高品質など単体）を避け、「向いている人」「選ぶ基準」など定義・列挙を明確にする
 - 出力は厳密にJSONのみ`;
+}
+
+/** 本文先頭に結論が無ければ付与 */
+function ensureConclusionPrefix(content, conclusion) {
+  const body = String(content || '').trim();
+  const conc = String(conclusion || '').trim();
+  if (!body && !conc) return '';
+  if (/^結論[:：]/.test(body)) return body;
+  if (conc) {
+    const line = /^結論[:：]/.test(conc) ? conc : `結論: ${conc}`;
+    return body ? `${line}\n\n${body}` : line;
+  }
+  return body;
 }
 
 async function generateH3BodyContent({
@@ -106,15 +141,16 @@ async function generateH3BodyContent({
   index,
 }) {
   const prompt = `
-あなたはSEOに強い家電専門ライターです。
-以下の競合記事を分析し、キーワード「${keyword}」、タイトル「${title}」、H2見出し「${heading_h2_first}」の子見出し「${h3Heading}」の本文を200文字程度で作成してください。
+あなたはSEO・AEO・GEOに強い家電専門ライターです。
+以下の競合記事を分析し、キーワード「${keyword}」、タイトル「${title}」、H2見出し「${heading_h2_first}」の子見出し「${h3Heading}」の本文を作成してください。
 
 # 出力条件
 - JSON形式で出力
 - 形式:
 {
   "h3": "${h3Heading}",
-  "content": "本文(200文字程度)"
+  "conclusion": "この見出しの結論1文（40字前後・句点で終える）",
+  "content": "結論: （上記conclusion）\\n\\n本文（合計200文字程度。結論行を含む）"
 }
 ${bodyPromptRules()}
 ${competitorTexts ? `\n# 他社記事\n${competitorTexts}` : ''}${referenceOutputSection}
@@ -122,9 +158,10 @@ ${competitorTexts ? `\n# 他社記事\n${competitorTexts}` : ''}${referenceOutpu
 
   console.log(`🧠 Generating H3-${index} body with Gemini`);
   const raw = await generateGeminiTextWithRetry(getGeminiModel, prompt);
-  const data = parseJsonFromModelOutput(raw);
-  console.log(`🧾 H3-${index} generated:`, data);
-  return data;
+  const data = parseJsonFromModelOutput(raw) || {};
+  const content = ensureConclusionPrefix(data.content, data.conclusion);
+  console.log(`🧾 H3-${index} generated:`, { ...data, content });
+  return { ...data, content, conclusion: String(data.conclusion || '').trim() };
 }
 
 /** 同一H3配下のH4本文を1回のGemini呼び出しでまとめて生成（API回数削減） */
@@ -140,8 +177,8 @@ async function generateH4GroupBodyContent({
 }) {
   const list = h4Headings.map((h, i) => `${i + 1}. ${h}`).join('\n');
   const prompt = `
-あなたはSEOに強い家電専門ライターです。
-キーワード「${keyword}」、タイトル「${title}」、H2「${heading_h2_first}」、H3「${heading_h3}」の配下にある次のH4見出しそれぞれについて、本文を各200文字程度で作成してください。
+あなたはSEO・AEO・GEOに強い家電専門ライターです。
+キーワード「${keyword}」、タイトル「${title}」、H2「${heading_h2_first}」、H3「${heading_h3}」の配下にある次のH4見出しそれぞれについて、本文を作成してください。
 
 # 対象H4
 ${list}
@@ -151,7 +188,11 @@ ${list}
 - 形式:
 {
   "h4_items": [
-    { "h4": "対象H4と同じ文言", "content": "本文(200文字程度)" }
+    {
+      "h4": "対象H4と同じ文言",
+      "conclusion": "結論1文（40字前後）",
+      "content": "結論: （conclusion）\\n\\n本文（各200文字程度）"
+    }
   ]
 }
 - h4_items は対象H4と同じ件数・同じ順序
@@ -169,12 +210,18 @@ ${competitorTexts ? `\n# 他社記事\n${competitorTexts}` : ''}${referenceOutpu
   itemsRaw.forEach((item) => {
     const key = String(item?.h4 || '').trim();
     if (!key) return;
-    byH4.set(key, String(item?.content || '').trim());
+    byH4.set(key, {
+      content: ensureConclusionPrefix(item?.content, item?.conclusion),
+      conclusion: String(item?.conclusion || '').trim(),
+    });
   });
-  return h4Headings.map((h4, index) => ({
-    h4,
-    content: byH4.get(h4) || String(itemsRaw[index]?.content || '').trim(),
-  }));
+  return h4Headings.map((h4, index) => {
+    const hit = byH4.get(h4) || {
+      content: ensureConclusionPrefix(itemsRaw[index]?.content, itemsRaw[index]?.conclusion),
+      conclusion: String(itemsRaw[index]?.conclusion || '').trim(),
+    };
+    return { h4, content: hit.content, conclusion: hit.conclusion };
+  });
 }
 
 /**
@@ -268,16 +315,27 @@ function buildSelectionGuideHeadingPrompt({
   "sections": [
     {
       "h2": "${pointsH2}",
-      "subsections": ["観点H3-1", "観点H3-2", "観点H3-3"]
+      "searchIntent": "選び方",
+      "subsections": [
+        { "h3": "観点H3-1", "intent": "比較" },
+        { "h3": "観点H3-2", "intent": "選び方" },
+        { "h3": "観点H3-3", "intent": "用途" }
+      ]
     },
     {
       "h2": "${makersH2}",
-      "subsections": ["メーカー名1", "メーカー名2", "メーカー名3"]
+      "searchIntent": "メーカー",
+      "subsections": [
+        { "h3": "メーカー名1", "intent": "メーカー" },
+        { "h3": "メーカー名2", "intent": "メーカー" },
+        { "h3": "メーカー名3", "intent": "メーカー" }
+      ]
     }
   ]
 }
 - sections は必ず2件（上記H2文言をほぼこのまま使う。語尾の微調整のみ可）
-- 各H2に H3 をちょうど3つ
+- 各H2に H3 をちょうど3つ（文字列のみでも可。その場合も searchIntent は付与）
+- searchIntent / intent は次のいずれか: 比較 / 選び方 / おすすめ / メーカー / 用途 / FAQ
 - 「${pointsH2}」のH3は「〜をチェック」「〜の見方」など判断軸にする
 - 「${makersH2}」のH3はメーカー名（またはブランド名）にする
 - 見出しテキストのみ（本文禁止）
@@ -579,6 +637,7 @@ async function generateOutlineArticleBodies({
           outItems.push({
             h3: item.h3,
             content: data?.content || '',
+            conclusion: data?.conclusion || '',
             h4_items: [],
           });
           contentResults.push({ heading: item.h3, data, level: 'h3' });
@@ -590,12 +649,17 @@ async function generateOutlineArticleBodies({
           outItems.push({
             h3: item.h3,
             content: '',
+            conclusion: '',
             h4_items: [],
           });
         }
       }
     }
-    outlineResultSections.push({ h2: sec.h2, items: outItems });
+    outlineResultSections.push({
+      h2: sec.h2,
+      searchIntent: sec.searchIntent || '',
+      items: outItems,
+    });
   }
 
   return { contentResults, outlineResultSections };
@@ -670,6 +734,169 @@ function registerArticleAppRoutes(app, { scrape, getGeminiModel, bindGetAiModel 
   });
 }
 
+function normalizeFaqList(raw) {
+  if (!Array.isArray(raw)) return [];
+  return raw
+    .map((item) => ({
+      question: String(item?.question || item?.q || '').trim(),
+      answer: String(item?.answer || item?.a || '').trim(),
+    }))
+    .filter((item) => item.question && item.answer)
+    .slice(0, 5);
+}
+
+function buildAeoChecklist({
+  directAnswer,
+  sections,
+  faq,
+  seoTitle,
+  metaDescription,
+  relatedLinks,
+  sourcesNote,
+}) {
+  const flatContents = [];
+  for (const sec of sections || []) {
+    for (const item of sec.items || []) {
+      if (item.content) flatContents.push(item.content);
+      for (const h4 of item.h4_items || []) {
+        if (h4.content) flatContents.push(h4.content);
+      }
+    }
+  }
+  const withConclusion = flatContents.filter((c) => /^結論[:：]/.test(String(c).trim()));
+  return [
+    {
+      id: 'directAnswer',
+      pillar: 'AEO',
+      label: '直接回答（冒頭）あり',
+      purpose: 'AI Overview / スニペットが抜き出しやすい一文回答',
+      ok: Boolean(String(directAnswer || '').trim()),
+    },
+    {
+      id: 'h3Conclusion',
+      pillar: 'AEO',
+      label: '見出し本文に結論行あり',
+      purpose: '段落単位で答えを抜き出せるようにする',
+      ok: flatContents.length > 0 && withConclusion.length >= Math.ceil(flatContents.length * 0.5),
+    },
+    {
+      id: 'faq',
+      pillar: 'AEO',
+      label: 'FAQ が3件以上',
+      purpose: '質問単位の回答エンジン向け',
+      ok: (faq || []).length >= 3,
+    },
+    {
+      id: 'seoTitle',
+      pillar: 'SEO',
+      label: 'SEOタイトル候補あり',
+      purpose: '検索結果のタイトル表示・クリック率',
+      ok: Boolean(String(seoTitle || '').trim()),
+    },
+    {
+      id: 'metaDescription',
+      pillar: 'SEO',
+      label: 'メタディスクリプション候補あり',
+      purpose: '検索結果の説明文・要約提示',
+      ok: Boolean(String(metaDescription || '').trim()),
+    },
+    {
+      id: 'relatedLinks',
+      pillar: 'SEO',
+      label: '内部リンク候補あり',
+      purpose: '回遊・関連意図の補強（CMS貼り付け用）',
+      ok: (relatedLinks || []).length >= 1,
+    },
+    {
+      id: 'sourcesNote',
+      pillar: 'GEO',
+      label: '出典・更新メモあり',
+      purpose: '生成AIが根拠付きで扱いやすい注記',
+      ok: Boolean(String(sourcesNote || '').trim()),
+    },
+  ];
+}
+
+async function generateAeoSeoPack({
+  getGeminiModel,
+  keyword,
+  title,
+  introduction,
+  summary,
+  outlineResultSections,
+  bodiesForSummary,
+  competitorUrls,
+  referenceUrls,
+  generateFaq,
+}) {
+  const outlinePreview = (outlineResultSections || [])
+    .map((sec) => {
+      const items = (sec.items || []).map((it) => `  - H3: ${it.h3}`).join('\n');
+      return `H2: ${sec.h2}\n${items}`;
+    })
+    .join('\n');
+
+  const prompt = `
+あなたはSEO・AEO・GEOに強い家電専門エディターです。
+キーワード「${keyword}」、タイトル「${title || keyword}」の特集記事向けに、検索・AI回答で抜き出されやすい補助ブロックを作成してください。
+
+# 導入文
+${introduction || '（なし）'}
+
+# まとめ
+${summary || '（なし）'}
+
+# 見出し構成
+${outlinePreview}
+
+# 本文抜粋
+${String(bodiesForSummary || '').slice(0, 6000)}
+
+# 出力（厳密にJSONのみ）
+{
+  "seoTitle": "検索結果用タイトル（28〜32字目安。キーワードを自然に含む）",
+  "metaDescription": "メタディスクリプション（80〜120字。結論と対象読者を含める）",
+  "directAnswer": "検索クエリへの直接回答（40〜80字。1文で完結）",
+  "faq": [
+    { "question": "よくある質問", "answer": "簡潔な回答（60〜120字）" }
+  ],
+  "relatedLinks": [
+    { "anchor": "アンカーテキスト案", "hint": "リンク先の内容ヒント（例: 同カテゴリの選び方記事）" }
+  ],
+  "sourcesNote": "参考・更新に関する注記（ランキング時点・比較の留意。架空の日付は書かない）"
+}
+
+# 制約
+- faq は${generateFaq ? '3〜5件必須' : '空配列 [] でよい'}
+- relatedLinks は2〜4件（CMS貼り付け用の候補。実URLは不要）
+- 製品名・価格は直接書かない
+- 誇大・最上級表現は避ける
+- 家電販売店向けの丁寧な文体
+${competitorUrls?.length ? `\n# 他社URL（参考）\n${competitorUrls.join('\n')}` : ''}
+${referenceUrls?.length ? `\n# 参考URL\n${referenceUrls.join('\n')}` : ''}
+`;
+
+  const raw = await generateGeminiTextWithRetry(getGeminiModel, prompt);
+  const data = parseJsonFromModelOutput(raw) || {};
+  const faq = generateFaq ? normalizeFaqList(data.faq) : [];
+  const relatedLinks = (Array.isArray(data.relatedLinks) ? data.relatedLinks : [])
+    .map((item) => ({
+      anchor: String(item?.anchor || item?.title || '').trim(),
+      hint: String(item?.hint || item?.description || '').trim(),
+    }))
+    .filter((item) => item.anchor)
+    .slice(0, 4);
+
+  return {
+    seoTitle: String(data.seoTitle || data.title || '').trim(),
+    metaDescription: String(data.metaDescription || '').trim(),
+    directAnswer: String(data.directAnswer || '').trim(),
+    faq,
+    relatedLinks,
+    sourcesNote: String(data.sourcesNote || '').trim(),
+  };
+}
+
 async function handleArticleGenerate(
   req,
   res,
@@ -683,12 +910,18 @@ async function handleArticleGenerate(
       req.body.generateIntroduction === true || req.body.generateIntroduction === 'true';
     const generateSummary =
       req.body.generateSummary === true || req.body.generateSummary === 'true';
+    const generateFaq =
+      req.body.generateFaq !== false && req.body.generateFaq !== 'false';
+    const generateAeoPack =
+      req.body.generateAeoPack !== false && req.body.generateAeoPack !== 'false';
 
     console.log('🛎️ POST /api/article/generate called with:', {
       keyword,
       title,
       generateIntroduction,
       generateSummary,
+      generateFaq,
+      generateAeoPack,
       sectionCount: Array.isArray(req.body?.sections) ? req.body.sections.length : 0,
       urls,
       competitorUrl1,
@@ -864,6 +1097,51 @@ ${competitorTexts ? `\n# 他社記事\n${competitorTexts}` : ''}${referenceOutpu
       console.log('⏭️ Skipping summary generation (unchecked)');
     }
 
+    let aeoPack = {
+      seoTitle: '',
+      metaDescription: '',
+      directAnswer: '',
+      faq: [],
+      relatedLinks: [],
+      sourcesNote: '',
+    };
+
+    if (generateAeoPack) {
+      try {
+        await sleep(BODY_GAP_MS);
+        console.log('🧭 Generating AEO/GEO/SEO pack');
+        aeoPack = await generateAeoSeoPack({
+          getGeminiModel,
+          keyword,
+          title: introductionData.h1 || title || '',
+          introduction: introductionData.introduction || '',
+          summary: summaryData?.summary || '',
+          outlineResultSections,
+          bodiesForSummary,
+          competitorUrls: candidateUrls,
+          referenceUrls,
+          generateFaq,
+        });
+      } catch (err) {
+        console.error('❌ AEO/SEO pack generation failed', err.message);
+        warnings.push({
+          message: `直接回答・FAQ・メタ候補の生成に失敗したため空欄にしました。（${String(err.message || '').slice(0, 120)}）`,
+        });
+      }
+    } else {
+      console.log('⏭️ Skipping AEO/SEO pack (unchecked)');
+    }
+
+    const aeoChecklist = buildAeoChecklist({
+      directAnswer: aeoPack.directAnswer,
+      sections: outlineResultSections,
+      faq: aeoPack.faq,
+      seoTitle: aeoPack.seoTitle,
+      metaDescription: aeoPack.metaDescription,
+      relatedLinks: aeoPack.relatedLinks,
+      sourcesNote: aeoPack.sourcesNote,
+    });
+
     console.log(
       '✅ Completed /api/article/generate in',
       `${Date.now() - requestStartedAt}ms`
@@ -872,14 +1150,29 @@ ${competitorTexts ? `\n# 他社記事\n${competitorTexts}` : ''}${referenceOutpu
     res.json({
       generateIntroduction,
       generateSummary,
+      generateFaq,
+      generateAeoPack,
       mode: 'outline',
       aiProviderUsed,
       title: introductionData.h1 || title || '',
+      seoTitle: aeoPack.seoTitle,
+      metaDescription: aeoPack.metaDescription,
+      directAnswer: aeoPack.directAnswer,
+      faq: aeoPack.faq,
+      relatedLinks: aeoPack.relatedLinks,
+      sourcesNote: aeoPack.sourcesNote,
+      aeoChecklist,
       introduction: introductionData.introduction || '',
       summary: summaryData?.summary || '',
       sections: outlineResultSections,
       article: {
         h1: introductionData.h1 || title || '',
+        seoTitle: aeoPack.seoTitle,
+        metaDescription: aeoPack.metaDescription,
+        directAnswer: aeoPack.directAnswer,
+        faq: aeoPack.faq,
+        relatedLinks: aeoPack.relatedLinks,
+        sourcesNote: aeoPack.sourcesNote,
         introduction: introductionData.introduction || '',
         summary: summaryData?.summary || '',
         sections: outlineResultSections,
@@ -1000,6 +1293,7 @@ async function handleHeadingGenerate(
     outline,
     sections: outline.map((sec) => ({
       h2: sec.h2,
+      searchIntent: sec.searchIntent || '',
       subsections: sec.subsections,
       items: sec.items,
     })),

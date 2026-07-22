@@ -42,10 +42,49 @@
           <ul class="guide-list">
             <li><strong>競合調査</strong> … ランキングURL・競合記事URLの準備と詳細取得（セットアップの本拠）</li>
             <li><strong>週次レポート</strong> … 毎週の変化確認（売れ筋・競合見出し差分・改修）</li>
-            <li><strong>見出し生成</strong> … H2×2＋各H3×3を作成。必要なら H4 もここで提案・確定</li>
-            <li><strong>用途別おすすめ</strong> … 掲載商品の用途別3選と説明・機能表</li>
-            <li><strong>記事生成</strong> … 確定済み見出しの本文を作成（導入文・まとめは任意）</li>
+            <li><strong>見出し生成</strong> … H2×2＋各H3×3を作成。必要なら H4 もここで提案・確定。検索意図タグ付き</li>
+            <li><strong>用途別おすすめ</strong> … 掲載商品の用途別3選と説明・機能表（結論／向いている人）</li>
+            <li><strong>記事生成</strong> … 確定済み見出しの本文＋AEO/GEO/SEO補助ブロック</li>
           </ul>
+        </section>
+
+        <section class="panel guide-panel">
+          <h2>AEO / GEO / SEO — 何を意図して組み立てているか</h2>
+          <p class="field-hint">
+            三者は対立しません。同じ記事の中で「抜き出しやすい単位」を増やすのが目的です。各作業タブ上部にも同じ意図の要約があります。
+          </p>
+          <ul class="guide-list aeo-guide-pillars">
+            <li>
+              <span class="pillar-tag pillar-seo">SEO</span>
+              <strong>検索で見つかる・読まれる</strong>
+              <p>タイトル／メタ候補、見出しの意図タグ、内部リンク案で、検索結果と回遊を意識します。</p>
+            </li>
+            <li>
+              <span class="pillar-tag pillar-aeo">AEO</span>
+              <strong>答えエンジンが抜き出しやすい</strong>
+              <p>冒頭の直接回答、各見出し先頭の「結論:」、FAQ で、AI Overview 等が答えを取りやすくします。</p>
+            </li>
+            <li>
+              <span class="pillar-tag pillar-geo">GEO</span>
+              <strong>生成AIが引用しやすい</strong>
+              <p>定義・比較の明確さ、「向いている人」、出典・更新メモで、ChatGPT 等に根拠付きで扱われやすくします。</p>
+            </li>
+          </ul>
+          <h3 class="guide-subhead">どのタブで何が付くか</h3>
+          <ul class="guide-list">
+            <li>
+              <strong>見出し生成</strong> … 意図タグ（選び方／メーカーなど）＝SEO/AEO/GEO の切り口固定
+            </li>
+            <li>
+              <strong>用途別おすすめ</strong> … 結論1文（AEO）＋向いている人（GEO）＋機能表の判断軸
+            </li>
+            <li>
+              <strong>記事生成</strong> … 本文の「結論:」（AEO）＋補助オプションで直接回答・FAQ・title/meta・内部リンク・出典メモ
+            </li>
+          </ul>
+          <p class="field-hint">
+            記事生成後のチェックリストは、意図どおり揃っているかの確認用です（緑＝揃っている／赤＝不足）。
+          </p>
         </section>
 
         <section class="panel guide-panel">
@@ -69,7 +108,10 @@
             </li>
             <li>
               <strong>記事生成</strong>
-              <p>確定した見出しを引き継ぎ、本文のみ生成。導入文・まとめは任意。</p>
+              <p>
+                確定した見出しを引き継ぎ本文を生成。導入文・まとめは任意。
+                AEO/GEO/SEO補助とFAQは既定オン（直接回答・メタ候補・内部リンク・出典メモ）。
+              </p>
             </li>
           </ol>
         </section>
@@ -100,11 +142,13 @@
             <li>競合調査は初回セットアップとURL変更時。毎週の本体は週次レポートです。</li>
             <li>月が変わっただけでは競合調査のやり直しは不要です（URL変更時のみ）。</li>
             <li>AIは上部ナビ右端で <strong>Gemini / ChatGPT / Cursor</strong> を選択できます（用途別も含む）。ChatGPT は <code>OPENAI_API_KEY</code>、Cursor は <code>CURSOR_API_KEY</code> が必要です。</li>
+            <li>AEO/GEO/SEO の詳細は上の専用セクションを参照。各作業タブ上部の意図パネルと結果のチェックリストも併用してください。</li>
           </ul>
           <div class="actions">
             <button type="button" class="secondary" data-guide-go="weekly">週次レポートへ</button>
             <button type="button" class="secondary" data-guide-go="kyoso">競合調査へ</button>
             <button type="button" class="secondary" data-guide-go="headings">見出し生成へ</button>
+            <button type="button" class="secondary" data-guide-go="article">記事生成へ</button>
           </div>
         </section>
       </section>
@@ -374,6 +418,23 @@
           <p>
             商品ランキングから用途を3つに分け、コジマ取扱品で担当者おすすめ3選を作り、メーカー公式情報をもとに説明文と機能表を生成します。
           </p>
+          <div class="aeo-intent-panel" aria-label="用途別の AEO GEO SEO 意図">
+            <p class="aeo-intent-lead">用途別ブロックの意図</p>
+            <ul class="aeo-intent-list">
+              <li>
+                <span class="pillar-tag pillar-aeo">AEO</span>
+                「誰向けか」が明確な結論1文 → 質問への直接回答になりやすい
+              </li>
+              <li>
+                <span class="pillar-tag pillar-geo">GEO</span>
+                「向いている人」＋機能表の判断軸 → 比較・引用しやすい
+              </li>
+              <li>
+                <span class="pillar-tag pillar-seo">SEO</span>
+                用途名・商品見出しで検索意図（おすすめ／比較）に寄せる
+              </li>
+            </ul>
+          </div>
         </header>
 
         <section class="panel">
@@ -606,6 +667,23 @@
           <p>
             参考URL（例: コジマ掃除機特集）を踏まえ、<strong>「◯◯選びのポイント」</strong>と<strong>「◯◯の人気メーカー」</strong>のH2を各1つ、配下H3を各3つ作成します。商品おすすめは用途別おすすめタブで作成します。
           </p>
+          <div class="aeo-intent-panel" aria-label="見出しの検索意図">
+            <p class="aeo-intent-lead">見出しに付く意図タグ（選び方／メーカーなど）の意味</p>
+            <ul class="aeo-intent-list">
+              <li>
+                <span class="pillar-tag pillar-seo">SEO</span>
+                H3 が検索意図からずれないよう制約するラベル
+              </li>
+              <li>
+                <span class="pillar-tag pillar-aeo">AEO</span>
+                「何の答えの見出しか」を先に固定し、本文の結論と揃える
+              </li>
+              <li>
+                <span class="pillar-tag pillar-geo">GEO</span>
+                比較・定義の切り口を明示し、引用されやすい構成にする
+              </li>
+            </ul>
+          </div>
         </header>
         <section class="panel">
           <h2>週次・競合からの取り込み</h2>
@@ -721,6 +799,23 @@
           <p>
             見出し生成で確定した H2／H3（と任意の H4）を引き継ぎ、本文だけを作成します。見出しの追加・変更は見出し生成タブで行ってください。
           </p>
+          <div class="aeo-intent-panel" aria-label="AEO GEO SEO の組み立て意図">
+            <p class="aeo-intent-lead">このタブの出力は、次の3つを同時に満たす組み立てです。</p>
+            <ul class="aeo-intent-list">
+              <li>
+                <span class="pillar-tag pillar-seo">SEO</span>
+                検索で見つかる・読まれる（タイトル／メタ、見出し意図、内部リンク候補）
+              </li>
+              <li>
+                <span class="pillar-tag pillar-aeo">AEO</span>
+                AI Overview 等が抜き出しやすい（冒頭の直接回答、各見出しの「結論:」、FAQ）
+              </li>
+              <li>
+                <span class="pillar-tag pillar-geo">GEO</span>
+                生成AIが引用しやすい（定義・比較の明確さ、出典・更新メモ、曖昧表現の抑制）
+              </li>
+            </ul>
+          </div>
         </header>
         <section class="panel">
           <div class="actions">
@@ -761,12 +856,23 @@
               <span>生成オプション</span>
               <label class="checkbox-field">
                 <input type="checkbox" id="article-gen-intro" />
-                <span>導入文を作成する</span>
+                <span>導入文を作成する <em class="opt-intent">（SEO: 読了導線）</em></span>
               </label>
               <label class="checkbox-field">
                 <input type="checkbox" id="article-gen-summary" />
-                <span>まとめを作成する</span>
+                <span>まとめを作成する <em class="opt-intent">（SEO/GEO: 要点の再提示）</em></span>
               </label>
+              <label class="checkbox-field">
+                <input type="checkbox" id="article-gen-aeo" checked />
+                <span>AEO/GEO/SEO補助を作成する <em class="opt-intent">（直接回答・title/meta・内部リンク・出典）</em></span>
+              </label>
+              <label class="checkbox-field">
+                <input type="checkbox" id="article-gen-faq" checked />
+                <span>FAQ（3〜5問）を作成する <em class="opt-intent">（AEO: 質問単位の抜き出し）</em></span>
+              </label>
+              <p class="field-hint">
+                本文は常に各見出し先頭に「結論:」を付けます（AEO向け）。補助ブロックは CMS 貼り付け用です。
+              </p>
             </div>
 
             <div class="field">
@@ -789,10 +895,14 @@
         <section id="article-result" class="panel" hidden>
           <h2>記事生成結果</h2>
           <div class="result-actions">
+            <button type="button" class="secondary" id="article-copy-html">CMS用HTMLをコピー</button>
             <button type="button" class="secondary" id="article-clear">クリア</button>
           </div>
+          <p id="article-copy-msg" class="field-hint" hidden></p>
           <div id="article-warnings" class="warning" hidden></div>
+          <div id="article-aeo-checklist" class="aeo-checklist" hidden></div>
           <div id="article-body" class="generated-article"></div>
+          <textarea id="article-html-output" class="article-html-output" rows="8" readonly hidden></textarea>
         </section>
       </section>
     </div>

@@ -366,7 +366,9 @@ ${labelsJson}
 # 出力（厳密にJSONのみ）
 {
   "heading": "メーカー「シリーズ」型番（主要スペック要約）",
-  "description": "2〜4文の説明。機能名は「」で示す。用途に結び付ける。",
+  "conclusion": "この商品の結論1文（40字前後。用途への適合を述べる）",
+  "suitableFor": "向いている人（短く。例: 一人暮らしで静音重視の方）",
+  "description": "2〜4文の説明。冒頭に結論の趣旨を含め、機能名は「」で示す。用途に結び付ける。",
   "featureRows": [
     { "label": "上記の項目名と完全一致", "value": "値。不明なら —" }
   ],
@@ -374,6 +376,7 @@ ${labelsJson}
 }
 
 # 制約
+- conclusion と suitableFor は必須（空にしない）
 - featureRows は上記ラベルをすべて、同じ順序で出力する（件数はラベル数と一致）
 - ラベル名を言い換えない・追加しない・省略しない
 - 取得テキストにないスペック・数値は捏造しない。不明な項目の value は「—」
@@ -390,10 +393,20 @@ ${labelsJson}
       }))
     : [];
   const featureRows = normalizeFeatureRows(rawRows, labels);
+  const conclusion = String(data?.conclusion || '').trim();
+  const suitableFor = String(data?.suitableFor || '').trim();
+  let description = String(data?.description || '').trim();
+  if (conclusion && !description.includes(conclusion)) {
+    description = description
+      ? `${conclusion}\n\n${description}`
+      : conclusion;
+  }
 
   return {
     heading: String(data?.heading || product.label || product.productName || '').trim(),
-    description: String(data?.description || '').trim(),
+    conclusion,
+    suitableFor,
+    description,
     featureRows,
     linkLabel: String(data?.linkLabel || '商品詳細はこちら').trim(),
     manufacturerUrl: manufacturerUrl || null,
@@ -421,9 +434,17 @@ function renderProductBlockHtml(copy, rankIndex) {
     copy.hrefKojima
       ? `<p><a href="${escapeHtml(copy.hrefKojima)}" target="_blank" rel="noopener">${escapeHtml(copy.linkLabel || '商品詳細はこちら')}</a></p>`
       : '';
+  const conclusion = copy.conclusion
+    ? `<p><strong><span class="pillar-tag pillar-aeo">AEO</span> 結論:</strong> ${escapeHtml(copy.conclusion)}</p>`
+    : '';
+  const suitableFor = copy.suitableFor
+    ? `<p><strong><span class="pillar-tag pillar-geo">GEO</span> 向いている人:</strong> ${escapeHtml(copy.suitableFor)}</p>`
+    : '';
   return `
 <p><strong>${rankIndex}</strong></p>
 <h4>${escapeHtml(copy.heading)}</h4>
+${conclusion}
+${suitableFor}
 <p>${escapeHtml(copy.description)}</p>
 ${rows ? `<table class="usecase-feature-table"><tbody>${rows}</tbody></table>` : ''}
 ${link}

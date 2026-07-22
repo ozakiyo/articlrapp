@@ -204,6 +204,21 @@ header p {
   margin-top: 0;
 }
 
+.guide-subhead {
+  margin: 1.25rem 0 0.5rem;
+  font-size: 1rem;
+  color: #1f2933;
+}
+
+.aeo-guide-pillars > li {
+  margin-bottom: 0.85rem;
+}
+
+.aeo-guide-pillars > li > p {
+  margin: 0.35rem 0 0;
+  padding-left: 0.15rem;
+}
+
 .guide-list,
 .guide-steps {
   margin: 0.75rem 0 0;
@@ -506,6 +521,147 @@ button.secondary {
 .checkbox-field span {
   font-weight: 500;
   color: #1f2933;
+}
+
+.intent-badge {
+  display: inline-block;
+  margin-left: 0.35rem;
+  padding: 0.05rem 0.4rem;
+  font-size: 0.7rem;
+  font-weight: 500;
+  color: #52606d;
+  background: #f5f7fa;
+  border: 1px solid #e4e7eb;
+  border-radius: 3px;
+  vertical-align: middle;
+}
+
+.aeo-checklist {
+  margin: 0 0 1.25rem;
+  padding: 0.85rem 1rem;
+  background: #f8fafc;
+  border: 1px solid #e4e7eb;
+  border-radius: 8px;
+}
+
+.aeo-checklist h3 {
+  margin: 0 0 0.5rem;
+  font-size: 0.95rem;
+}
+
+.aeo-checklist ul {
+  margin: 0;
+  padding-left: 1.1rem;
+}
+
+.aeo-checklist li {
+  margin: 0.2rem 0;
+  font-size: 0.85rem;
+  color: #52606d;
+}
+
+.aeo-checklist li.ok {
+  color: #276749;
+}
+
+.aeo-checklist li.ng {
+  color: #9b2c2c;
+}
+
+.article-html-output {
+  width: 100%;
+  margin-top: 1rem;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.75rem;
+}
+
+.direct-answer-block {
+  border-left: 3px solid #7b8794;
+  padding-left: 0.85rem;
+  margin-bottom: 0.75rem;
+}
+
+.aeo-intent-panel {
+  margin-top: 1rem;
+  padding: 0.9rem 1rem;
+  background: #f8fafc;
+  border: 1px solid #e4e7eb;
+  border-radius: 8px;
+}
+
+.aeo-intent-lead {
+  margin: 0 0 0.55rem;
+  font-size: 0.9rem;
+  color: #3e4c59;
+  font-weight: 600;
+}
+
+.aeo-intent-list {
+  margin: 0;
+  padding-left: 0;
+  list-style: none;
+}
+
+.aeo-intent-list li {
+  margin: 0.4rem 0;
+  font-size: 0.85rem;
+  color: #52606d;
+  line-height: 1.5;
+}
+
+.pillar-tag {
+  display: inline-block;
+  min-width: 2.6rem;
+  margin-right: 0.35rem;
+  padding: 0.08rem 0.4rem;
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  text-align: center;
+  border-radius: 3px;
+  vertical-align: middle;
+}
+
+.pillar-seo {
+  color: #1a365d;
+  background: #ebf4ff;
+  border: 1px solid #bee3f8;
+}
+
+.pillar-aeo {
+  color: #276749;
+  background: #f0fff4;
+  border: 1px solid #c6f6d5;
+}
+
+.pillar-geo {
+  color: #744210;
+  background: #fffff0;
+  border: 1px solid #faf089;
+}
+
+.opt-intent {
+  font-style: normal;
+  font-weight: 400;
+  font-size: 0.78rem;
+  color: #9aa5b1;
+}
+
+.aeo-check-lead {
+  margin: 0 0 0.5rem;
+}
+
+.aeo-check-purpose {
+  display: block;
+  margin: 0.15rem 0 0.35rem 2.9rem;
+  font-size: 0.75rem;
+  color: #7b8794;
+  font-weight: 400;
+}
+
+.aeo-checklist li {
+  list-style: none;
+  margin-left: -1.1rem;
 }
 
 /* PIXTA Results Highlight */
