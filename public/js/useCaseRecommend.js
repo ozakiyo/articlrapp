@@ -173,8 +173,8 @@
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(
           window.AiProvider
-            ? window.AiProvider.withUseCaseBody({ category, items: rankingItems })
-            : { category, items: rankingItems, aiProvider: 'chatgpt' }
+            ? window.AiProvider.withBody({ category, items: rankingItems })
+            : { category, items: rankingItems }
         ),
       });
       const data = await res.json();
@@ -273,7 +273,7 @@
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(
           window.AiProvider
-            ? window.AiProvider.withUseCaseBody({
+            ? window.AiProvider.withBody({
                 category,
                 items: rankingItems,
                 useCases,
@@ -282,7 +282,6 @@
                 category,
                 items: rankingItems,
                 useCases,
-                aiProvider: 'chatgpt',
               }
         ),
       });
@@ -328,8 +327,8 @@
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(
           window.AiProvider
-            ? window.AiProvider.withUseCaseBody({ category, sections })
-            : { category, sections, aiProvider: 'chatgpt' }
+            ? window.AiProvider.withBody({ category, sections })
+            : { category, sections }
         ),
         signal: controller.signal,
       });

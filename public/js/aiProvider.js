@@ -1,11 +1,10 @@
 /**
  * AI プロバイダ選択（既定: Gemini）。ナビ右端の select と localStorage を同期。
- * 用途別おすすめはタイムアウト回避のため ChatGPT を強制する。
+ * Gemini / ChatGPT / Cursor を選択可能（用途別も含む）。
  */
 (function () {
   const STORAGE_KEY = 'articleappNode.aiProvider';
   const DEFAULT = 'gemini';
-  const USECASE_PROVIDER = 'chatgpt';
   const VALID = new Set(['gemini', 'cursor', 'chatgpt']);
 
   function normalize(value) {
@@ -46,11 +45,6 @@
     return base;
   }
 
-  /** 用途別おすすめ用（常に ChatGPT） */
-  function withUseCaseBody(body) {
-    return withBody(body, { force: USECASE_PROVIDER });
-  }
-
   function init() {
     const select = document.getElementById('ai-provider');
     if (!select) return;
@@ -60,7 +54,6 @@
     } catch {
       stored = DEFAULT;
     }
-    // 古い値が select に無い場合は既定へ
     if (![...select.options].some((o) => o.value === stored)) {
       stored = DEFAULT;
     }
@@ -74,10 +67,8 @@
     get,
     set,
     withBody,
-    withUseCaseBody,
     STORAGE_KEY,
     DEFAULT,
-    USECASE_PROVIDER,
   };
 
   if (document.readyState === 'loading') {

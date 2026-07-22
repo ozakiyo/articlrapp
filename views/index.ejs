@@ -19,7 +19,7 @@
             <button type="button" data-tab="headings" class="tab-btn secondary">見出し生成</button>
             <button type="button" data-tab="article" class="tab-btn secondary">記事生成</button>
           </div>
-          <label class="ai-provider-switch" title="AIエンジン（通常は Gemini）">
+          <label class="ai-provider-switch" title="AIエンジン（Gemini / ChatGPT / Cursor）">
             <span class="ai-provider-switch-label">AI</span>
             <select id="ai-provider" name="aiProvider" aria-label="AIエンジン">
               <option value="gemini" selected>Gemini</option>
@@ -99,7 +99,7 @@
             <li>商品のおすすめ見出し・説明は<strong>用途別おすすめ</strong>側で作ります。</li>
             <li>競合調査は初回セットアップとURL変更時。毎週の本体は週次レポートです。</li>
             <li>月が変わっただけでは競合調査のやり直しは不要です（URL変更時のみ）。</li>
-            <li>AIは通常 <strong>Gemini</strong>。用途別おすすめはタイムアウト回避のため <strong>ChatGPT</strong> を使います。ナビ右端の「AI」から Cursor にも切り替えられます。</li>
+            <li>AIは上部ナビ右端で <strong>Gemini / ChatGPT / Cursor</strong> を選択できます（用途別も含む）。ChatGPT は <code>OPENAI_API_KEY</code>、Cursor は <code>CURSOR_API_KEY</code> が必要です。</li>
           </ul>
           <div class="actions">
             <button type="button" class="secondary" data-guide-go="weekly">週次レポートへ</button>
@@ -394,16 +394,14 @@
 
         <section class="panel">
           <h2>2. 用途を3つ提案・確定</h2>
-          <p class="field-hint usecase-ai-hint">このタブのAI生成は <strong>ChatGPT推奨</strong>（タイムアウト回避）</p>
+          <p class="field-hint usecase-ai-hint">AIは上部ナビ右端で選択（Gemini / ChatGPT / Cursor）。用途別の一括生成は <strong>Gemini</strong> が安定しやすいです。</p>
           <div class="actions">
             <button type="button" id="usecase-propose" disabled>用途を3つ提案</button>
-            <span class="usecase-ai-badge" aria-hidden="true">ChatGPT推奨</span>
           </div>
           <p class="field-hint" id="usecase-propose-msg"></p>
           <div id="usecase-use-cases" class="usecase-use-cases"></div>
           <div class="actions">
             <button type="button" id="usecase-confirm-use-cases" disabled>この用途で進む（商品を振り分け）</button>
-            <span class="usecase-ai-badge" aria-hidden="true">ChatGPT推奨</span>
           </div>
         </section>
 
@@ -413,7 +411,6 @@
           <div id="usecase-assignments" class="usecase-assignments"></div>
           <div class="actions">
             <button type="button" id="usecase-generate-all" disabled>説明文・機能表を一括生成</button>
-            <span class="usecase-ai-badge" aria-hidden="true">ChatGPT推奨</span>
           </div>
           <p class="field-hint" id="usecase-generate-msg"></p>
         </section>
