@@ -23,8 +23,6 @@ function normalizeSubsectionsList(v) {
   return [];
 }
 
-const MAX_ARTICLE_H3 = 5;
-const H3_SUFFIXES = ['first', 'second', 'third', 'fourth', 'fifth'];
 const MAX_OUTLINE_H4 = 3;
 
 function normalizeHeadingOutline(keyword, sectionsRaw) {
@@ -36,19 +34,28 @@ function normalizeHeadingOutline(keyword, sectionsRaw) {
   const list = Array.isArray(sectionsRaw) ? sectionsRaw : [];
   return defaults.map((def, i) => {
     const src = list[i] || {};
-    const subsRaw = normalizeSubsectionsList(src.subsections);
-    const subsections = [0, 1, 2].map((j) => {
-      const sub = subsRaw[j];
-      if (typeof sub === 'string') return sub.trim();
-      if (sub && typeof sub === 'object') {
-        return String(sub.h3 || sub.title || '').trim();
-      }
-      return '';
+    const itemsSrc = Array.isArray(src.items) ? src.items : null;
+    const subsRaw = itemsSrc
+      ? itemsSrc.map((it) => (typeof it === 'string' ? it : it?.h3 || ''))
+      : normalizeSubsectionsList(src.subsections);
+    const items = [0, 1, 2].map((j) => {
+      const raw = itemsSrc?.[j];
+      const h3Raw = subsRaw[j];
+      const h3 =
+        (raw && typeof raw === 'object' ? String(raw.h3 || '').trim() : '') ||
+        (typeof h3Raw === 'string'
+          ? h3Raw.trim()
+          : String(h3Raw?.h3 || h3Raw?.title || '').trim());
+      const h4s = [0, 1, 2].map((k) => {
+        const h4 = Array.isArray(raw?.h4s) ? raw.h4s[k] : '';
+        return String(h4 || '').trim();
+      });
+      return { h3, h4s };
     });
     return {
       h2: String(src.h2 || def.h2).trim() || def.h2,
-      subsections,
-      items: subsections.map((h3) => ({ h3, h4s: ['', '', ''] })),
+      subsections: items.map((it) => it.h3),
+      items,
     };
   });
 }
@@ -79,17 +86,13 @@ function collectOutlineSections(body) {
     .filter((sec) => sec.h2 && sec.items.length);
 }
 
-function collectArticleH3Headings(body) {
-  if (Array.isArray(body.heading_h3_list)) {
-    const padded = [...body.heading_h3_list];
-    while (padded.length < MAX_ARTICLE_H3) padded.push('');
-    return padded
-      .slice(0, MAX_ARTICLE_H3)
-      .map((h) => String(h ?? '').trim());
-  }
-  return H3_SUFFIXES.map((suffix) =>
-    String(body[`heading_h3_${suffix}`] ?? '').trim()
-  );
+function bodyPromptRules() {
+  return `- キーワードとの関連性が高く、検索ユーザーの意図を満たす構成にする
+- 内容は具体的で、独自の視点・根拠・事例を交えて説明且つ信頼感があり、客観的
+- 家電販売店にふさわしいフォーマルな文体
+- 数値・比較・用途別の提案など、検索ユーザーの満足度を意識
+- 製品名・価格は直接記載しない
+- 出力は厳密にJSONのみ`;
 }
 
 async function generateH3BodyContent({
@@ -113,12 +116,7 @@ async function generateH3BodyContent({
   "h3": "${h3Heading}",
   "content": "本文(200文字程度)"
 }
-- キーワードとの関連性が高く、検索ユーザーの意図を満たす構成にする
-- 内容は具体的で、独自の視点・根拠・事例を交えて説明且つ信頼感があり、客観的
-- 家電販売店にふさわしいフォーマルな文体
-- 数値・比較・用途別の提案など、検索ユーザーの満足度を意識
-- 製品名・価格は直接記載しない
-- 出力は厳密にJSONのみ
+${bodyPromptRules()}
 ${competitorTexts ? `\n# 他社記事\n${competitorTexts}` : ''}${referenceOutputSection}
 `;
 
@@ -126,74 +124,6 @@ ${competitorTexts ? `\n# 他社記事\n${competitorTexts}` : ''}${referenceOutpu
   const raw = await generateGeminiTextWithRetry(getGeminiModel, prompt);
   const data = parseJsonFromModelOutput(raw);
   console.log(`🧾 H3-${index} generated:`, data);
-  return data;
-}
-
-function buildArticleH3FlatFields(h3BySlot) {
-  const flat = { h3_items: [] };
-  h3BySlot.forEach((entry, i) => {
-    if (!entry) return;
-    const suffix = H3_SUFFIXES[i];
-    if (!suffix) return;
-    const h3 = entry.data?.h3 || entry.heading;
-    const content = entry.data?.content || '';
-    flat[`h3_${suffix}`] = h3;
-    flat[`h3_${suffix}_content`] = content;
-    flat.h3_items.push({ h3, content });
-  });
-  return flat;
-}
-
-const MAX_ARTICLE_H4 = 5;
-
-function collectArticleH4Headings(body) {
-  if (Array.isArray(body.heading_h4_list)) {
-    const padded = [...body.heading_h4_list];
-    while (padded.length < MAX_ARTICLE_H4) padded.push('');
-    return padded
-      .slice(0, MAX_ARTICLE_H4)
-      .map((h) => String(h ?? '').trim());
-  }
-  return H3_SUFFIXES.map((suffix) =>
-    String(body[`heading_h4_${suffix}`] ?? '').trim()
-  );
-}
-
-async function generateH4BodyContent({
-  getGeminiModel,
-  keyword,
-  title,
-  heading_h2_first,
-  heading_h3,
-  h4Heading,
-  competitorTexts,
-  referenceOutputSection,
-  index,
-}) {
-  const prompt = `
-あなたはSEOに強い家電専門ライターです。
-以下の競合記事を分析し、キーワード「${keyword}」、タイトル「${title}」、H2見出し「${heading_h2_first}」、H3見出し「${heading_h3}」の子見出し「${h4Heading}」（H4）の本文を200文字程度で作成してください。
-
-# 出力条件
-- JSON形式で出力
-- 形式:
-{
-  "h4": "${h4Heading}",
-  "content": "本文(200文字程度)"
-}
-- キーワードとの関連性が高く、検索ユーザーの意図を満たす構成にする
-- 内容は具体的で、独自の視点・根拠・事例を交えて説明且つ信頼感があり、客観的
-- 家電販売店にふさわしいフォーマルな文体
-- 数値・比較・用途別の提案など、検索ユーザーの満足度を意識
-- 製品名・価格は直接記載しない
-- 出力は厳密にJSONのみ
-${competitorTexts ? `\n# 他社記事\n${competitorTexts}` : ''}${referenceOutputSection}
-`;
-
-  console.log(`🧠 Generating H4-${index} body with Gemini`);
-  const raw = await generateGeminiTextWithRetry(getGeminiModel, prompt);
-  const data = parseJsonFromModelOutput(raw);
-  console.log(`🧾 H4-${index} generated:`, data);
   return data;
 }
 
@@ -225,10 +155,7 @@ ${list}
   ]
 }
 - h4_items は対象H4と同じ件数・同じ順序
-- キーワードとの関連性が高く、検索ユーザーの意図を満たす
-- 家電販売店にふさわしいフォーマルな文体
-- 製品名・価格は直接記載しない
-- 出力は厳密にJSONのみ
+${bodyPromptRules()}
 ${competitorTexts ? `\n# 他社記事\n${competitorTexts}` : ''}${referenceOutputSection}
 `;
 
@@ -251,8 +178,8 @@ ${competitorTexts ? `\n# 他社記事\n${competitorTexts}` : ''}${referenceOutpu
 }
 
 /**
- * 記事生成 UI（client/src/App_BK20260113.jsx）向け API。
- * 旧 app_BK20260113.js の POST /api/generate と同等の処理を /api/article/generate に提供する。
+ * 記事アプリ（見出し生成／記事生成）向け API。
+ * 記事本文はアウトライン（H2 → H3 → 任意H4）の sections を受け取って生成する。
  */
 async function scrapeCompetitorArticles(candidateUrls, scrape) {
   const warnings = [];
@@ -292,12 +219,7 @@ function collectHeadingCandidates(body) {
       .filter(Boolean)
       .slice(0, 5);
   }
-  const out = [];
-  for (let i = 1; i <= 5; i++) {
-    const v = String(body?.[`headingCandidate${i}`] || '').trim();
-    if (v) out.push(v);
-  }
-  return out;
+  return [];
 }
 
 function buildHeadingCandidatesPromptSection(candidates) {
@@ -585,8 +507,98 @@ async function generateGeminiTextWithRetry(getGeminiModel, prompt) {
   throw lastErr;
 }
 
-async function generateH4WithGemini(getGeminiModel, prompt) {
-  return generateGeminiTextWithRetry(getGeminiModel, prompt);
+async function generateOutlineArticleBodies({
+  outlineSections,
+  getGeminiModel,
+  keyword,
+  title,
+  competitorTexts,
+  referenceOutputSection,
+  warnings,
+  bodyGapMs = 2500,
+}) {
+  const contentResults = [];
+  const outlineResultSections = [];
+
+  for (const sec of outlineSections) {
+    const outItems = [];
+    for (const item of sec.items) {
+      if (item.h4s?.length) {
+        try {
+          if (contentResults.length > 0 || outItems.length > 0) {
+            // eslint-disable-next-line no-await-in-loop
+            await sleep(bodyGapMs);
+          }
+          // eslint-disable-next-line no-await-in-loop
+          const h4_items = await generateH4GroupBodyContent({
+            getGeminiModel,
+            keyword,
+            title,
+            heading_h2_first: sec.h2,
+            heading_h3: item.h3,
+            h4Headings: item.h4s,
+            competitorTexts,
+            referenceOutputSection,
+          });
+          h4_items.forEach((row) => {
+            contentResults.push({
+              heading: row.h4,
+              data: { content: row.content },
+              level: 'h4',
+            });
+          });
+          outItems.push({ h3: item.h3, content: '', h4_items });
+        } catch (err) {
+          console.error(`❌ outline H4 group generation failed`, err.message);
+          warnings.push({
+            message: `H3「${item.h3}」配下のH4本文生成に失敗したため空欄にしました。（${String(err.message || '').slice(0, 120)}）`,
+          });
+          outItems.push({
+            h3: item.h3,
+            content: '',
+            h4_items: item.h4s.map((h4) => ({ h4, content: '' })),
+          });
+        }
+      } else {
+        try {
+          if (contentResults.length > 0 || outItems.length > 0) {
+            // eslint-disable-next-line no-await-in-loop
+            await sleep(bodyGapMs);
+          }
+          // eslint-disable-next-line no-await-in-loop
+          const data = await generateH3BodyContent({
+            getGeminiModel,
+            keyword,
+            title,
+            heading_h2_first: sec.h2,
+            h3Heading: item.h3,
+            competitorTexts,
+            referenceOutputSection,
+            index: outItems.length + 1,
+          });
+          outItems.push({
+            h3: item.h3,
+            content: data?.content || '',
+            h4_items: [],
+          });
+          contentResults.push({ heading: item.h3, data, level: 'h3' });
+        } catch (err) {
+          console.error(`❌ outline H3 generation failed`, err.message);
+          warnings.push({
+            message: `H3「${item.h3}」本文の生成に失敗したため空欄にしました。（${String(err.message || '').slice(0, 120)}）`,
+          });
+          outItems.push({
+            h3: item.h3,
+            content: '',
+            h4_items: [],
+          });
+        }
+      }
+    }
+    outlineResultSections.push({ h2: sec.h2, items: outItems });
+  }
+
+  return { contentResults, outlineResultSections };
 }
 
 function registerArticleAppRoutes(app, { scrape, getGeminiModel }) {
@@ -648,20 +660,8 @@ async function handleArticleGenerate(
   requestStartedAt,
   { scrape, getGeminiModel }
 ) {
-    const {
-      keyword,
-      title,
-      heading_h2_first,
-      heading_h3_first,
-      heading_h3_second,
-      heading_h3_third,
-      heading_h3_fourth,
-      heading_h3_fifth,
-      urls = [],
-      competitorUrl1,
-      competitorUrl2,
-      competitorUrl3,
-    } = req.body;
+    const { keyword, title = '', urls = [], competitorUrl1, competitorUrl2, competitorUrl3 } =
+      req.body;
 
     const generateIntroduction =
       req.body.generateIntroduction === true || req.body.generateIntroduction === 'true';
@@ -671,19 +671,15 @@ async function handleArticleGenerate(
     console.log('🛎️ POST /api/article/generate called with:', {
       keyword,
       title,
-      heading_h2_first,
-      heading_h3_first,
-      heading_h3_second,
-      heading_h3_third,
-      heading_h3_fourth,
-      heading_h3_fifth,
       generateIntroduction,
       generateSummary,
+      sectionCount: Array.isArray(req.body?.sections) ? req.body.sections.length : 0,
       urls,
       competitorUrl1,
       competitorUrl2,
       competitorUrl3,
       referenceUrl: req.body.referenceUrl,
+      skipScrape: req.body.skipScrape,
     });
 
     if (!keyword) {
@@ -691,24 +687,23 @@ async function handleArticleGenerate(
       return res.status(400).json({ error: 'キーワードを入力してください。' });
     }
 
-    const outlineSectionsEarly = collectOutlineSections(req.body);
+    const outlineSections = collectOutlineSections(req.body);
+    if (!outlineSections?.length) {
+      return res.status(400).json({
+        error:
+          '見出しアウトライン（sections）が必要です。見出し生成タブで見出しを確定してから引き継いでください。',
+      });
+    }
+
     const candidateUrls = collectCandidateUrls(req.body);
     const referenceUrls = collectReferenceUrls(req.body);
     const useArticleContext =
       req.body.useArticleContext === true || req.body.useArticleContext === 'true';
     // 確定アウトラインがある場合は既定でURL再取得しない（joshin等のタイムアウトで全体が落ちるのを防ぐ）
     const skipScrape =
-      Boolean(outlineSectionsEarly?.length) &&
       !useArticleContext &&
       req.body.skipScrape !== false &&
       req.body.skipScrape !== 'false';
-
-    if (candidateUrls.length === 0 && referenceUrls.length === 0 && !outlineSectionsEarly?.length) {
-      console.warn('⚠️ No URLs provided');
-      return res.status(400).json({
-        error: '他社URLまたは参考URLを少なくとも1つ入力してください。',
-      });
-    }
 
     const warnings = [];
     let scrapedArticles = [];
@@ -767,22 +762,16 @@ async function handleArticleGenerate(
   "h1": "${title}",
   "introduction": "導入文(200文字程度)",
 }
-- キーワードとの関連性が高く、検索ユーザーの意図を満たす構成にする
-- 内容は具体的で、独自の視点・根拠・事例を交えて説明且つ信頼感があり、客観的
-- 家電販売店にふさわしいフォーマルな文体
-- 数値・比較・用途別の提案など、検索ユーザーの満足度を意識
-- 製品名・価格は直接記載しない
-- 出力は厳密にJSONのみ
+${bodyPromptRules()}
 ${competitorTexts ? `\n# 他社記事\n${competitorTexts}` : ''}${referenceOutputSection}
   `;
 
       try {
         console.log('🧠 Generating introduction with Gemini');
-        const model = await getGeminiModel();
-        const introductionResult = await model.generateContent({
-          contents: [{ role: 'user', parts: [{ text: introductionPrompt }] }],
-        });
-        const introductionRaw = introductionResult.response?.text?.() || '';
+        const introductionRaw = await generateGeminiTextWithRetry(
+          getGeminiModel,
+          introductionPrompt
+        );
         introductionData = parseJsonFromModelOutput(introductionRaw) || introductionData;
         console.log(
           '🧾 Introduction generated. H2 count:',
@@ -790,157 +779,25 @@ ${competitorTexts ? `\n# 他社記事\n${competitorTexts}` : ''}${referenceOutpu
         );
       } catch (err) {
         console.error('❌ Introduction generation failed', err.message);
-        return res.status(502).json({
-          error: '導入文の生成に失敗しました。',
-          warnings,
+        warnings.push({
+          message: `導入文の生成に失敗したため空欄にしました。（${String(err.message || '').slice(0, 120)}）`,
         });
       }
-
-      console.log('introductionJSON', JSON.stringify(introductionData, null, 2));
     } else {
       console.log('⏭️ Skipping introduction generation (unchecked)');
     }
 
-    const h4Headings = collectArticleH4Headings(req.body);
-    const hasH4 = h4Headings.some((h) => h);
-    const heading_h3_target = String(req.body.heading_h3_target || '').trim();
-    const isH4Mode = hasH4 && heading_h3_target;
-    const outlineSections = outlineSectionsEarly;
-
-    const contentResults = [];
-    let outlineResultSections = null;
     const BODY_GAP_MS = 2500;
-
-    if (outlineSections?.length) {
-      outlineResultSections = [];
-      for (const sec of outlineSections) {
-        const outItems = [];
-        for (const item of sec.items) {
-          if (item.h4s?.length) {
-            try {
-              if (contentResults.length > 0 || outItems.length > 0) {
-                // eslint-disable-next-line no-await-in-loop
-                await sleep(BODY_GAP_MS);
-              }
-              // eslint-disable-next-line no-await-in-loop
-              const h4_items = await generateH4GroupBodyContent({
-                getGeminiModel,
-                keyword,
-                title,
-                heading_h2_first: sec.h2,
-                heading_h3: item.h3,
-                h4Headings: item.h4s,
-                competitorTexts,
-                referenceOutputSection,
-              });
-              h4_items.forEach((row) => {
-                contentResults.push({
-                  heading: row.h4,
-                  data: { content: row.content },
-                  level: 'h4',
-                });
-              });
-              outItems.push({ h3: item.h3, content: '', h4_items });
-            } catch (err) {
-              console.error(`❌ outline H4 group generation failed`, err.message);
-              warnings.push({
-                message: `H3「${item.h3}」配下のH4本文生成に失敗したため空欄にしました。（${String(err.message || '').slice(0, 120)}）`,
-              });
-              outItems.push({
-                h3: item.h3,
-                content: '',
-                h4_items: item.h4s.map((h4) => ({ h4, content: '' })),
-              });
-            }
-          } else {
-            try {
-              if (contentResults.length > 0 || outItems.length > 0) {
-                // eslint-disable-next-line no-await-in-loop
-                await sleep(BODY_GAP_MS);
-              }
-              // eslint-disable-next-line no-await-in-loop
-              const data = await generateH3BodyContent({
-                getGeminiModel,
-                keyword,
-                title,
-                heading_h2_first: sec.h2,
-                h3Heading: item.h3,
-                competitorTexts,
-                referenceOutputSection,
-                index: outItems.length + 1,
-              });
-              outItems.push({
-                h3: item.h3,
-                content: data?.content || '',
-                h4_items: [],
-              });
-              contentResults.push({ heading: item.h3, data, level: 'h3' });
-            } catch (err) {
-              console.error(`❌ outline H3 generation failed`, err.message);
-              warnings.push({
-                message: `H3「${item.h3}」本文の生成に失敗したため空欄にしました。（${String(err.message || '').slice(0, 120)}）`,
-              });
-              outItems.push({
-                h3: item.h3,
-                content: '',
-                h4_items: [],
-              });
-            }
-          }
-        }
-        outlineResultSections.push({ h2: sec.h2, items: outItems });
-      }
-    } else if (isH4Mode) {
-      for (let i = 0; i < h4Headings.length; i++) {
-        const h4Heading = h4Headings[i];
-        if (!h4Heading) continue;
-        try {
-          const data = await generateH4BodyContent({
-            getGeminiModel,
-            keyword,
-            title,
-            heading_h2_first,
-            heading_h3: heading_h3_target,
-            h4Heading,
-            competitorTexts,
-            referenceOutputSection,
-            index: i + 1,
-          });
-          contentResults.push({ heading: h4Heading, data, level: 'h4' });
-        } catch (err) {
-          console.error(`❌ H4-${i + 1} generation failed`, err.message);
-          return res.status(502).json({
-            error: `H4-${i + 1}本文の生成に失敗しました。`,
-            warnings,
-          });
-        }
-      }
-    } else {
-      const h3Headings = collectArticleH3Headings(req.body);
-      for (let i = 0; i < h3Headings.length; i++) {
-        const h3Heading = h3Headings[i];
-        if (!h3Heading) continue;
-        try {
-          const data = await generateH3BodyContent({
-            getGeminiModel,
-            keyword,
-            title,
-            heading_h2_first,
-            h3Heading,
-            competitorTexts,
-            referenceOutputSection,
-            index: i + 1,
-          });
-          contentResults.push({ heading: h3Heading, data, level: 'h3' });
-        } catch (err) {
-          console.error(`❌ H3-${i + 1} generation failed`, err.message);
-          return res.status(502).json({
-            error: `H3-${i + 1}本文の生成に失敗しました。`,
-            warnings,
-          });
-        }
-      }
-    }
+    const { contentResults, outlineResultSections } = await generateOutlineArticleBodies({
+      outlineSections,
+      getGeminiModel,
+      keyword,
+      title,
+      competitorTexts,
+      referenceOutputSection,
+      warnings,
+      bodyGapMs: BODY_GAP_MS,
+    });
 
     const bodiesForSummary = contentResults
       .map((r) => r.data?.content)
@@ -996,99 +853,22 @@ ${competitorTexts ? `\n# 他社記事\n${competitorTexts}` : ''}${referenceOutpu
       `${Date.now() - requestStartedAt}ms`
     );
 
-    if (outlineResultSections?.length) {
-      res.json({
-        generateIntroduction,
-        generateSummary,
-        mode: 'outline',
-        title: introductionData.h1 || title || '',
+    res.json({
+      generateIntroduction,
+      generateSummary,
+      mode: 'outline',
+      title: introductionData.h1 || title || '',
+      introduction: introductionData.introduction || '',
+      summary: summaryData?.summary || '',
+      sections: outlineResultSections,
+      article: {
+        h1: introductionData.h1 || title || '',
         introduction: introductionData.introduction || '',
         summary: summaryData?.summary || '',
         sections: outlineResultSections,
-        article: {
-          h1: introductionData.h1 || title || '',
-          introduction: introductionData.introduction || '',
-          summary: summaryData?.summary || '',
-          sections: outlineResultSections,
-        },
-        warnings,
-      });
-    } else if (isH4Mode) {
-      const h4Items = contentResults
-        .filter((r) => r.level === 'h4')
-        .map((r) => ({
-          h4: r.data?.h4 || r.heading,
-          content: r.data?.content || '',
-        }));
-
-      res.json({
-        generateIntroduction,
-        generateSummary,
-        mode: 'h4',
-        title: introductionData.h1 || title || '',
-        introduction: introductionData.introduction || '',
-        summary: summaryData?.summary || '',
-        article: {
-          h1: introductionData.h1 || title || '',
-          introduction: introductionData.introduction || '',
-          summary: summaryData?.summary || '',
-          h2: heading_h2_first,
-          h3_target: heading_h3_target,
-          h4_items: h4Items,
-        },
-      });
-    } else {
-      const sectionsRaw = pickSectionsFromIntroduction(introductionData);
-      let sectionsForClient = sectionsRaw;
-      const h3Headings = collectArticleH3Headings(req.body);
-
-      let resultIdx = 0;
-      const h3BySlot = h3Headings.map((heading) => {
-        if (!heading) return null;
-        const item = contentResults[resultIdx++];
-        return item ? { heading: item.heading, data: item.data } : null;
-      });
-      const articleH3Fields = buildArticleH3FlatFields(h3BySlot);
-
-      if (!sectionsForClient?.length) {
-        sectionsForClient = [
-          {
-            h2: heading_h2_first || '',
-            content: '',
-            subsections: articleH3Fields.h3_items.map((sub) => ({
-              h3: sub.h3,
-              content: sub.content,
-            })),
-          },
-        ].filter(
-          (sec) =>
-            String(sec.h2 || '').trim() ||
-            (Array.isArray(sec.subsections) && sec.subsections.length > 0)
-        );
-      } else {
-        sectionsForClient = sectionsForClient.map((sec) => ({
-          ...sec,
-          subsections: normalizeSubsectionsList(sec.subsections),
-        }));
-      }
-
-      res.json({
-        generateIntroduction,
-        generateSummary,
-        mode: 'h3',
-        title: introductionData.h1 || title || '',
-        introduction: introductionData.introduction || '',
-        summary: summaryData?.summary || '',
-        article: {
-          h1: introductionData.h1 || title || '',
-          introduction: introductionData.introduction || '',
-          summary: summaryData?.summary || '',
-          sections: sectionsForClient,
-          h2: heading_h2_first,
-          ...articleH3Fields,
-        },
-      });
-    }
+      },
+      warnings,
+    });
 }
 
 async function handleHeadingGenerate(
@@ -1196,15 +976,16 @@ async function handleHeadingGenerate(
   );
 
   const sectionsRaw = normalizeSectionsArray(headingData.sections) || [];
-  const sectionsForClient = normalizeHeadingOutline(keyword, sectionsRaw).map((sec) => ({
-    h2: sec.h2,
-    subsections: sec.subsections,
-  }));
+  const outline = normalizeHeadingOutline(keyword, sectionsRaw);
 
   res.json({
     title: headingData.h1 || '',
-    sections: sectionsForClient,
-    outline: normalizeHeadingOutline(keyword, sectionsRaw),
+    outline,
+    sections: outline.map((sec) => ({
+      h2: sec.h2,
+      subsections: sec.subsections,
+      items: sec.items,
+    })),
     headingCandidatesUsed: headingCandidates,
     warnings,
   });
@@ -1283,7 +1064,7 @@ async function handleSubHeadingGenerate(
           competitorTexts: ctx.competitorTexts,
           referenceOutputSection: ctx.referenceOutputSection,
         });
-    const raw = await generateH4WithGemini(getGeminiModel, prompt);
+    const raw = await generateGeminiTextWithRetry(getGeminiModel, prompt);
     data = parseJsonFromModelOutput(raw);
     console.log('🧾 H4 sub-headings generated:', data);
   } catch (err) {

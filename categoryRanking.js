@@ -982,25 +982,53 @@ const KNOWN_MANUFACTURERS = [
   'Bambi',
 ];
 
+function escapeRegExp_(s) {
+  return String(s).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+/** 長さ降順＋短い英字用 RegExp を事前構築（毎回の sort / new RegExp を避ける） */
+function buildManufacturerSearchIndex(names) {
+  return [...names]
+    .map((name) => String(name))
+    .filter(Boolean)
+    .sort((a, b) => b.length - a.length)
+    .map((name) => {
+      const isShortCode = /^[A-Za-z0-9&]+$/.test(name) && name.length <= 3;
+      return {
+        name,
+        lower: name.toLowerCase(),
+        isShortCode,
+        re: isShortCode
+          ? new RegExp(`(?:^|[^A-Za-z0-9])${escapeRegExp_(name)}(?:[^A-Za-z0-9]|$)`, 'i')
+          : null,
+      };
+    });
+}
+
+const DEFAULT_MANUFACTURER_INDEX = buildManufacturerSearchIndex(KNOWN_MANUFACTURERS);
+
 function findManufacturerInBlock(headBlock, knownManufacturers = KNOWN_MANUFACTURERS) {
   const text = String(headBlock || '');
-  const sorted = [...knownManufacturers].sort((a, b) => b.length - a.length);
+  if (!text) return null;
+  const textLower = text.toLowerCase();
+  const index =
+    knownManufacturers === KNOWN_MANUFACTURERS
+      ? DEFAULT_MANUFACTURER_INDEX
+      : buildManufacturerSearchIndex(knownManufacturers);
+
   let best = null;
   let bestIdx = Infinity;
-  for (const name of sorted) {
-    const n = String(name);
-    // 短い英字コード（UE/LG 等）は単語境界のみ。長い名前は部分一致可
+  for (const entry of index) {
     let idx = -1;
-    if (/^[A-Za-z0-9&]+$/.test(n) && n.length <= 3) {
-      const re = new RegExp(`(?:^|[^A-Za-z0-9])${escapeRegExp_(n)}(?:[^A-Za-z0-9]|$)`, 'i');
-      const m = re.exec(text);
+    if (entry.isShortCode) {
+      const m = entry.re.exec(text);
       if (m) idx = m.index + (m[0].match(/^[^A-Za-z0-9]/) ? 1 : 0);
     } else {
-      idx = text.toLowerCase().indexOf(n.toLowerCase());
+      idx = textLower.indexOf(entry.lower);
     }
     if (idx >= 0 && idx < bestIdx) {
       bestIdx = idx;
-      best = name;
+      best = entry.name;
     }
   }
   // モールタイトル末尾の「｜Bambi」「| Anker」形式
@@ -1078,10 +1106,6 @@ function shortenProductName(title, manufacturer, modelCode) {
   if (modelCode) return String(modelCode).replace(/-/g, ' ');
   if (t.length >= 2) return t.slice(0, 28);
   return '';
-}
-
-function escapeRegExp_(s) {
-  return String(s || '').replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 
 function normalizeRow(raw, rank) {
@@ -1577,16 +1601,27 @@ function buildCompositeRanking(sourceResults) {
     if (!fields) continue;
 
     for (const item of block.items || []) {
-      const titleBlob = `${item.rawTitle || ''} ${item.model || ''} ${item.productName || ''} ${item.manufacturer || ''} ${item.title || ''}`;
-      const identity = parseProductIdentity(titleBlob, item.manufacturer);
-      const modelKey =
-        extractModelKey(titleBlob) ||
-        (identity.modelCode && identity.modelCode !== identity.productName
-          ? identity.modelCode
-          : null) ||
-        (identity.manufacturer !== '不明' && identity.productName
-          ? normalizeModelKeyToken(`${identity.manufacturer}-${identity.productName}`)
-          : null);
+      // normalizeRow 済みの modelCode / manufacturer を優先（二重の parseProductIdentity を避ける）
+      let modelKey = String(item.modelCode || '').trim() || null;
+      let manufacturer =
+        item.manufacturer && item.manufacturer !== '不明' ? item.manufacturer : '不明';
+      let productName = String(item.productName || item.model || '').trim();
+
+      if (!modelKey) {
+        const titleBlob = `${item.rawTitle || ''} ${item.model || ''} ${item.productName || ''} ${item.manufacturer || ''} ${item.title || ''}`;
+        const identity = parseProductIdentity(titleBlob, item.manufacturer);
+        modelKey =
+          extractModelKey(titleBlob) ||
+          (identity.modelCode && identity.modelCode !== identity.productName
+            ? identity.modelCode
+            : null) ||
+          (identity.manufacturer !== '不明' && identity.productName
+            ? normalizeModelKeyToken(`${identity.manufacturer}-${identity.productName}`)
+            : null);
+        if (identity.manufacturer !== '不明') manufacturer = identity.manufacturer;
+        if (identity.productName) productName = identity.productName;
+      }
+
       if (!modelKey) {
         unknownModelCount++;
         continue;
@@ -1611,11 +1646,11 @@ function buildCompositeRanking(sourceResults) {
         });
       }
       const agg = byKey.get(modelKey);
-      if (identity.manufacturer !== '不明') agg.manufacturer = identity.manufacturer;
+      if (manufacturer !== '不明') agg.manufacturer = manufacturer;
       else if (item.manufacturer && item.manufacturer !== '不明') {
         agg.manufacturer = item.manufacturer;
       }
-      const pname = identity.productName || item.productName || '';
+      const pname = productName || '';
       if (pname && (!agg.productName || pname.length < agg.productName.length)) {
         agg.productName = pname;
       }

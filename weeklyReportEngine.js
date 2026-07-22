@@ -451,20 +451,25 @@ function reasonRising(change) {
   return `先週比 ${change.prevCompositeRank}位→${change.compositeRank}位（+${change.delta}）。Amazon ${change.amazonChange}。上位群に食い込み中。`;
 }
 
-function findReplacementCandidate(downChange, currentItems, articleProduct) {
-  const downKey = downChange.modelKey;
-  const candidates = (currentItems || [])
-    .filter((row) => row.modelKey !== downKey)
+function buildScoredCurrentItems(currentItems) {
+  // スコア降順を1回だけ作る（差し替え候補の都度 sort を避ける）
+  return (currentItems || [])
     .map((row) => ({ row, score: mallScore(row) }))
-    .sort((a, b) => b.score - a.score);
+    .sort((a, b) => b.score - a.score || String(a.row.modelKey).localeCompare(String(b.row.modelKey)));
+}
 
-  for (const { row } of candidates) {
-    const hint = articleProduct?.modelKeyHint || '';
-    const key = extractModelKey(hint) || extractModelKey(articleProduct?.label || '');
-    if (key && row.modelKey === key) continue;
+function findReplacementCandidate(downChange, scoredItems, articleProduct) {
+  const downKey = downChange.modelKey;
+  const hint = articleProduct?.modelKeyHint || '';
+  const excludeKey =
+    extractModelKey(hint) || extractModelKey(articleProduct?.label || '');
+
+  for (const { row } of scoredItems) {
+    if (row.modelKey === downKey) continue;
+    if (excludeKey && row.modelKey === excludeKey) continue;
     return row;
   }
-  return candidates[0]?.row || null;
+  return scoredItems.find((c) => c.row.modelKey !== downKey)?.row || null;
 }
 
 function getSections(articleMaster) {
@@ -477,19 +482,30 @@ function findSectionForProduct(articleMaster, prod) {
 
 function buildReplacements(comparison, currentItems, articleMaster) {
   const downChanges = comparison.changes.filter((c) => c.type === 'down' || c.type === 'out');
+  const downByModelKey = new Map();
+  for (const change of downChanges) {
+    if (change.modelKey && !downByModelKey.has(change.modelKey)) {
+      downByModelKey.set(change.modelKey, change);
+    }
+  }
+  const scoredItems = buildScoredCurrentItems(currentItems);
   const replacements = [];
+  const coveredFromLabels = new Set();
 
   for (const prod of articleMaster.products || []) {
     const hintKey = extractModelKey(prod.modelKeyHint || prod.label || '');
-    const match = downChanges.find(
-      (c) =>
-        c.modelKey === hintKey ||
-        c.label.includes(prod.label) ||
-        prod.label.includes(c.representativeModel || '')
-    );
+    let match = hintKey ? downByModelKey.get(hintKey) : null;
+    if (!match) {
+      // exact が無いときだけ線形のファジー照合
+      match = downChanges.find(
+        (c) =>
+          c.label.includes(prod.label) ||
+          prod.label.includes(c.representativeModel || '')
+      );
+    }
     if (!match) continue;
 
-    const replacementRow = findReplacementCandidate(match, currentItems, prod);
+    const replacementRow = findReplacementCandidate(match, scoredItems, prod);
     if (!replacementRow) continue;
 
     const section = findSectionForProduct(articleMaster, prod);
@@ -505,12 +521,20 @@ function buildReplacements(comparison, currentItems, articleMaster) {
       reason: `ランキング${prod.position}位「${prod.label}」は横断${match.prevCompositeRank}→${match.compositeRank ?? '圏外'}位に下落。代替「${productLabel(replacementRow)}」は横断上位（Amazon ${replacementRow.rankAmazon ?? '—'}位）。信頼性維持のため差し替え推奨。`,
       headingCandidate: section?.headingCandidate || null,
     });
+    coveredFromLabels.add(prod.label);
     if (replacements.length >= config.signals.maxReplacements) return replacements;
   }
 
   for (const change of downChanges) {
-    if (replacements.some((r) => r.fromLabel.includes(change.label))) continue;
-    const replacementRow = findReplacementCandidate(change, currentItems, null);
+    let alreadyCovered = false;
+    for (const label of coveredFromLabels) {
+      if (label.includes(change.label)) {
+        alreadyCovered = true;
+        break;
+      }
+    }
+    if (alreadyCovered) continue;
+    const replacementRow = findReplacementCandidate(change, scoredItems, null);
     if (!replacementRow) continue;
     replacements.push({
       articleId: null,

@@ -846,11 +846,6 @@
     syncHeadingsTabFromSources({ force: true });
   }
 
-  // 後方互換
-  function loadHeadingCandidatesFromStorage() {
-    syncHeadingsTabFromSources({ force: false });
-  }
-
   window.ArticleAppBridge = {
     syncHeadingsTabFromSources,
     syncArticleTabFromSources,

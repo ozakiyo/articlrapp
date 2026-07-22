@@ -123,18 +123,35 @@ function collectOwnHeadings(articleMaster) {
   return headings;
 }
 
-function headingMatchesOwn(headingText, ownHeadings) {
+function buildOwnHeadingIndex(ownHeadings) {
+  const exact = new Set();
+  const norms = [];
+  for (const own of ownHeadings || []) {
+    const on = normalizeHeadingText(own.text);
+    if (!on) continue;
+    if (!exact.has(on)) {
+      exact.add(on);
+      norms.push(on);
+    }
+  }
+  // 長い見出しから照合（短いノイズ一致を減らす／早期ヒットしやすい）
+  norms.sort((a, b) => b.length - a.length);
+  return { exact, norms };
+}
+
+function headingMatchesOwn(headingText, ownHeadingsOrIndex) {
   const norm = normalizeHeadingText(headingText);
   if (!norm || norm.length < 3) return true;
-  return ownHeadings.some((own) => {
-    const on = normalizeHeadingText(own.text);
-    if (!on) return false;
-    if (on === norm) return true;
+  const index = ownHeadingsOrIndex?.exact
+    ? ownHeadingsOrIndex
+    : buildOwnHeadingIndex(ownHeadingsOrIndex);
+  if (index.exact.has(norm)) return true;
+  for (const on of index.norms) {
     if (on.includes(norm) || norm.includes(on)) return true;
     const minLen = Math.min(on.length, norm.length);
     if (minLen >= 6 && on.slice(0, minLen) === norm.slice(0, minLen)) return true;
-    return false;
-  });
+  }
+  return false;
 }
 
 async function fetchCompetitorArticlePage(url, deps = {}) {
@@ -169,12 +186,13 @@ async function fetchCompetitorArticlePage(url, deps = {}) {
 function buildGapProposals(competitors, ownHeadings) {
   const proposals = [];
   const proposalSeen = new Set();
+  const ownIndex = buildOwnHeadingIndex(ownHeadings);
 
   for (const comp of competitors) {
     if (!comp.headings?.length) continue;
     for (const h of comp.headings) {
       if (h.level === 'h1') continue;
-      if (headingMatchesOwn(h.text, ownHeadings)) continue;
+      if (headingMatchesOwn(h.text, ownIndex)) continue;
       const norm = normalizeHeadingText(h.text);
       if (proposalSeen.has(norm)) continue;
       proposalSeen.add(norm);
@@ -225,6 +243,7 @@ async function analyzeCompetitorArticles(category, options = {}, deps = {}) {
     options.articleMaster ||
     (deps.loadArticleMaster ? deps.loadArticleMaster(label) : { category: label });
   const ownHeadings = collectOwnHeadings(articleMaster);
+  const ownHeadingIndex = buildOwnHeadingIndex(ownHeadings);
 
   const competitors = [];
   const warnings = [];
@@ -241,7 +260,7 @@ async function analyzeCompetitorArticles(category, options = {}, deps = {}) {
       const headings = page.headings || [];
       const gaps = headings
         .filter((h) => h.level !== 'h1')
-        .filter((h) => !headingMatchesOwn(h.text, ownHeadings))
+        .filter((h) => !headingMatchesOwn(h.text, ownHeadingIndex))
         .map((h) => ({ level: h.level, text: h.text }));
 
       const diff = diffHeadings(previous?.headings, headings);
@@ -348,6 +367,7 @@ async function analyzeCompetitorArticles(category, options = {}, deps = {}) {
 module.exports = {
   extractHeadingsFromHtml,
   collectOwnHeadings,
+  buildOwnHeadingIndex,
   headingMatchesOwn,
   normalizeHeadingText,
   diffHeadings,

@@ -517,20 +517,6 @@ function extractLikelyModelFromBlock(block, manufacturer) {
   return candidate.length >= 2 ? candidate : null;
 }
 
-function findManufacturerInBlock(headBlock, knownManufacturers) {
-  const sorted = [...knownManufacturers].sort((a, b) => b.length - a.length);
-  let best = null;
-  let bestIdx = Infinity;
-  for (const name of sorted) {
-    const idx = headBlock.indexOf(name);
-    if (idx >= 0 && idx < bestIdx) {
-      bestIdx = idx;
-      best = name;
-    }
-  }
-  return best;
-}
-
 /** ルールベース／ヨドバシHTML解析で共通のメーカー名候補 */
 const KNOWN_MANUFACTURERS_RANKING = [
   'IODATA',
@@ -569,6 +555,30 @@ const KNOWN_MANUFACTURERS_RANKING = [
   'NEC',
   '日本電気',
 ];
+
+/** 長さ降順の事前ソート索引（毎回の sort を避ける） */
+const KNOWN_MANUFACTURERS_RANKING_SORTED = [...KNOWN_MANUFACTURERS_RANKING].sort(
+  (a, b) => String(b).length - String(a).length
+);
+
+function findManufacturerInBlock(headBlock, knownManufacturers) {
+  const text = String(headBlock || '');
+  if (!text) return null;
+  const list =
+    !knownManufacturers || knownManufacturers === KNOWN_MANUFACTURERS_RANKING
+      ? KNOWN_MANUFACTURERS_RANKING_SORTED
+      : [...knownManufacturers].sort((a, b) => String(b).length - String(a).length);
+  let best = null;
+  let bestIdx = Infinity;
+  for (const name of list) {
+    const idx = text.indexOf(name);
+    if (idx >= 0 && idx < bestIdx) {
+      bestIdx = idx;
+      best = name;
+    }
+  }
+  return best;
+}
 
 function extractRankingByKeywordsRuleBased(pageText, keywords) {
   const normalizedKeywords = keywords.map((k) => String(k || '').trim()).filter(Boolean);
