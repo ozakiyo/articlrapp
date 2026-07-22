@@ -23,6 +23,7 @@
             <span class="ai-provider-switch-label">AI</span>
             <select id="ai-provider" name="aiProvider" aria-label="AIエンジン">
               <option value="gemini" selected>Gemini</option>
+              <option value="chatgpt">ChatGPT</option>
               <option value="cursor">Cursor</option>
             </select>
           </label>
@@ -98,7 +99,7 @@
             <li>商品のおすすめ見出し・説明は<strong>用途別おすすめ</strong>側で作ります。</li>
             <li>競合調査は初回セットアップとURL変更時。毎週の本体は週次レポートです。</li>
             <li>月が変わっただけでは競合調査のやり直しは不要です（URL変更時のみ）。</li>
-            <li>AIは通常 <strong>Gemini</strong>。上部ナビ右端の小さな「AI」から Cursor（Auto）に切り替えられます。</li>
+            <li>AIは通常 <strong>Gemini</strong>。用途別おすすめはタイムアウト回避のため <strong>ChatGPT</strong> を使います。ナビ右端の「AI」から Cursor にも切り替えられます。</li>
           </ul>
           <div class="actions">
             <button type="button" class="secondary" data-guide-go="weekly">週次レポートへ</button>
@@ -393,13 +394,16 @@
 
         <section class="panel">
           <h2>2. 用途を3つ提案・確定</h2>
+          <p class="field-hint usecase-ai-hint">このタブのAI生成は <strong>ChatGPT推奨</strong>（タイムアウト回避）</p>
           <div class="actions">
             <button type="button" id="usecase-propose" disabled>用途を3つ提案</button>
+            <span class="usecase-ai-badge" aria-hidden="true">ChatGPT推奨</span>
           </div>
           <p class="field-hint" id="usecase-propose-msg"></p>
           <div id="usecase-use-cases" class="usecase-use-cases"></div>
           <div class="actions">
             <button type="button" id="usecase-confirm-use-cases" disabled>この用途で進む（商品を振り分け）</button>
+            <span class="usecase-ai-badge" aria-hidden="true">ChatGPT推奨</span>
           </div>
         </section>
 
@@ -409,6 +413,7 @@
           <div id="usecase-assignments" class="usecase-assignments"></div>
           <div class="actions">
             <button type="button" id="usecase-generate-all" disabled>説明文・機能表を一括生成</button>
+            <span class="usecase-ai-badge" aria-hidden="true">ChatGPT推奨</span>
           </div>
           <p class="field-hint" id="usecase-generate-msg"></p>
         </section>

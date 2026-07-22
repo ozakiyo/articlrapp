@@ -728,32 +728,32 @@ async function handleArticleGenerate(
     if (skipScrape) {
       console.log('⏭️ Skipping URL scrape for outline article generate');
     } else {
-      if (candidateUrls.length > 0) {
-        const competitorResult = await scrapeCompetitorArticles(candidateUrls, scrape);
-        warnings.push(...competitorResult.warnings);
-        scrapedArticles = competitorResult.scrapedArticles;
-      }
+    if (candidateUrls.length > 0) {
+      const competitorResult = await scrapeCompetitorArticles(candidateUrls, scrape);
+      warnings.push(...competitorResult.warnings);
+      scrapedArticles = competitorResult.scrapedArticles;
+    }
 
-      if (referenceUrls.length > 0) {
-        const referenceResult = await scrapeCompetitorArticles(referenceUrls, scrape);
-        warnings.push(...referenceResult.warnings);
-        scrapedReferenceArticles = referenceResult.scrapedArticles;
-      }
+    if (referenceUrls.length > 0) {
+      const referenceResult = await scrapeCompetitorArticles(referenceUrls, scrape);
+      warnings.push(...referenceResult.warnings);
+      scrapedReferenceArticles = referenceResult.scrapedArticles;
+    }
 
-      if (scrapedArticles.length === 0 && scrapedReferenceArticles.length === 0) {
+    if (scrapedArticles.length === 0 && scrapedReferenceArticles.length === 0) {
         console.warn('⚠️ Scraping failed or skipped; continue with keyword + headings only');
         warnings.push({
           message:
             '参考URL・他社URLの取得に失敗（または未入力）のため、確定見出しのみで本文を生成します。',
         });
       } else {
-        console.log(
-          '📚 Successfully scraped',
-          scrapedArticles.length,
-          'competitor sources and',
-          scrapedReferenceArticles.length,
-          'reference sources'
-        );
+    console.log(
+      '📚 Successfully scraped',
+      scrapedArticles.length,
+      'competitor sources and',
+      scrapedReferenceArticles.length,
+      'reference sources'
+    );
       }
     }
 
@@ -811,7 +811,7 @@ ${competitorTexts ? `\n# 他社記事\n${competitorTexts}` : ''}${referenceOutpu
       title,
       competitorTexts,
       referenceOutputSection,
-      warnings,
+        warnings,
       bodyGapMs: BODY_GAP_MS,
     });
 
@@ -829,10 +829,10 @@ ${competitorTexts ? `\n# 他社記事\n${competitorTexts}` : ''}${referenceOutpu
             'まとめ文は、本文がほぼ空のためスキップしました。先に本文が生成できた見出しから再実行してください。',
         });
       } else {
-        const introSection = introductionData.introduction
-          ? `# 導入文\n${introductionData.introduction}\n\n`
-          : '';
-        const summaryPrompt = `
+      const introSection = introductionData.introduction
+        ? `# 導入文\n${introductionData.introduction}\n\n`
+        : '';
+      const summaryPrompt = `
 あなたはSEOに強い家電専門ライターです。
 キーワード「${keyword}」、タイトル「${title}」の記事について、${introSection ? '導入文と' : ''}各見出し本文を踏まえたまとめ文を150〜200文字で作成してください。
 
@@ -848,16 +848,16 @@ ${bodiesForSummary}
 ${competitorTexts ? `\n# 他社記事\n${competitorTexts}` : ''}${referenceOutputSection}
 `;
 
-        try {
-          console.log('📝 Generating summary with Gemini');
+      try {
+        console.log('📝 Generating summary with Gemini');
           await sleep(BODY_GAP_MS);
           const summaryRaw = await generateGeminiTextWithRetry(getGeminiModel, summaryPrompt);
-          summaryData = parseJsonFromModelOutput(summaryRaw) || summaryData;
-        } catch (err) {
-          console.error('❌ Summary generation failed', err.message);
+        summaryData = parseJsonFromModelOutput(summaryRaw) || summaryData;
+      } catch (err) {
+        console.error('❌ Summary generation failed', err.message);
           warnings.push({
             message: `まとめ文の生成に失敗したため空欄にしました。（${String(err.message || '').slice(0, 120)}）`,
-          });
+        });
         }
       }
     } else {
@@ -1113,7 +1113,7 @@ async function handleSubHeadingGenerate(
       const matched =
         byH3.get(targetH3) ||
         normalizeH4Subheadings(itemsRaw[index]?.subheadings);
-      return {
+    return {
         h3: targetH3,
         subheadings: matched,
       };

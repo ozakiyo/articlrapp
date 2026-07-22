@@ -745,6 +745,20 @@ button.secondary {
   border-color: #cbd2d9;
 }
 
+.usecase-ai-hint {
+  margin: 0 0 0.75rem;
+  font-size: 0.8rem;
+  color: #7b8794;
+}
+
+.usecase-ai-badge {
+  align-self: center;
+  font-size: 0.7rem;
+  color: #9aa5b1;
+  letter-spacing: 0.01em;
+  user-select: none;
+}
+
 @media (max-width: 640px) {
   .app {
     padding: 1.5rem 1rem 3rem;

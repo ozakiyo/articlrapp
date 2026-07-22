@@ -1,17 +1,18 @@
 'use strict';
 
 /**
- * AI プロバイダ抽象（Gemini / Cursor）
+ * AI プロバイダ抽象（Gemini / Cursor / ChatGPT）
  * generateContent({ contents }) → { response: { text: () => string } } 互換
  */
 
 const DEFAULT_PROVIDER = 'gemini';
-const VALID_PROVIDERS = new Set(['gemini', 'cursor']);
+const VALID_PROVIDERS = new Set(['gemini', 'cursor', 'chatgpt']);
 
 function normalizeProvider(value) {
   const v = String(value || '')
     .trim()
     .toLowerCase();
+  if (v === 'openai' || v === 'gpt' || v === 'chatgpt') return 'chatgpt';
   if (VALID_PROVIDERS.has(v)) return v;
   return null;
 }
@@ -244,13 +245,89 @@ async function createCursorModel() {
   return cursorModelWrapper;
 }
 
+/** ChatGPT（OpenAI Chat Completions） */
+const OPENAI_MODEL = process.env.OPENAI_MODEL || 'gpt-4o-mini';
+const OPENAI_API_BASE = (process.env.OPENAI_API_BASE || 'https://api.openai.com/v1').replace(
+  /\/$/,
+  ''
+);
+
+let chatGptModelWrapper;
+
+async function createChatGptModel() {
+  if (chatGptModelWrapper) return chatGptModelWrapper;
+
+  const apiKey = process.env.OPENAI_API_KEY;
+  if (!apiKey) {
+    throw new Error('OPENAI_API_KEY is not set');
+  }
+
+  console.log(`⚙️ Initializing ChatGPT model: ${OPENAI_MODEL}`);
+
+  chatGptModelWrapper = {
+    provider: 'chatgpt',
+    async generateContent(request) {
+      const userPrompt = extractUserTextFromContents(request?.contents);
+      const res = await fetch(`${OPENAI_API_BASE}/chat/completions`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${apiKey}`,
+        },
+        body: JSON.stringify({
+          model: OPENAI_MODEL,
+          temperature: 0.4,
+          messages: [
+            {
+              role: 'system',
+              content:
+                'あなたは家電量販店向けの日本語コンテンツ生成アシスタントです。指示に厳密に従い、指定の出力形式だけを返してください。JSON指定ならJSONのみ。前置き・後書き・コードフェンスは付けない。',
+            },
+            { role: 'user', content: userPrompt },
+          ],
+        }),
+      });
+
+      const rawBody = await res.text();
+      let data = {};
+      try {
+        data = rawBody ? JSON.parse(rawBody) : {};
+      } catch {
+        throw new Error(
+          `ChatGPT response was not JSON (HTTP ${res.status}): ${rawBody.slice(0, 180)}`
+        );
+      }
+
+      if (!res.ok) {
+        const msg =
+          data?.error?.message ||
+          data?.error ||
+          rawBody.slice(0, 200) ||
+          `HTTP ${res.status}`;
+        throw new Error(`ChatGPT API error: ${msg}`);
+      }
+
+      const text = String(data?.choices?.[0]?.message?.content || '').trim();
+      return {
+        response: {
+          text: () => text,
+        },
+      };
+    },
+  };
+  return chatGptModelWrapper;
+}
+
 /**
- * @param {'gemini'|'cursor'|string} [provider]
+ * @param {'gemini'|'cursor'|'chatgpt'|string} [provider]
  */
 async function getAiModelForProvider(provider) {
   const p = normalizeProvider(provider) || DEFAULT_PROVIDER;
   if (p === 'cursor') {
     return createCursorModel();
+  }
+  if (p === 'chatgpt') {
+    return createChatGptModel();
   }
   return createGeminiModel();
 }
