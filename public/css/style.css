@@ -713,6 +713,38 @@ button.secondary {
   gap: 0.5rem;
 }
 
+.ai-provider-switch {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  margin-left: auto;
+  font-size: 0.75rem;
+  color: #9aa5b1;
+  font-weight: 400;
+  cursor: pointer;
+}
+
+.ai-provider-switch-label {
+  letter-spacing: 0.02em;
+  user-select: none;
+}
+
+.ai-provider-switch select {
+  font-size: 0.75rem;
+  color: #7b8794;
+  background: transparent;
+  border: 1px solid #e4e7eb;
+  border-radius: 4px;
+  padding: 0.15rem 0.35rem;
+  min-width: 4.5rem;
+  cursor: pointer;
+}
+
+.ai-provider-switch select:focus {
+  outline: none;
+  border-color: #cbd2d9;
+}
+
 @media (max-width: 640px) {
   .app {
     padding: 1.5rem 1rem 3rem;

@@ -601,13 +601,25 @@ async function generateOutlineArticleBodies({
   return { contentResults, outlineResultSections };
 }
 
-function registerArticleAppRoutes(app, { scrape, getGeminiModel }) {
+function registerArticleAppRoutes(app, { scrape, getGeminiModel, bindGetAiModel }) {
+  function resolveGetAiModel(req) {
+    if (typeof bindGetAiModel === 'function') {
+      return bindGetAiModel(req);
+    }
+    const fallback = getGeminiModel || (async () => {
+      throw new Error('AI model factory is not configured');
+    });
+    return Object.assign(fallback, { provider: 'gemini' });
+  }
+
   app.post('/api/article/generate', async (req, res) => {
     const requestStartedAt = Date.now();
     try {
+      const getAiModel = resolveGetAiModel(req);
       await handleArticleGenerate(req, res, requestStartedAt, {
         scrape,
-        getGeminiModel,
+        getGeminiModel: getAiModel,
+        aiProviderUsed: getAiModel.provider,
       });
     } catch (err) {
       console.error('💥 /api/article/generate unhandled error:', err);
@@ -622,9 +634,11 @@ function registerArticleAppRoutes(app, { scrape, getGeminiModel }) {
   app.post('/api/article/generate-headings', async (req, res) => {
     const requestStartedAt = Date.now();
     try {
+      const getAiModel = resolveGetAiModel(req);
       await handleHeadingGenerate(req, res, requestStartedAt, {
         scrape,
-        getGeminiModel,
+        getGeminiModel: getAiModel,
+        aiProviderUsed: getAiModel.provider,
       });
     } catch (err) {
       console.error('💥 /api/article/generate-headings unhandled error:', err);
@@ -639,9 +653,11 @@ function registerArticleAppRoutes(app, { scrape, getGeminiModel }) {
   app.post('/api/article/generate-sub-headings', async (req, res) => {
     const requestStartedAt = Date.now();
     try {
+      const getAiModel = resolveGetAiModel(req);
       await handleSubHeadingGenerate(req, res, requestStartedAt, {
         scrape,
-        getGeminiModel,
+        getGeminiModel: getAiModel,
+        aiProviderUsed: getAiModel.provider,
       });
     } catch (err) {
       console.error('💥 /api/article/generate-sub-headings unhandled error:', err);
@@ -658,7 +674,7 @@ async function handleArticleGenerate(
   req,
   res,
   requestStartedAt,
-  { scrape, getGeminiModel }
+  { scrape, getGeminiModel, aiProviderUsed = 'gemini' }
 ) {
     const { keyword, title = '', urls = [], competitorUrl1, competitorUrl2, competitorUrl3 } =
       req.body;
@@ -857,6 +873,7 @@ ${competitorTexts ? `\n# 他社記事\n${competitorTexts}` : ''}${referenceOutpu
       generateIntroduction,
       generateSummary,
       mode: 'outline',
+      aiProviderUsed,
       title: introductionData.h1 || title || '',
       introduction: introductionData.introduction || '',
       summary: summaryData?.summary || '',
@@ -875,7 +892,7 @@ async function handleHeadingGenerate(
   req,
   res,
   requestStartedAt,
-  { scrape, getGeminiModel }
+  { scrape, getGeminiModel, aiProviderUsed = 'gemini' }
 ) {
   const { keyword } = req.body;
   const headingCandidates = collectHeadingCandidates(req.body);
@@ -987,6 +1004,7 @@ async function handleHeadingGenerate(
       items: sec.items,
     })),
     headingCandidatesUsed: headingCandidates,
+    aiProviderUsed,
     warnings,
   });
 }
@@ -995,7 +1013,7 @@ async function handleSubHeadingGenerate(
   req,
   res,
   requestStartedAt,
-  { scrape, getGeminiModel }
+  { scrape, getGeminiModel, aiProviderUsed = 'gemini' }
 ) {
   const keyword = String(req.body?.keyword || '').trim();
   const h3 = String(req.body?.h3 || '').trim();
@@ -1100,7 +1118,7 @@ async function handleSubHeadingGenerate(
         subheadings: matched,
       };
     });
-    return res.json({ items, warnings });
+    return res.json({ items, warnings, aiProviderUsed });
   }
 
   const subheadings = normalizeH4Subheadings(data?.subheadings);
@@ -1108,6 +1126,7 @@ async function handleSubHeadingGenerate(
   res.json({
     h3: data?.h3 || h3,
     subheadings,
+    aiProviderUsed,
     warnings,
   });
 }

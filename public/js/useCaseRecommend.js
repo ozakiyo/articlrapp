@@ -171,7 +171,11 @@
       const res = await fetch('/api/usecase/propose', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ category, items: rankingItems }),
+        body: JSON.stringify(
+          window.AiProvider
+            ? window.AiProvider.withBody({ category, items: rankingItems })
+            : { category, items: rankingItems }
+        ),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.details || data.error || '提案に失敗しました');
@@ -267,11 +271,19 @@
       const res = await fetch('/api/usecase/assign', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          category,
-          items: rankingItems,
-          useCases,
-        }),
+        body: JSON.stringify(
+          window.AiProvider
+            ? window.AiProvider.withBody({
+                category,
+                items: rankingItems,
+                useCases,
+              })
+            : {
+                category,
+                items: rankingItems,
+                useCases,
+              }
+        ),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.details || data.error || '振り分けに失敗しました');
@@ -313,7 +325,11 @@
       const res = await fetch('/api/usecase/generate-copy', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ category, sections }),
+        body: JSON.stringify(
+          window.AiProvider
+            ? window.AiProvider.withBody({ category, sections })
+            : { category, sections }
+        ),
         signal: controller.signal,
       });
       const raw = await res.text();

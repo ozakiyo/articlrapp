@@ -228,120 +228,19 @@ async function attachGoogleSearchInterest(report, category) {
   }
 }
 
+const {
+  resolveAiProvider,
+  bindGetAiModel,
+  getAiModelForProvider,
+  getGeminiModel,
+  isGeminiQuotaExceededError,
+  parseRetryAfterSecondsFromMessage,
+} = require('./aiProvider');
+
 /*
 「AIモデルのインスタンスを効率的に取得すること」
-AIモデルの初期化（準備）は少し時間がかかる処理なので、APIリクエストのたびに毎回準備していると、アプリケーションの応答が遅くなってしまう。
-それを防ぐために、この関数は「一度だけ準備して、あとはそれを使い回す」という賢い仕組み（シングルトンパターンや遅延初期化と呼ばれる手法）を採用
+Gemini / Cursor は aiProvider.js で切り替え。既定は Gemini。
 */
-const GEMINI_MODEL = process.env.GEMINI_MODEL || 'gemini-2.5-flash-lite';
-/** 無料枠切れ・モデル廃止時の代替（クォータはモデル別にカウントされる） */
-const GEMINI_FALLBACK_MODELS = [
-  GEMINI_MODEL,
-  'gemini-flash-lite-latest',
-  'gemini-flash-latest',
-  'gemini-2.5-flash',
-].filter((name, i, arr) => name && arr.indexOf(name) === i);
-
-let geminiClient;
-let geminiModel;
-//geminiModelという変数は、AIモデルの本体を格納するためのもの
-async function getGeminiClient() {
-  if (!geminiClient) {
-    const apiKey = process.env.GEMINI_API_KEY;
-    if (!apiKey) {
-      throw new Error('GEMINI_API_KEY is not set');
-    }
-    const { GoogleGenerativeAI } = await import('@google/generative-ai');
-    geminiClient = new GoogleGenerativeAI(apiKey);
-  }
-  return geminiClient;
-}
-
-function isGeminiModelUnavailableError(err) {
-  const message = String(err?.message || '');
-  return (
-    message.includes('[404 Not Found]') ||
-    message.toLowerCase().includes('no longer available') ||
-    message.toLowerCase().includes('not found')
-  );
-}
-
-function isGeminiTransientFetchError(err) {
-  const message = String(err?.message || '').toLowerCase();
-  return (
-    message.includes('error fetching from') ||
-    message.includes('fetch failed') ||
-    message.includes('network') ||
-    message.includes('econnreset') ||
-    message.includes('etimedout') ||
-    message.includes('socket hang up')
-  );
-}
-
-function sleepMs(ms) {
-  return new Promise((resolve) => setTimeout(resolve, ms));
-}
-
-async function getGeminiModel() {
-  if (geminiModel) return geminiModel;
-
-  const genAI = await getGeminiClient();
-  console.log('⚙️ Initializing Gemini with fallbacks:', GEMINI_FALLBACK_MODELS.join(' → '));
-
-  // generateContent だけ使う薄いラッパー（429/404/一時通信エラー時に次のモデルへ）
-  geminiModel = {
-    async generateContent(request) {
-      let lastErr;
-      for (let i = 0; i < GEMINI_FALLBACK_MODELS.length; i += 1) {
-        const modelName = GEMINI_FALLBACK_MODELS[i];
-        try {
-          const model = genAI.getGenerativeModel({ model: modelName });
-          const result = await model.generateContent(request);
-          if (modelName !== GEMINI_MODEL) {
-            console.log(`✅ Gemini fallback model used: ${modelName}`);
-          }
-          return result;
-        } catch (err) {
-          lastErr = err;
-          const canFallback =
-            isGeminiQuotaExceededError(err) ||
-            isGeminiModelUnavailableError(err) ||
-            isGeminiTransientFetchError(err);
-          console.warn(
-            `⚠️ Gemini model failed (${modelName}):`,
-            String(err?.message || err).slice(0, 180)
-          );
-          if (!canFallback) throw err;
-          if (isGeminiQuotaExceededError(err) && i < GEMINI_FALLBACK_MODELS.length - 1) {
-            const waitSec = Math.min(
-              parseRetryAfterSecondsFromMessage(err?.message) || 8,
-              20
-            );
-            console.warn(`⏳ Waiting ${waitSec}s before next Gemini model…`);
-            await sleepMs(waitSec * 1000);
-          }
-        }
-      }
-      throw lastErr;
-    },
-  };
-  return geminiModel;
-}
-
-function parseRetryAfterSecondsFromMessage(message = '') {
-  const match = String(message).match(/retry in\s+(\d+(?:\.\d+)?)s/i);
-  if (!match) return null;
-  const value = Number(match[1]);
-  return Number.isFinite(value) ? Math.max(1, Math.ceil(value)) : null;
-}
-
-function isGeminiQuotaExceededError(err) {
-  const message = String(err?.message || '');
-  return (
-    message.includes('[429 Too Many Requests]') ||
-    message.toLowerCase().includes('quota exceeded')
-  );
-}
 
 const ENABLE_AI_RANKING_EXTRACTION =
   String(process.env.ENABLE_AI_RANKING_EXTRACTION || '').toLowerCase() === 'true';
@@ -1833,13 +1732,15 @@ app.post('/api/resolve-category-ranking-urls', async (req, res) => {
   }
 
   try {
+    const getAiModel = bindGetAiModel(req);
     const result = await resolveCategoryRankingUrls(category, {
       fetchHtmlWithHttpClient,
-      getGeminiModel,
+      getGeminiModel: getAiModel,
       parseJsonFromModelOutput,
     });
     return res.json({
       category,
+      aiProviderUsed: getAiModel.provider,
       rankingUrls: result.urls,
       urlResolution: result.urlResolution,
       notes: result.notes || [],
@@ -2048,11 +1949,12 @@ app.post('/api/extract-category-rankings', async (req, res) => {
   }
 
   try {
+    const getAiModel = bindGetAiModel(req);
     const result = await fetchCategoryRankings(
       category,
       {
         fetchHtmlWithHttpClient,
-        getGeminiModel,
+        getGeminiModel: getAiModel,
         parseJsonFromModelOutput,
       },
       { rankingUrls, rankingThemes }
@@ -2063,7 +1965,7 @@ app.post('/api/extract-category-rankings', async (req, res) => {
       `${Date.now() - requestStartedAt}ms`
     );
 
-    return res.json(result);
+    return res.json({ ...result, aiProviderUsed: getAiModel.provider });
   } catch (err) {
     console.error('❌ Category ranking failed', err.message);
     if (isGeminiQuotaExceededError(err)) {
@@ -2154,11 +2056,12 @@ app.post('/api/weekly/fetch', async (req, res) => {
   });
 
   try {
+    const getAiModel = bindGetAiModel(req);
     const fetchResult = await fetchCategoryRankings(
       category,
       {
         fetchHtmlWithHttpClient,
-        getGeminiModel,
+        getGeminiModel: getAiModel,
         parseJsonFromModelOutput,
       },
       {}
@@ -2565,8 +2468,9 @@ ${pageText}
   `;
 
   try {
-    console.log('🧠 Extracting ranking by keywords with Gemini');
-    const model = await getGeminiModel();
+    const getAiModel = bindGetAiModel(req);
+    console.log('🧠 Extracting ranking by keywords with', getAiModel.provider);
+    const model = await getAiModel();
     const result = await model.generateContent({
       contents: [{ role: 'user', parts: [{ text: prompt }] }],
     });
@@ -2768,11 +2672,11 @@ JSONで出力
 ${competitorTexts}
   `;
 
+  const getAiModel = bindGetAiModel(req);
   let outlineData;
   try {
-    //Geminiモデルに構成案の生成を依頼
-    console.log('🧠 Generating outline with Gemini');
-    const model = await getGeminiModel();
+    console.log('🧠 Generating outline with', getAiModel.provider);
+    const model = await getAiModel();
     const outlineResult = await model.generateContent({
       contents: [{ role: 'user', parts: [{ text: outlinePrompt }] }],
     });
@@ -2842,9 +2746,8 @@ ${outlineJSON}
 
   let articleData;
   try {
-    //Geminiモデルに、構成案に基づいた本文の執筆を依頼
-    console.log('✍️ Generating article body with Gemini');
-    const model = await getGeminiModel();
+    console.log('✍️ Generating article body with', getAiModel.provider);
+    const model = await getAiModel();
     const articleResult = await model.generateContent({
       contents: [{ role: 'user', parts: [{ text: articlePrompt }] }],
     });
@@ -2955,12 +2858,13 @@ app.post('/api/usecase/propose', async (req, res) => {
     });
   }
   try {
+    const getAiModel = bindGetAiModel(req);
     const result = await proposeUseCases({
       category,
       products: items,
-      getGeminiModel,
+      getGeminiModel: getAiModel,
     });
-    return res.json({ ok: true, category, ...result });
+    return res.json({ ok: true, category, aiProviderUsed: getAiModel.provider, ...result });
   } catch (err) {
     console.error('💥 /api/usecase/propose error:', err);
     if (isGeminiQuotaExceededError(err)) {
@@ -2984,14 +2888,16 @@ app.post('/api/usecase/assign', async (req, res) => {
     return res.status(400).json({ error: '用途を1つ以上指定してください。' });
   }
   try {
+    const getAiModel = bindGetAiModel(req);
     const result = await assignProductsToUseCases({
       useCases: useCases.slice(0, 3),
       products: items,
-      getGeminiModel,
+      getGeminiModel: getAiModel,
     });
     return res.json({
       ok: true,
       category,
+      aiProviderUsed: getAiModel.provider,
       kojimaPreview: filterKojimaProducts(items).slice(0, 20).map((p) => ({
         key: p._key,
         label: p.label,
@@ -3038,9 +2944,10 @@ app.post('/api/usecase/generate-copy', async (req, res) => {
   };
 
   try {
+    const getAiModel = bindGetAiModel(req);
     // 一括: sections = [{ label, useCaseId, products: [{...}, manufacturerUrl?] }]
     if (sections?.length) {
-      const featureLabels = await resolveFeatureLabels({ category, getGeminiModel });
+      const featureLabels = await resolveFeatureLabels({ category, getGeminiModel: getAiModel });
       console.log('📋 usecase featureLabels (category):', featureLabels.join(' / '));
       const outSections = [];
       const errors = [];
@@ -3066,7 +2973,7 @@ app.post('/api/usecase/generate-copy', async (req, res) => {
                 product: p,
                 manufacturerUrl: p.manufacturerUrl || null,
                 scrape: scrapeFast,
-                getGeminiModel,
+                getGeminiModel: getAiModel,
                 featureLabels,
               });
               if (cacheKey) copyByProductKey.set(cacheKey, generated);
@@ -3118,6 +3025,7 @@ app.post('/api/usecase/generate-copy', async (req, res) => {
       return res.json({
         ok: true,
         category,
+        aiProviderUsed: getAiModel.provider,
         featureLabels,
         sections: outSections,
         html: renderUseCaseHtml(outSections),
@@ -3130,19 +3038,20 @@ app.post('/api/usecase/generate-copy', async (req, res) => {
       return res.status(400).json({ error: 'product または sections を指定してください。' });
     }
 
-    const featureLabels = await resolveFeatureLabels({ category, getGeminiModel });
+    const featureLabels = await resolveFeatureLabels({ category, getGeminiModel: getAiModel });
     const generated = await generateCopyForProduct({
       category,
       useCase,
       product,
       manufacturerUrl,
       scrape: scrapeFast,
-      getGeminiModel,
+      getGeminiModel: getAiModel,
       featureLabels,
     });
     return res.json({
       ok: true,
       category,
+      aiProviderUsed: getAiModel.provider,
       featureLabels,
       ...generated,
       copy: {
@@ -3163,7 +3072,7 @@ app.post('/api/usecase/generate-copy', async (req, res) => {
 });
 
 const registerArticleAppRoutes = require('./articleAppGenerate');
-registerArticleAppRoutes(app, { scrape, getGeminiModel });
+registerArticleAppRoutes(app, { scrape, bindGetAiModel, resolveAiProvider });
 
 const server = app.listen(PORT, () =>
   console.log(`✅ Server ready on http://localhost:${PORT}`)

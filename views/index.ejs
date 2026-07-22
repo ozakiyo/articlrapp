@@ -19,6 +19,13 @@
             <button type="button" data-tab="headings" class="tab-btn secondary">見出し生成</button>
             <button type="button" data-tab="article" class="tab-btn secondary">記事生成</button>
           </div>
+          <label class="ai-provider-switch" title="AIエンジン（通常は Gemini）">
+            <span class="ai-provider-switch-label">AI</span>
+            <select id="ai-provider" name="aiProvider" aria-label="AIエンジン">
+              <option value="gemini" selected>Gemini</option>
+              <option value="cursor">Cursor</option>
+            </select>
+          </label>
         </div>
       </nav>
 
@@ -91,6 +98,7 @@
             <li>商品のおすすめ見出し・説明は<strong>用途別おすすめ</strong>側で作ります。</li>
             <li>競合調査は初回セットアップとURL変更時。毎週の本体は週次レポートです。</li>
             <li>月が変わっただけでは競合調査のやり直しは不要です（URL変更時のみ）。</li>
+            <li>AIは通常 <strong>Gemini</strong>。上部ナビ右端の小さな「AI」から Cursor（Auto）に切り替えられます。</li>
           </ul>
           <div class="actions">
             <button type="button" class="secondary" data-guide-go="weekly">週次レポートへ</button>
@@ -786,6 +794,7 @@
         </section>
       </section>
     </div>
+    <script src="/js/aiProvider.js"></script>
     <script src="/js/main.js"></script>
     <script src="/js/weeklyReport.js"></script>
     <script src="/js/useCaseRecommend.js"></script>

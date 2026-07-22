@@ -9,6 +9,7 @@
     "playwright-install": "playwright install chromium"
   },
   "dependencies": {
+    "@cursor/sdk": "^1.0.24",
     "@google/generative-ai": "^0.17.0",
     "cheerio": "^1.0.0-rc.12",
     "dotenv": "^16.6.1",

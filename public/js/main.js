@@ -225,10 +225,14 @@
   }
 
   async function postJson(url, body) {
+    const payload =
+      window.AiProvider && typeof window.AiProvider.withBody === 'function'
+        ? window.AiProvider.withBody(body)
+        : body;
     const res = await fetch(url, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(body),
+      body: JSON.stringify(payload),
     });
     const data = await res.json().catch(() => ({}));
     if (!res.ok) {

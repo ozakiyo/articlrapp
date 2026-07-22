@@ -1372,7 +1372,9 @@
       const res = await fetch('/api/weekly/fetch', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ category, compare }),
+        body: JSON.stringify(
+          window.AiProvider ? window.AiProvider.withBody({ category, compare }) : { category, compare }
+        ),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || data.details || '取得に失敗しました');
@@ -1449,7 +1451,9 @@
       const res = await fetch('/api/competitor-articles/analyze', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ category }),
+        body: JSON.stringify(
+          window.AiProvider ? window.AiProvider.withBody({ category }) : { category }
+        ),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || '比較に失敗しました');
