@@ -167,6 +167,7 @@ async function createGeminiModel() {
 const CURSOR_MODEL_ID = process.env.CURSOR_MODEL || 'auto';
 
 let cursorModelWrapper;
+let cursorSdkReady;
 
 function buildCursorPrompt(userPrompt) {
   return `あなたは家電量販店向けの日本語コンテンツ生成アシスタントです。
@@ -179,6 +180,29 @@ function buildCursorPrompt(userPrompt) {
 
 # 依頼
 ${userPrompt}`;
+}
+
+/**
+ * 既定の SqliteLocalAgentStore は Node >= 22.13 の node:sqlite が必要。
+ * 本番の Node が古い場合でも動くよう JSONL ストアを使う。
+ */
+async function ensureCursorSdkConfigured() {
+  if (cursorSdkReady) return cursorSdkReady;
+  cursorSdkReady = (async () => {
+    const path = require('path');
+    const fs = require('fs');
+    const { Cursor, JsonlLocalAgentStore } = await import('@cursor/sdk');
+    const storeRoot =
+      process.env.CURSOR_STORE_DIR ||
+      path.join(process.cwd(), 'data', 'cursor-agents');
+    fs.mkdirSync(storeRoot, { recursive: true });
+    Cursor.configure({
+      local: { store: new JsonlLocalAgentStore(storeRoot) },
+    });
+    console.log(`⚙️ Cursor local store: JsonlLocalAgentStore (${storeRoot})`);
+    return { storeRoot };
+  })();
+  return cursorSdkReady;
 }
 
 async function createCursorModel() {
@@ -195,6 +219,7 @@ async function createCursorModel() {
   cursorModelWrapper = {
     provider: 'cursor',
     async generateContent(request) {
+      await ensureCursorSdkConfigured();
       const { Agent } = await import('@cursor/sdk');
       const userPrompt = extractUserTextFromContents(request?.contents);
       const prompt = buildCursorPrompt(userPrompt);
