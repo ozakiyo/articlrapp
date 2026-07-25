@@ -12,7 +12,8 @@ DEST="${1:?使い方: bash deploy/conoha/push-from-mac.sh ユーザー@サーバ
 REMOTE_DIR="${2:-/opt/articleappNode}"
 REPO_ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
 
-SSH_CTL="${TMPDIR:-/tmp}/articleapp-ssh-%r@%h:%p"
+# ControlPath は macOS で長すぎると失敗するため短縮名を使う
+SSH_CTL="/tmp/aa-ssh-%C"
 SSH_OPTS=(
   -o ControlMaster=auto
   -o "ControlPath=${SSH_CTL}"
