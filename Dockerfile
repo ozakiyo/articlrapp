@@ -24,7 +24,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && rm -rf /var/lib/apt/lists/*
 
 COPY package.json package-lock.json ./
-RUN npm ci --omit=dev
+# ローカルライブ編集用に nodemon（devDependency）も含める
+RUN npm ci
 
 RUN npx playwright install --with-deps chromium
 

@@ -30,7 +30,7 @@ npm run dev
 
 ブラウザで http://localhost:3050 を開きます（`PORT` は `.env` で変更可）。
 
-## セットアップ（ローカル・Docker）
+## セットアップ（ローカル・Docker・ライブ編集）
 
 ```bash
 cd ~/work/apps/articleappNode
@@ -38,7 +38,11 @@ cd ~/work/apps/articleappNode
 docker compose up --build
 ```
 
-ブラウザで http://localhost:3050 。データは `./data`、CSV 等は `./exports` に永続化します。
+ブラウザで http://localhost:3050 。
+
+- ホストの `~/work/apps/articleappNode` をコンテナにマウントしています
+- `js` / `ejs` / `json` / `css` を保存すると nodemon が自動再起動します
+- `data` / `exports` もホスト側に残ります
 
 ## 構成
 

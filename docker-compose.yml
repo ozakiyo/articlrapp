@@ -1,4 +1,4 @@
-# 現行ルート app.js 用（MySQL 不要）
+# 現行ルート app.js 用（ローカル Docker・ライブ編集）
 # 旧 server/ 向け構成は使わない
 services:
   app:
@@ -13,6 +13,12 @@ services:
       PORT: "3050"
       PLAYWRIGHT_CHROMIUM_NO_SANDBOX: "1"
     volumes:
-      - ./data:/app/data
-      - ./exports:/app/exports
+      # ホストのソースをそのまま使う（保存で即反映）
+      - ./:/app
+      # コンテナ内の node_modules をホストで上書きしない
+      - app_node_modules:/app/node_modules
+    command: ["npx", "nodemon", "--watch", ".", "--ext", "js,ejs,json,css", "app.js"]
     restart: unless-stopped
+
+volumes:
+  app_node_modules:
