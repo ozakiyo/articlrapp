@@ -1,86 +1,21 @@
-/*
-Notion 最終
-バックエンド→AI or 作成アプリ　→HTTP->HTTPS
-https://www.notion.so/HTTP-HTTPS-2e256effa6dc8073853bf62d5673997b
+/**
+ * articleappNode — Express + Playwright + 生成AI
+ * 本番: https://articleapp.duckdns.org/ （ConoHa / pm2）
+ * ローカル: npm run dev → http://localhost:3050
+ */
 
-Notion 初期
-https://www.notion.so/AI-2a956effa6dc805080a7ea2c1f55e698
-
-サーバー　Conoha
-https://manage.conoha.jp/Dashboard
-
-本番URL 動作確認OK
-https://articleapp.duckdns.org/
-
-【ローカル開発】
-Macintosh HD/kiyoshiozawa/articleapp/
-[サーバー]
-kiyoshiozawa@MacBook-Air-5 articleapp % cd server
-kiyoshiozawa@MacBook-Air-5 server % npm run dev
-Server ready on http://localhost:3001
-ozakiyo
-kiyo0276
-
-[クライアント]
-kiyoshiozawa@MacBook-Air-5 client % npm run dev
-http://localhost:5173/
-
-エラーは出るが、スクレイピングは成功しているので、一旦OKとする。
-
-ローカルでOKならば、本番への移行はまだ。
-
-
-app.js バックエンド処理
-[Express＋スクレイピング＋生成AIを組み合わせた構成]
-①認証付きでAPIを提供
-②競合記事をスクレイピング
-③競合分析 → 記事構成を生成（Gemini）
-④構成を元に本文を生成（Gemini）
-⑤PIXTAから画像情報を取得
-⑥Reactのビルド成果物を配信
-
-
-このアプリ良い点：
-アウトライン → 本文の2段階AI生成
-Playwright + HTTPの二重スクレイピング
-JSON厳格指定
-
-gemini API無料枠制限：
-1.リクエスト回数・速度の制限
-  15RPM (Requests Per Minute)
-  1分間に15回までしかリクエストできない。
-  これを超えると429Too Many Requestsエラーが返る。
-  短時間に連続してテストを行うと、すぐにこの上限に達する。
-  1,500 RPD (Requests Per Day)
-  1日に1,500回までリクエスト可能。
-2. トークン量の制限
-  1,000,000 TPM (Tokens Per Minute)
-  1分間に処理できるトークン（文字数換算で約50万〜100万文字程度）の上限です。
-*/
-
-/*---①サーバーの基本設定と認証---*/
-const express = require('express'); //Webサーバー
-//expressというライブラリを使い、フロントエンド（ユーザーが操作する画面）からのリクエストを受け付ける。
-const dotenv = require('dotenv'); //環境変数を読み込む
+const express = require('express');
+const dotenv = require('dotenv');
 const fs = require('fs');
 const path = require('path');
-const { chromium } = require('playwright'); //ブラウザを自動操作してスクレイピング
-const cheerio = require('cheerio'); //HTMLをパース(jQuery的)
-const iconv = require('iconv-lite'); //文字コード変換(Shift_JIS対策)
+const { chromium } = require('playwright');
+const cheerio = require('cheerio');
+const iconv = require('iconv-lite');
 const basicAuth = require('express-basic-auth');
 
-// Load .env file from the server directory
-//.envの読み込み　本番運用では必須のセキュリティ対策
 dotenv.config({ path: path.join(__dirname, '.env') });
 
-//----Express基本設定----
-/*
-このブロックは、「Expressでサーバーの土台を作り、待ち受けるポート番号を決め、フロントエンドからのJSONデータを正しく受け取れるように準備する」という、
-サーバー起動に必須の初期設定を行っている部分
-*/
-//Webサーバー本体となり、これに対して「このURLにアクセスが来たらこう動いて」といった様々な命令を追加していくことになる。
-const app = express(); 
-//サーバーがどの「窓口」でリクエストを待ち受けるかを決めています。この窓口をポート番号と呼びます。
+const app = express();
 const PORT = Number(process.env.PORT) || 3050;
 /** ランキングAPIで返す最大件数（キーワード絞り込み後）。環境変数 RANKING_RESULT_LIMIT で 1〜200 の範囲で変更可 */
 const RANKING_RESULT_LIMIT = Math.min(
@@ -93,13 +28,14 @@ const YODOBASHI_MCOL_MAX_ROUNDS = 15;
 const BICCAMERA_RANKING_SCROLL_ROUNDS = 14;
 /** コジマ ranking.html の取得ページ数（rPage=1…N、重複 href は除外） */
 const KOJIMA_RANKING_PAGE_COUNT = 3;
-//ミドルウェアと呼ばれる「中間処理」を設定
-/*
-フロントエンド（ブラウザ）から送られてくるデータがJSON形式だった場合に、それを正しく解釈してプログラムで扱える形に変換してくれる機能です。
-このアプリケーションでは、フロントエンドのReactから「キーワード」や「URL」がJSON形式で送られてくるため、この設定が不可欠です。これがないと、サーバーは送られてきたJSONデータを正しく受け取ることができません。
-*/
+
+
+//ブロックE
 app.use(express.json());
-// ローカル開発: Vite から Express へ直接 fetch（VITE_API_BASE_URL）する場合の CORS
+//リクエスト本文がJSONなら、req.bodyに格納される。
+
+/** ローカル開発時のCORS（コース）（localhost / LAN） */
+//別ページからAPIを呼ぶとき、ブラウザが制限をかける仕組み。
 function isAllowedBrowserDevOrigin(origin) {
   if (!origin || typeof origin !== 'string') return false;
   const o = origin.trim();
@@ -127,16 +63,23 @@ app.use((req, res, next) => {
   }
   next();
 });
-//----Express基本設定----
+//------------------------------------
 
+//ブロックF 画面ファイルの置き場
 const publicPath = path.join(__dirname, 'public');
+//CSS/JS用のファイルの置き場
 const viewsPath = path.join(__dirname, 'views');
+//EJSのテンプレートファイルの置き場
 app.set('view engine', 'ejs');
+//テンプレートエンジンをEJSに設定
 app.set('views', viewsPath);
+//EJS ファイルを探すディレクトリを views に設定
+app.use(express.static(publicPath));
+//静的ファイル（CSS / JS）の置き場をpublicに設定
+console.log('📦 Serving static assets from:', publicPath);
 
-//---ベーシック認証（本番: server/.env に BASIC_AUTH_PASSWORD を設定すると有効）---
-// /api は対象外。SPA の fetch は Authorization を付けられないため、API まで掛けると
-// 「認証が必要です。」だけ返ってランキング取得などが失敗する。
+//---ベーシック認証（.env の BASIC_AUTH_PASSWORD で有効）---
+// /api は対象外（ブラウザの fetch に Authorization を付けられないため）。
 const basicAuthUser = String(process.env.BASIC_AUTH_USER || 'admin').trim();
 const basicAuthPass = String(process.env.BASIC_AUTH_PASSWORD || '').trim();
 if (basicAuthPass) {
@@ -162,11 +105,7 @@ if (basicAuthPass) {
 }
 //---ベーシック認証---
 
-//---静的ファイル（CSS / JS）---
-app.use(express.static(publicPath));
-console.log('📦 Serving static assets from:', publicPath);
-
-
+//ここから---------
 const { parseJsonFromModelOutput } = require('./parseModelJson');
 const {
   fetchCategoryRankings,
@@ -1603,113 +1542,10 @@ async function scrape(url, maxChars = 8000) {
   }
 }
 
-/*このコードは「サイトのトップページにアクセスが来たら、準備済みのReactアプリをユーザーに渡す。
-もし準備できていなければ、開発者にエラーを教える」という、
-Webサーバーの基本的ながら非常に重要な処理を行う*/
-
 app.get('/', (_req, res) => {
   console.log('📨 GET /');
   res.render('index');
 });
-
-//この関数は、サーバーに溜まった古いスクリーンショットファイルを自動で掃除するためのもの
-function cleanupOldScreenshots() {
-  const publicDir = publicPath;
-  const oneHourAgo = Date.now() - 60 * 60 * 1000; // 1 hour in milliseconds
-
-  try {
-    const files = fs.readdirSync(publicDir);
-    let deletedCount = 0;
-
-    files.forEach((file) => {
-      if (file.startsWith('pixta_') && file.endsWith('.png')) {
-        const filePath = path.join(publicDir, file);
-        const stats = fs.statSync(filePath);
-
-        if (stats.mtimeMs < oneHourAgo) {
-          fs.unlinkSync(filePath);
-          deletedCount++;
-          console.log('🗑️ Deleted old screenshot:', file);
-        }
-      }
-    });
-
-    if (deletedCount > 0) {
-      console.log(`✅ Cleaned up ${deletedCount} old screenshot(s)`);
-    }
-  } catch (err) {
-    console.error('⚠️ Screenshot cleanup failed:', err.message);
-  }
-}
-
-/*---③PIXTA画像検索API---*/
-/*app.get('/api/searchPIXTAimage', async (req, res) => {
-  const { keyword } = req.query;
-
-  console.log('🔍 GET /api/searchPIXTAimage called with keyword:', keyword);
-
-  if (!keyword) {
-    console.warn('⚠️ keyword is missing in query');
-    return res.status(400).json({ error: 'キーワードを指定してください。' });
-  }
-
-  // Clean up old screenshots before creating a new one
-  cleanupOldScreenshots();
-
-  const searchUrl = `https://pixta.jp/tags/${encodeURIComponent(keyword)}`;
-  console.log('🌐 Searching PIXTA:', searchUrl);
-
-  let browser;
-  try {
-    browser = await chromium.launch({ headless: true });
-    const page = await browser.newPage();
-
-    console.log('📸 Navigating to PIXTA search results');
-    await page.goto(searchUrl, { waitUntil: 'networkidle', timeout: 30000 });
-
-    // スクリーンショットを取得
-    const screenshotPath = path.join(__dirname, 'public', `pixta_${keyword}_${Date.now()}.png`);
-    await page.screenshot({ path: screenshotPath, fullPage: true });
-    console.log('📷 Screenshot saved:', screenshotPath);
-
-    // 素材情報を取得
-    console.log('🔍 Extracting image data from search results');
-    const images = await page.$$eval('.item-list--large__wrap', (elements) => {
-      return elements.map((el) => {
-        // div要素のid属性から素材番号を取得
-        const divWithId = el.querySelector('div[id]');
-        const materialNo = divWithId ? divWithId.id : null;
-
-        // img要素のdata-src属性またはsrc属性から画像URLを取得
-        const img = el.querySelector('img.lozad');
-        const srcUrl = img ? (img.getAttribute('data-src') || img.getAttribute('src')) : null;
-
-        return materialNo && srcUrl ? { materialNo, srcUrl } : null;
-      }).filter(item => item !== null);
-    });
-
-    console.log(`✅ Found ${images.length} images from PIXTA`);
-
-    await page.close();
-
-    res.json({
-      PIXTAimages: images,
-      screenshot: path.basename(screenshotPath)
-    });
-  } catch (err) {
-    console.error('❌ PIXTA search failed:', err.message);
-    res.status(500).json({
-      error: 'PIXTA検索に失敗しました。',
-      details: err.message
-    });
-  } finally {
-    if (browser) {
-      await browser.close();
-      console.log('🧹 Closed browser instance');
-    }
-  }
-});*/
-
 
 app.get('/api/category-ranking-theme-presets', (req, res) => {
   const category = String(req.query?.category ?? '').trim();
@@ -2800,12 +2636,6 @@ ${outlineJSON}
     '✅ Completed /api/generate in',
     `${Date.now() - requestStartedAt}ms`
   );
-  //完成した記事データなどをJSON形式でクライアントに送信
-  /*res.json()は、Express.jsの機能で、
-  JavaScriptのオブジェクトをJSON（ジェイソン）というデータ形式に
-  変換して、HTTPレスポンスとして送信。
-  フロントエンドのReactアプリケーションは、
-  このJSONデータを受け取って画面に表示*/
   res.json({
     title: articleData.h1 || '',
     introduction: articleData.introduction || '',
@@ -3074,6 +2904,136 @@ app.post('/api/usecase/generate-copy', async (req, res) => {
 const registerArticleAppRoutes = require('./articleAppGenerate');
 registerArticleAppRoutes(app, { scrape, bindGetAiModel, resolveAiProvider });
 
+const {
+  generateProductPage,
+  normalizeTone: normalizeProductLpTone,
+  productLabel: productLpLabel,
+  normalizeOptionsInput: normalizeProductLpOptions,
+} = require('./productLpEngine');
+
+app.post('/api/product-lp/generate', async (req, res) => {
+  const body = req.body || {};
+  const category = String(body.category || '').trim();
+  const productName = String(body.productName || body.product || '').trim();
+  const modelCode = String(body.modelCode || body.modelKey || '').trim();
+  const manufacturer = String(body.manufacturer || '').trim();
+  const tone = normalizeProductLpTone(body.tone);
+  const officialUrl = String(body.officialUrl || body.makerUrl || '').trim();
+  const referenceUrl = String(body.referenceUrl || '').trim();
+  const purchaseUrl = String(body.purchaseUrl || body.ctaUrl || '').trim();
+  const featureNotes = String(body.featureNotes || body.notes || '').trim();
+  const ctaLabel = String(body.ctaLabel || '').trim();
+  const releaseDate = String(body.releaseDate || body.launchDate || '').trim();
+  const reservationOpen = Boolean(
+    body.reservationOpen ?? body.reservationAccepting ?? body.isReservationOpen
+  );
+  const skipScrape = Boolean(body.skipScrape);
+  const options = normalizeProductLpOptions(body.options);
+
+  if (!productName && !modelCode) {
+    return res.status(400).json({
+      error: '商品名または型番を入力してください。',
+    });
+  }
+
+  const input = {
+    category,
+    productName,
+    modelCode,
+    manufacturer,
+    tone,
+    officialUrl,
+    referenceUrl,
+    purchaseUrl,
+    featureNotes,
+    ctaLabel,
+    releaseDate,
+    reservationOpen,
+    options,
+  };
+
+  const warnings = [];
+  const scrapedTexts = [];
+  // 公式・参考を優先して取得（購入先・オプションURLも参照）
+  const contentUrls = [
+    { url: officialUrl, role: 'official' },
+    { url: referenceUrl, role: 'reference' },
+  ].filter((x) => x.url);
+  const purchaseOnly =
+    purchaseUrl &&
+    !contentUrls.some((x) => x.url === purchaseUrl)
+      ? [{ url: purchaseUrl, role: 'purchase' }]
+      : [];
+  const seenUrls = new Set(
+    [...contentUrls, ...purchaseOnly].map((x) => x.url)
+  );
+  const optionUrls = options
+    .filter((o) => o.url && !seenUrls.has(o.url))
+    .map((o, i) => {
+      seenUrls.add(o.url);
+      return {
+        url: o.url,
+        role: `option:${o.name || o.modelCode || i + 1}`,
+      };
+    });
+
+  if (!skipScrape) {
+    for (const { url, role } of [...contentUrls, ...purchaseOnly, ...optionUrls]) {
+      try {
+        console.log(`🔗 [product-lp] scrape (${role}):`, url);
+        const text = await scrape(url, 12000);
+        scrapedTexts.push({ url, role, text });
+      } catch (err) {
+        console.warn('⚠️ [product-lp] scrape failed', url, err.message);
+        warnings.push({ url, role, message: err.message });
+      }
+    }
+  } else if (contentUrls.length || optionUrls.length) {
+    warnings.push({
+      message:
+        '公式／参考／オプションURLが入力されていますが、「URLを取得しない」がオンのため参照取得をスキップしました。',
+    });
+  }
+
+  if (!skipScrape && contentUrls.length && scrapedTexts.length === 0) {
+    return res.status(502).json({
+      error:
+        '公式URL・参考URLの取得に失敗しました。URLを確認するか、一時的に「URLを取得しない」でメモのみ生成してください。',
+      warnings,
+    });
+  }
+
+  try {
+    const getAiModel = bindGetAiModel(req);
+    const generated = await generateProductPage({
+      input,
+      scrapedTexts,
+      getAiModel,
+      tone,
+    });
+    return res.json({
+      ok: true,
+      category,
+      tone,
+      productLabel: productLpLabel(input),
+      aiProviderUsed: getAiModel.provider,
+      warnings,
+      scrapedCount: scrapedTexts.length,
+      ...generated,
+    });
+  } catch (err) {
+    console.error('💥 /api/product-lp/generate error:', err);
+    if (isGeminiQuotaExceededError(err)) {
+      return res.status(429).json(geminiQuotaPayload(err));
+    }
+    return res.status(500).json({
+      error: '個別商品ページの生成に失敗しました。',
+      details: err.message,
+      warnings,
+    });
+  }
+});
+
 const server = app.listen(PORT, () =>
   console.log(`✅ Server ready on http://localhost:${PORT}`)
 );
@@ -3084,7 +3044,7 @@ server.on('error', (err) => {
       `❌ ポート ${PORT} は既に使用中です（EADDRINUSE）。\n` +
         `   別ターミナルで動いている node / nodemon を停止するか、次で占有プロセスを終了してください:\n` +
         `   kill $(lsof -ti :${PORT})\n` +
-        `   別ポートで起動する場合: PORT=3051 npm run dev（client/vite.config.js の proxy target も同じ番号に合わせる）`
+        `   別ポートで起動する場合: PORT=3051 npm run dev`
     );
     process.exit(1);
   }

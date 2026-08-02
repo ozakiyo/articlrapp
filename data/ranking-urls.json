@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "updatedAt": "2026-07-17T23:56:34.468Z",
+  "updatedAt": "2026-08-01T14:30:00.000Z",
   "categories": {
     "掃除機": {
       "rankingUrls": {
@@ -382,6 +382,16 @@
       },
       "savedAt": "2026-07-15T13:50:00.000Z",
       "note": "Amazon=85396051 ポータブルスピーカー（旧検索NG・スマートスピーカー6905036051は別カテゴリ） / 楽天=208316 スピーカー週間（BT専用ジャンルなしのため最寄り親） / Yahoo=cid49495 スマホ対応スピーカー / コジマ=cate bluetooth_speaker Bluetoothスピーカー 週間（旧speakerは親）"
+    },
+    "体重計・体組成計": {
+      "rankingUrls": {
+        "amazon": "https://www.amazon.co.jp/gp/bestsellers/kitchen/2145971051",
+        "rakuten": "https://ranking.rakuten.co.jp/weekly/408076/",
+        "yahoo": "https://shopping.yahoo.co.jp/searchranking/%E4%BD%93%E9%87%8D%E8%A8%88/45906/?rmore=1&prom=1",
+        "kojima": "https://www.kojima.net/ec/ranking.html?cate=helth_meter_002&rType=BRWS&rTerm=WEEK&rPage=1"
+      },
+      "savedAt": "2026-08-01T14:30:00.000Z",
+      "note": "Amazon=2145971051 体重・体脂肪・体組成計 / 楽天=408076 週間 / Yahoo=cid45906 / コジマ=cate helth_meter_002 体組成計"
     }
   }
 }

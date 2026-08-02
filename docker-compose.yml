@@ -1,5 +1,4 @@
-# 現行ルート app.js 用（ローカル Docker・ライブ編集）
-# 旧 server/ 向け構成は使わない
+# ローカル Docker・ライブ編集用（ルート app.js）
 services:
   app:
     build:

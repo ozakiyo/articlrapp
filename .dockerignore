@@ -4,10 +4,6 @@ node_modules
 .DS_Store
 .env
 exports
-server
-client
-docker
 deploy
-.claude
 *.md
 !README.md

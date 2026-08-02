@@ -50,6 +50,19 @@ const BUILTIN_CATEGORIES = [
       '安い',
     ],
   },
+  {
+    label: '体重計・体組成計',
+    slug: 'taiju_taiso',
+    suggestSeeds: [
+      'おすすめ',
+      'ランキング',
+      '体脂肪',
+      'スマホ連動',
+      '薄型',
+      'タニタ',
+      'オムロン',
+    ],
+  },
 ];
 
 const COMMON_SUGGEST_SEEDS =

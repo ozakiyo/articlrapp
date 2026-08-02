@@ -116,6 +116,57 @@ const RANKING_THEME_PRESETS_BY_CATEGORY = {
       defaultOrder: 7,
     },
   ],
+  '体重計・体組成計': [
+    {
+      id: 'overall',
+      label: '総合おすすめ',
+      title: '体重計・体組成計 総合おすすめ',
+      keywords: [],
+      excludeKeywords: [],
+      minSiteCount: 2,
+      defaultOrder: 1,
+    },
+    {
+      id: 'smartphone',
+      label: 'スマホ連動',
+      title: 'スマホ連動の体重計・体組成計',
+      keywords: ['スマホ', 'Bluetooth', 'Wi-Fi', 'アプリ', '通信'],
+      excludeKeywords: [],
+      defaultOrder: 2,
+    },
+    {
+      id: 'body_composition',
+      label: '体組成・多項目測定',
+      title: '体脂肪・筋肉量など多項目測定',
+      keywords: ['体組成', '体脂肪', '筋肉量', '骨格筋', '内臓脂肪'],
+      excludeKeywords: ['アナログ'],
+      defaultOrder: 3,
+    },
+    {
+      id: 'compact',
+      label: '薄型・コンパクト',
+      title: '薄型・コンパクトな体重計・体組成計',
+      keywords: ['薄型', 'コンパクト', '立てかけ', 'スリム'],
+      excludeKeywords: [],
+      defaultOrder: 4,
+    },
+    {
+      id: 'precision',
+      label: '高精度・部位別',
+      title: '高精度・部位別測定向け',
+      keywords: ['部位別', '両手両足', '8電極', 'デュアル', '筋質'],
+      excludeKeywords: [],
+      defaultOrder: 5,
+    },
+    {
+      id: 'simple',
+      label: 'シンプル体重計',
+      title: 'シンプルな体重計',
+      keywords: ['体重計'],
+      excludeKeywords: ['体組成', '体脂肪', 'Bluetooth', 'スマホ'],
+      defaultOrder: 6,
+    },
+  ],
 };
 
 const RANKING_THEME_PRESETS_DEFAULT = [
@@ -181,6 +232,17 @@ const KNOWN_CATEGORY_RANKING_URLS = {
       'https://shopping.yahoo.co.jp/searchranking?p=%E3%82%B9%E3%83%9D%E3%83%83%E3%83%88%E3%82%AF%E3%83%BC%E3%83%A9%E3%83%BC&cid=26309&rcid=26309&rterm=default&rmore=1&prom=1',
     // コジマ: 冷風機・冷風扇（スポットクーラー含む）
     kojima: 'https://www.kojima.net/ec/ranking.html?cate=fan_circulator_010',
+  },
+  '体重計・体組成計': {
+    // Amazon: Body Composition Monitors / 体重・体脂肪・体組成計
+    amazon: 'https://www.amazon.co.jp/gp/bestsellers/kitchen/2145971051',
+    // 楽天: 体重計・体脂肪計・体組成計
+    rakuten: 'https://ranking.rakuten.co.jp/weekly/408076/',
+    // Yahoo!: 体重計、体脂肪計、体組成計（cid=45906）
+    yahoo:
+      'https://shopping.yahoo.co.jp/searchranking/%E4%BD%93%E9%87%8D%E8%A8%88/45906/?rmore=1&prom=1',
+    // コジマ: 体組成計（cate 表記はサイト側の helth_meter_002）
+    kojima: 'https://www.kojima.net/ec/ranking.html?cate=helth_meter_002',
   },
 };
 

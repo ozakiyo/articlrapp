@@ -15,6 +15,7 @@
             <button type="button" data-tab="guide" class="tab-btn secondary">使い方</button>
             <button type="button" data-tab="weekly" class="tab-btn">週次レポート</button>
             <button type="button" data-tab="kyoso" class="tab-btn secondary">競合調査（ランキング抽出）</button>
+            <button type="button" data-tab="productlp" class="tab-btn secondary">個別商品ページ</button>
             <button type="button" data-tab="usecase" class="tab-btn secondary">用途別おすすめ</button>
             <button type="button" data-tab="headings" class="tab-btn secondary">見出し生成</button>
             <button type="button" data-tab="article" class="tab-btn secondary">記事生成</button>
@@ -42,10 +43,33 @@
           <ul class="guide-list">
             <li><strong>競合調査</strong> … ランキングURL・競合記事URLの準備と詳細取得（セットアップの本拠）</li>
             <li><strong>週次レポート</strong> … 毎週の変化確認（売れ筋・競合見出し差分・改修）</li>
+            <li><strong>個別商品ページ</strong> … 売れる1商品の記事型ページ（通常／新製品発売）。構成は特集記事と同じ</li>
             <li><strong>見出し生成</strong> … H2×2＋各H3×3を作成。必要なら H4 もここで提案・確定。検索意図タグ付き</li>
             <li><strong>用途別おすすめ</strong> … 掲載商品の用途別3選と説明・機能表（結論／向いている人）</li>
             <li><strong>記事生成</strong> … 確定済み見出しの本文＋AEO/GEO/SEO補助ブロック</li>
           </ul>
+        </section>
+
+        <section class="panel guide-panel">
+          <h2>売れる製品 → 個別商品ページ → CV</h2>
+          <p class="field-hint">
+            柱記事（カテゴリ特集）とは別に、1商品に特化したページ原稿を作れます。見た目・見出し階層は
+            <a href="https://www.kojima.net/ec/Special/feature/reading/season/spot_cooler.html" target="_blank" rel="noopener">コジマ特集記事</a>
+            と同じ記事コンテンツ型です。
+          </p>
+          <ol class="guide-steps">
+            <li>
+              <strong>個別商品ページ</strong>
+              <p>商品名・型番・公式／参考URLを入れて生成。トーンは「通常」か「新製品発売」。オプション品があれば追加。</p>
+            </li>
+            <li>
+              <strong>CMSへ貼付 → CV</strong>
+              <p>出力HTMLをコピーし、「商品詳細はこちら」等のCTAで購入ページへ誘導する。</p>
+            </li>
+          </ol>
+          <div class="actions">
+            <button type="button" class="secondary" data-guide-go="productlp">個別商品ページへ</button>
+          </div>
         </section>
 
         <section class="panel guide-panel">
@@ -72,6 +96,9 @@
           </ul>
           <h3 class="guide-subhead">どのタブで何が付くか</h3>
           <ul class="guide-list">
+            <li>
+              <strong>個別商品ページ</strong> … 1商品の記事型原稿（結論・スペック表・FAQ・CTA）＝CV向け
+            </li>
             <li>
               <strong>見出し生成</strong> … 意図タグ（選び方／メーカーなど）＝SEO/AEO/GEO の切り口固定
             </li>
@@ -147,6 +174,7 @@
           <div class="actions">
             <button type="button" class="secondary" data-guide-go="weekly">週次レポートへ</button>
             <button type="button" class="secondary" data-guide-go="kyoso">競合調査へ</button>
+            <button type="button" class="secondary" data-guide-go="productlp">個別商品ページへ</button>
             <button type="button" class="secondary" data-guide-go="headings">見出し生成へ</button>
             <button type="button" class="secondary" data-guide-go="article">記事生成へ</button>
           </div>
@@ -408,6 +436,129 @@
           <p class="field-hint" id="weekly-confirm-msg">
             確定すると今週のスナップショットを保存し、来週の前週比に使います。
           </p>
+        </section>
+      </section>
+
+      <!-- 個別商品ページ -->
+      <section id="panel-productlp" class="tab-panel" hidden>
+        <header>
+          <h1>個別商品ページ</h1>
+          <p>
+            売れる1商品に特化した記事型ページを作成します。構成・デザインはコジマ特集記事と同じ（H1→導入→H2/H3→スペック表→FAQ→まとめ＋CTA）。
+          </p>
+          <div class="aeo-intent-panel" aria-label="個別商品ページの AEO GEO SEO 意図">
+            <p class="aeo-intent-lead">個別商品ページの意図</p>
+            <ul class="aeo-intent-list">
+              <li>
+                <span class="pillar-tag pillar-aeo">AEO</span>
+                冒頭の直接回答と各段落の「結論:」で、質問への答えを抜き出しやすく
+              </li>
+              <li>
+                <span class="pillar-tag pillar-geo">GEO</span>
+                向き不向き・スペック表・FAQで引用しやすい事実を整理
+              </li>
+              <li>
+                <span class="pillar-tag pillar-seo">SEO</span>
+                商品名・型番入り title / meta と購入CTAで検索〜CVをつなぐ
+              </li>
+            </ul>
+          </div>
+        </header>
+
+        <section class="panel">
+          <h2>1. 商品情報・トーン</h2>
+          <form id="form-productlp" class="form">
+            <label class="field">
+              <span>カテゴリ</span>
+              <select id="productlp-category"></select>
+              <input type="text" id="productlp-category-other" class="category-other-input" placeholder="カテゴリ名" hidden />
+            </label>
+            <label class="field">
+              <span>訴求トーン *</span>
+              <select id="productlp-tone" name="tone">
+                <option value="standard">通常（個別商品ページ）</option>
+                <option value="new_release" selected>新製品発売</option>
+              </select>
+            </label>
+            <label class="field">
+              <span>メーカー</span>
+              <input type="text" id="productlp-manufacturer" placeholder="例: ビックアイデア" />
+            </label>
+            <label class="field">
+              <span>商品名 *</span>
+              <input type="text" id="productlp-name" required placeholder="例: スポットクーラー" />
+            </label>
+            <label class="field">
+              <span>型番</span>
+              <input type="text" id="productlp-model" placeholder="例: BIM-PA26A" />
+            </label>
+            <label class="field">
+              <span>発売日</span>
+              <input type="text" id="productlp-release-date" placeholder="例: 2026年8月 / 2026-08-01" />
+              <span class="field-hint">分かる範囲で可（年月のみでも可）</span>
+            </label>
+            <label class="field checkbox-field">
+              <input type="checkbox" id="productlp-reservation" />
+              <span>予約受付中</span>
+            </label>
+            <label class="field">
+              <span>メーカー公式URL</span>
+              <input type="url" id="productlp-official-url" placeholder="https://" />
+              <span class="field-hint">入力するとページ内容を取得して原稿の参考にします</span>
+            </label>
+            <label class="field">
+              <span>参考URL（レビュー・特集など）</span>
+              <input type="url" id="productlp-reference-url" placeholder="https://" />
+              <span class="field-hint">入力すると取得して構成・説明の参考にします</span>
+            </label>
+            <label class="field">
+              <span>購入先URL（CTA）</span>
+              <input type="url" id="productlp-purchase-url" placeholder="コジマ／Amazon 等の商品詳細" />
+            </label>
+            <label class="field">
+              <span>CTAラベル</span>
+              <input type="text" id="productlp-cta-label" placeholder="新製品の詳細・ご購入はこちら" />
+            </label>
+            <label class="field">
+              <span>補足特長・メモ</span>
+              <textarea id="productlp-notes" rows="4" placeholder="例: 冷風・温風・ドライ・送風の1台4役。おやすみ運転。キャスター付き。"></textarea>
+            </label>
+
+            <fieldset class="productlp-options-fieldset">
+              <legend>オプション品（任意・プラスワン）</legend>
+              <p class="field-hint">
+                別売の窓パネル・ダクト延長・フィルターなどがある場合に追加します。名称があれば原稿に「あわせて使いたいオプション」として含めます。
+              </p>
+              <div id="productlp-options-list" class="productlp-options-list"></div>
+              <div class="actions">
+                <button type="button" class="secondary" id="productlp-add-option">オプション品を追加</button>
+              </div>
+            </fieldset>
+
+            <label class="field checkbox-field">
+              <input type="checkbox" id="productlp-skip-scrape" />
+              <span>URLを取得せず、入力メモだけで生成する</span>
+            </label>
+            <div class="actions">
+              <button type="submit" id="productlp-submit">個別商品ページを生成</button>
+              <button type="button" class="secondary" id="productlp-fill-sample">BIM-PA26Aサンプルを入れる</button>
+              <button type="button" class="secondary" id="productlp-reset">リセット</button>
+            </div>
+          </form>
+          <p id="productlp-error" class="error" hidden></p>
+          <p class="field-hint" id="productlp-status"></p>
+        </section>
+
+        <section id="productlp-result" class="panel" hidden>
+          <h2>生成結果</h2>
+          <div class="result-actions">
+            <button type="button" class="secondary" id="productlp-copy-html">CMS用HTMLをコピー</button>
+            <button type="button" class="secondary" id="productlp-clear">クリア</button>
+          </div>
+          <p id="productlp-copy-msg" class="field-hint" hidden></p>
+          <div id="productlp-warnings" class="warning" hidden></div>
+          <div id="productlp-body" class="generated-article"></div>
+          <textarea id="productlp-html-output" class="article-html-output" rows="10" readonly></textarea>
         </section>
       </section>
 
@@ -910,5 +1061,6 @@
     <script src="/js/main.js"></script>
     <script src="/js/weeklyReport.js"></script>
     <script src="/js/useCaseRecommend.js"></script>
+    <script src="/js/productLp.js"></script>
   </body>
 </html>

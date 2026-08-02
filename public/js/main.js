@@ -6,6 +6,7 @@
     guide: document.getElementById('panel-guide'),
     weekly: document.getElementById('panel-weekly'),
     kyoso: document.getElementById('panel-kyoso'),
+    productlp: document.getElementById('panel-productlp'),
     usecase: document.getElementById('panel-usecase'),
     headings: document.getElementById('panel-headings'),
     article: document.getElementById('panel-article'),
@@ -19,6 +20,7 @@
       { selectId: 'weekly-category', otherId: 'weekly-category-other' },
       { selectId: 'kyoso-category', otherId: 'kyoso-category-other' },
       { selectId: 'usecase-category', otherId: 'usecase-category-other' },
+      { selectId: 'productlp-category', otherId: 'productlp-category-other' },
     ],
 
     get(selectId, otherId) {

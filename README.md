@@ -1,12 +1,14 @@
 # articleappNode
 
-articleapp を **HTML / CSS / 素の JavaScript** と **Node.js + Express + EJS** で動かす版です。React や Vite は不要です。
+家電カテゴリ向けの記事制作支援アプリです。  
+**HTML / CSS / 素の JavaScript** と **Node.js + Express + EJS** で動作します（React / Vite 不要）。
 
 ## 機能
 
-- 競合調査（ランキング商品抽出）
-- 見出し生成（Gemini）
-- 記事生成（Gemini）
+- 競合調査（ランキング商品抽出・競合見出し分析）
+- 週次レポート（売れ筋変化・改修タスク）
+- 見出し生成 / 記事生成（Gemini / ChatGPT / Cursor）
+- 用途別おすすめ生成
 
 シグナル監視・LINE 配信は別リポジトリ **[tradePulseNode](../tradePulseNode)**（同一 ConoHa サーバー・別ポート）です。
 
@@ -40,24 +42,29 @@ docker compose up --build
 
 ブラウザで http://localhost:3050 。
 
-- ホストの `~/work/apps/articleappNode` をコンテナにマウントしています
-- `js` / `ejs` / `json` / `css` を保存すると nodemon が自動再起動します
-- `data` / `exports` もホスト側に残ります
+- ホストのソースをコンテナにマウント
+- `js` / `ejs` / `json` / `css` 保存で nodemon が自動再起動
+- `data` / `exports` はホスト側に残る
 
 ## 構成
 
 ```
 articleappNode/
-├── app.js                 # Express サーバー（API + EJS）
-├── articleAppGenerate.js  # 記事・見出し API
-├── Dockerfile             # ローカル Docker 用
+├── app.js                      # Express サーバー（API + EJS）
+├── aiProvider.js               # Gemini / ChatGPT / Cursor 抽象化
+├── articleAppGenerate.js       # 見出し・記事生成 API
+├── categoryRanking.js          # モール横断ランキング取得
+├── categoryRegistry.js         # カテゴリ一覧
+├── competitorArticleEngine.js  # 競合見出し分析
+├── weeklyReportEngine.js       # 週次レポート
+├── useCaseRecommendEngine.js   # 用途別おすすめ
+├── views/index.ejs             # UI
+├── public/                     # CSS / JS
+├── data/                       # ランキングURL・競合記事など
+├── exports/                    # CSV / 週次レポート出力
+├── deploy/conoha/              # ConoHa（pm2）用
+├── Dockerfile
 ├── docker-compose.yml
-├── deploy/conoha/         # ConoHa（pm2）用
-├── views/
-│   └── index.ejs
-├── public/
-│   ├── css/style.css
-│   └── js/main.js
 └── package.json
 ```
 
