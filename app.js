@@ -2904,11 +2904,12 @@ app.post('/api/usecase/generate-copy', async (req, res) => {
 const registerArticleAppRoutes = require('./articleAppGenerate');
 registerArticleAppRoutes(app, { scrape, bindGetAiModel, resolveAiProvider });
 
-const {
+  const {
   generateProductPage,
   normalizeTone: normalizeProductLpTone,
   productLabel: productLpLabel,
   normalizeOptionsInput: normalizeProductLpOptions,
+  normalizeExtraImages: normalizeProductLpImages,
 } = require('./productLpEngine');
 
 app.post('/api/product-lp/generate', async (req, res) => {
@@ -2929,6 +2930,13 @@ app.post('/api/product-lp/generate', async (req, res) => {
   );
   const skipScrape = Boolean(body.skipScrape);
   const options = normalizeProductLpOptions(body.options);
+  const mainImageUrl = String(
+    body.mainImageUrl || body.mainImage?.url || ''
+  ).trim();
+  const mainImageAlt = String(
+    body.mainImageAlt || body.mainImage?.alt || ''
+  ).trim();
+  const images = normalizeProductLpImages(body.images);
 
   if (!productName && !modelCode) {
     return res.status(400).json({
@@ -2950,6 +2958,8 @@ app.post('/api/product-lp/generate', async (req, res) => {
     releaseDate,
     reservationOpen,
     options,
+    mainImage: { url: mainImageUrl, alt: mainImageAlt },
+    images,
   };
 
   const warnings = [];

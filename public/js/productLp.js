@@ -4,6 +4,24 @@
 (function () {
   let lastHtml = '';
   let optionRowSeq = 0;
+  let imageRowSeq = 0;
+
+  const SAMPLE_MAIN_IMAGE =
+    'https://picsum.photos/seed/articleapp-product-main/1200/675';
+  const SAMPLE_DETAIL_IMAGE =
+    'https://picsum.photos/seed/articleapp-product-detail/800/500';
+  const SAMPLE_SPEC_IMAGE =
+    'https://picsum.photos/seed/articleapp-product-spec/800/450';
+
+  const PLACEMENT_OPTIONS = [
+    { value: 'after_intro', label: '導入文の後' },
+    { value: 'after_section', label: '指定見出し（H2）の後' },
+    { value: 'before_specs', label: 'スペックの前' },
+    { value: 'after_options', label: 'オプションの後' },
+    { value: 'before_summary', label: 'まとめの前' },
+    { value: 'before_faq', label: 'よくある質問の前' },
+    { value: 'before_end_cta', label: '末尾CTAの前' },
+  ];
 
   function esc(s) {
     const d = document.createElement('div');
@@ -16,6 +34,15 @@
       .split(/\n\n+/)
       .map((p) => `<p>${esc(p).replace(/\n/g, '<br>')}</p>`)
       .join('');
+  }
+
+  function figureHtml(img) {
+    if (!img?.url) return '';
+    let html = `<p class="pc_tac pc_mt15"><img src="${esc(img.url)}" alt="${esc(
+      img.alt || ''
+    )}" class="pc_w100per" /></p>`;
+    if (img.caption) html += `<p class="pc_tac pc_fontS">${esc(img.caption)}</p>`;
+    return html;
   }
 
   function getCategory() {
@@ -40,6 +67,99 @@
   function setStatus(msg) {
     const el = document.getElementById('productlp-status');
     if (el) el.textContent = msg || '';
+  }
+
+  function placementSelectHtml(selected) {
+    return PLACEMENT_OPTIONS.map(
+      (o) =>
+        `<option value="${o.value}"${
+          o.value === selected ? ' selected' : ''
+        }>${o.label}</option>`
+    ).join('');
+  }
+
+  function syncImageH2Field(row) {
+    const placement = row.querySelector('.productlp-img-placement')?.value;
+    const h2Wrap = row.querySelector('.productlp-img-h2-wrap');
+    if (h2Wrap) h2Wrap.hidden = placement !== 'after_section';
+  }
+
+  function addImageRow(prefill) {
+    const list = document.getElementById('productlp-images-list');
+    if (!list) return;
+    const id = `img-${++imageRowSeq}`;
+    const row = document.createElement('div');
+    row.className = 'productlp-option-row productlp-image-row';
+    row.dataset.imageId = id;
+    row.innerHTML = `
+      <div class="productlp-image-grid">
+        <label class="field">
+          <span>画像URL</span>
+          <input type="url" class="productlp-img-url" placeholder="https://" />
+        </label>
+        <label class="field">
+          <span>代替テキスト／キャプション</span>
+          <input type="text" class="productlp-img-alt" placeholder="例: 本体イメージ" />
+        </label>
+        <label class="field">
+          <span>挿入位置</span>
+          <select class="productlp-img-placement">${placementSelectHtml(
+            prefill?.placement || 'after_intro'
+          )}</select>
+        </label>
+        <label class="field productlp-img-h2-wrap" hidden>
+          <span>この見出し（H2）の後に挿入（部分一致）</span>
+          <input type="text" class="productlp-img-after-h2" placeholder="例: 選ばれる理由 / 注意点" />
+        </label>
+      </div>
+      <div class="actions">
+        <button type="button" class="secondary productlp-img-remove">この行を削除</button>
+      </div>
+    `;
+    list.appendChild(row);
+    row.querySelector('.productlp-img-remove')?.addEventListener('click', () => {
+      row.remove();
+    });
+    row
+      .querySelector('.productlp-img-placement')
+      ?.addEventListener('change', () => syncImageH2Field(row));
+    if (prefill) {
+      if (prefill.url) row.querySelector('.productlp-img-url').value = prefill.url;
+      if (prefill.alt) row.querySelector('.productlp-img-alt').value = prefill.alt;
+      if (prefill.caption && !prefill.alt) {
+        row.querySelector('.productlp-img-alt').value = prefill.caption;
+      }
+      if (prefill.placement) {
+        row.querySelector('.productlp-img-placement').value = prefill.placement;
+      }
+      if (prefill.afterH2) {
+        row.querySelector('.productlp-img-after-h2').value = prefill.afterH2;
+      }
+    }
+    syncImageH2Field(row);
+  }
+
+  function clearImageRows() {
+    const list = document.getElementById('productlp-images-list');
+    if (list) list.innerHTML = '';
+  }
+
+  function collectImages() {
+    const rows = document.querySelectorAll('#productlp-images-list .productlp-image-row');
+    const out = [];
+    rows.forEach((row) => {
+      const url = String(row.querySelector('.productlp-img-url')?.value || '').trim();
+      if (!url) return;
+      const alt = String(row.querySelector('.productlp-img-alt')?.value || '').trim();
+      out.push({
+        url,
+        alt,
+        caption: alt,
+        placement: row.querySelector('.productlp-img-placement')?.value || 'after_intro',
+        afterH2: String(row.querySelector('.productlp-img-after-h2')?.value || '').trim(),
+      });
+    });
+    return out;
   }
 
   function addOptionRow(prefill) {
@@ -125,6 +245,21 @@
     document.getElementById('productlp-skip-scrape').checked = false;
     document.getElementById('productlp-reference-url').value =
       'https://www.kojima.net/ec/Special/feature/reading/season/spot_cooler.html';
+    document.getElementById('productlp-main-image-url').value = SAMPLE_MAIN_IMAGE;
+    document.getElementById('productlp-main-image-alt').value =
+      'ビックアイデア スポットクーラー BIM-PA26A（サンプル画像）';
+    clearImageRows();
+    addImageRow({
+      url: SAMPLE_DETAIL_IMAGE,
+      alt: '使用シーンイメージ（サンプル）',
+      placement: 'after_section',
+      afterH2: '注目したいポイント',
+    });
+    addImageRow({
+      url: SAMPLE_SPEC_IMAGE,
+      alt: 'スペック補足イメージ（サンプル）',
+      placement: 'before_specs',
+    });
     clearOptionRows();
     addOptionRow({
       name: '窓用排熱パネル（別売想定）',
@@ -132,7 +267,7 @@
       notes: '排熱ダクトを窓へ固定するためのパネル。設置環境により必要。',
     });
     setStatus(
-      'BIM-PA26A（新製品発売）サンプルを入力しました。公式／参考URLがあれば入れてから生成してください。'
+      'BIM-PA26A（新製品発売）サンプルを入力しました。メイン／その他画像もサンプルURLを入れています。'
     );
   }
 
@@ -141,6 +276,7 @@
     const tone = document.getElementById('productlp-tone');
     if (tone) tone.value = 'new_release';
     clearOptionRows();
+    clearImageRows();
     showError('');
     setStatus('');
   }
@@ -148,13 +284,11 @@
   function renderCtaPreview(cta, heading) {
     if (!cta?.label) return '';
     let html = `<div class="generated-block"><h3>${esc(heading)}</h3>
-      <p class="product-cta">`;
+      <p class="linkbtn pc_mt15 pc_w80per product-cta">`;
     if (cta.url) {
-      html += `<a class="product-cta-button" href="${esc(cta.url)}" target="_blank" rel="noopener">${esc(
-        cta.label
-      )}</a>`;
+      html += `<a href="${esc(cta.url)}" class="pc_pv25" target="_blank" rel="noopener">${esc(cta.label)}</a>`;
     } else {
-      html += `<span class="product-cta-button product-cta-label">${esc(cta.label)}</span>`;
+      html += `<span class="pc_pv25">${esc(cta.label)}</span>`;
     }
     html += `</p></div>`;
     return html;
@@ -184,96 +318,28 @@
       }
     }
 
-    let html = '';
-    if (data.seoTitle || data.metaDescription) {
-      html += `<div class="generated-block"><h3><span class="pillar-tag pillar-seo">SEO</span> タイトル／メタ</h3>`;
-      if (data.seoTitle) html += `<p><strong>title:</strong> ${esc(data.seoTitle)}</p>`;
-      if (data.metaDescription) {
-        html += `<p><strong>description:</strong> ${esc(data.metaDescription)}</p>`;
-      }
-      html += `</div>`;
+    // プレビューは CMS HTML と同じ並びを優先（画像位置込み）
+    if (data.html) {
+      body.innerHTML = `<div class="generated-block"><h3>プレビュー（CMS用HTML）</h3>
+        <div class="generated-article productlp-html-preview">${data.html}</div></div>`;
+      lastHtml = data.html;
+      if (htmlOut) htmlOut.value = lastHtml;
+      return;
     }
+
+    let html = '';
     if (data.title) {
       html += `<div class="generated-block"><h3>タイトル（H1）</h3><p>${esc(data.title)}</p></div>`;
     }
-    if (data.tone) {
-      html += `<p class="field-hint">トーン: ${
-        data.tone === 'new_release' ? '新製品発売' : '通常'
-      }</p>`;
+    if (data.mainImage?.url) {
+      html += `<div class="generated-block"><h3>メイン画像（ファーストビュー）</h3>${figureHtml(
+        data.mainImage
+      )}</div>`;
     }
-    if (data.releaseDate || data.reservationOpen) {
-      html += `<div class="generated-block"><h3>発売情報</h3><ul>`;
-      if (data.releaseDate) {
-        html += `<li><strong>発売日:</strong> ${esc(data.releaseDate)}</li>`;
-      }
-      if (data.reservationOpen) {
-        html += `<li><strong>予約:</strong> 予約受付中</li>`;
-      }
-      html += `</ul></div>`;
-    }
-    if (data.directAnswer) {
-      html += `<div class="generated-block"><h3><span class="pillar-tag pillar-aeo">AEO</span> 直接回答</h3>
-        <div class="direct-answer-block generated-text">${paragraphsHtml(data.directAnswer)}</div></div>`;
-    }
-    if (data.introduction) {
-      html += `<div class="generated-block"><h3>導入文</h3>
-        <div class="generated-text">${paragraphsHtml(data.introduction)}</div></div>`;
-    }
-    html += renderCtaPreview(data.cta, 'CTA（ファーストビュー）');
-    const bodySections = (data.sections || []).filter(
-      (sec) => !/スペック|まとめ|購入案内|よくある質問|FAQ|Ｑ＆Ａ|Q&A/i.test(sec.h2 || '')
-    );
-    bodySections.forEach((sec) => {
-      html += `<div class="generated-block section-block"><h3>${esc(sec.h2 || '')}</h3>`;
-      (sec.items || []).forEach((item) => {
-        if (item.h3) html += `<h4>${esc(item.h3)}</h4>`;
-        if (item.content) {
-          html += `<div class="generated-text">${paragraphsHtml(item.content)}</div>`;
-        }
-      });
-      html += `</div>`;
-    });
-    if ((data.specTable || []).length) {
-      html += `<div class="generated-block"><h3>主なスペック</h3><table class="productlp-spec-table"><tbody>`;
-      data.specTable.forEach((row) => {
-        html += `<tr><th>${esc(row.label)}</th><td>${esc(row.value)}</td></tr>`;
-      });
-      html += `</tbody></table></div>`;
-    }
-    if ((data.options || []).length) {
-      const hasOptionsSection = bodySections.some((s) =>
-        /オプション/.test(String(s.h2 || ''))
-      );
-      html += `<div class="generated-block"><h3>${
-        hasOptionsSection ? 'オプション品一覧' : 'オプション品'
-      }</h3><ul>`;
-      data.options.forEach((o) => {
-        const label = [o.name, o.modelCode].filter(Boolean).join(' / ');
-        html += `<li><strong>${esc(label)}</strong>`;
-        if (o.notes) html += ` — ${esc(o.notes)}`;
-        if (o.url) {
-          html += ` <a href="${esc(o.url)}" target="_blank" rel="noopener">詳細</a>`;
-        }
-        html += `</li>`;
-      });
-      html += `</ul></div>`;
-    }
-    if (data.summary) {
-      html += `<div class="generated-block"><h3>まとめ</h3>
-        <div class="generated-text">${paragraphsHtml(data.summary)}</div></div>`;
-    }
-    if ((data.faq || []).length) {
-      html += `<div class="generated-block"><h3>よくある質問</h3>`;
-      data.faq.forEach((q) => {
-        html += `<h4>${esc(q.question)}</h4><p>${esc(q.answer)}</p>`;
-      });
-      html += `</div>`;
-    }
-    html += renderCtaPreview(data.cta, 'CTA（末尾）');
-
+    html += renderCtaPreview(data.cta, 'CTA');
     body.innerHTML = html;
-    lastHtml = data.html || '';
-    if (htmlOut) htmlOut.value = lastHtml;
+    lastHtml = '';
+    if (htmlOut) htmlOut.value = '';
   }
 
   async function generate(ev) {
@@ -287,6 +353,7 @@
     }
 
     const options = collectOptions();
+    const images = collectImages();
     const submit = document.getElementById('productlp-submit');
     if (submit) submit.disabled = true;
     const hasUrls = Boolean(
@@ -319,6 +386,9 @@
         document.getElementById('productlp-reservation')?.checked
       ),
       featureNotes: document.getElementById('productlp-notes')?.value || '',
+      mainImageUrl: document.getElementById('productlp-main-image-url')?.value || '',
+      mainImageAlt: document.getElementById('productlp-main-image-alt')?.value || '',
+      images,
       options,
       skipScrape: Boolean(document.getElementById('productlp-skip-scrape')?.checked),
     });
@@ -384,6 +454,9 @@
     document
       .getElementById('productlp-add-option')
       ?.addEventListener('click', () => addOptionRow());
+    document
+      .getElementById('productlp-add-image')
+      ?.addEventListener('click', () => addImageRow());
     document
       .getElementById('form-productlp')
       ?.addEventListener('submit', (e) => generate(e));

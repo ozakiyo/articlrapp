@@ -131,6 +131,67 @@ function normalizeReservationOpen(value) {
   );
 }
 
+const SAMPLE_MAIN_IMAGE_URL =
+  'https://picsum.photos/seed/articleapp-product-main/1200/675';
+
+const IMAGE_PLACEMENTS = [
+  'after_intro',
+  'after_section',
+  'before_specs',
+  'after_options',
+  'before_summary',
+  'before_faq',
+  'before_end_cta',
+];
+
+function normalizePlacement(value) {
+  const v = String(value || '')
+    .trim()
+    .toLowerCase()
+    .replace(/-/g, '_');
+  if (IMAGE_PLACEMENTS.includes(v)) return v;
+  const map = {
+    導入後: 'after_intro',
+    導入文の後: 'after_intro',
+    見出しの後: 'after_section',
+    セクションの後: 'after_section',
+    スペックの前: 'before_specs',
+    オプションの後: 'after_options',
+    まとめの前: 'before_summary',
+    faqの前: 'before_faq',
+    末尾: 'before_end_cta',
+  };
+  return map[String(value || '').trim()] || 'after_intro';
+}
+
+function normalizeMainImage(raw, productName) {
+  const src = raw && typeof raw === 'object' ? raw : { url: raw };
+  const url = String(src.url || src.src || '').trim() || SAMPLE_MAIN_IMAGE_URL;
+  const alt =
+    String(src.alt || src.caption || '').trim() ||
+    String(productName || '商品画像').trim() ||
+    '商品画像';
+  const caption = String(src.caption || '').trim();
+  return { url, alt, caption, isSample: !String(src.url || src.src || '').trim() };
+}
+
+function normalizeExtraImages(raw) {
+  if (!Array.isArray(raw)) return [];
+  return raw
+    .map((img) => {
+      const url = String(img?.url || img?.src || '').trim();
+      if (!url) return null;
+      return {
+        url,
+        alt: String(img?.alt || '').trim() || '商品関連画像',
+        caption: String(img?.caption || img?.notes || '').trim(),
+        placement: normalizePlacement(img?.placement),
+        afterH2: String(img?.afterH2 || img?.h2Contains || img?.sectionHint || '').trim(),
+      };
+    })
+    .filter(Boolean);
+}
+
 function normalizeOptionsInput(raw) {
   if (!Array.isArray(raw)) return [];
   return raw
@@ -395,34 +456,82 @@ function buildProductPageCmsHtml(data) {
       .replace(/>/g, '&gt;')
       .replace(/"/g, '&quot;');
 
-  const renderCtaBlock = (extraClass = '') => {
+  const renderCtaBlock = () => {
     const cta = data.cta || {};
     if (!cta.label) return '';
-    const wrapClass = ['product-cta', extraClass].filter(Boolean).join(' ');
-    // コジマ特集の青: .product-btn #1f3c88 / 枠 #003d99
-    const btnStyle =
-      'display:inline-block;padding:1em 2.5em;background:#1f3c88;color:#ffffff;font-size:1.15rem;font-weight:700;line-height:1.4;text-decoration:none;border-radius:8px;border:2px solid #003d99;';
-    const btn = cta.url
-      ? `<a class="product-cta-button" href="${escapeHtml(cta.url)}" style="${btnStyle}">${escapeHtml(cta.label)}</a>`
-      : `<span class="product-cta-button" style="${btnStyle}">${escapeHtml(cta.label)}</span>`;
-    return `<p class="${wrapClass}" style="margin:1.5em 0;text-align:center;">${btn}</p>`;
+    // zzb_special4.css .linkbtn + 縦余白を pc_pv25 で広げる
+    const inner = cta.url
+      ? `<a href="${escapeHtml(cta.url)}" class="pc_pv25">${escapeHtml(cta.label)}</a>`
+      : `<span class="pc_pv25">${escapeHtml(cta.label)}</span>`;
+    return `<p class="linkbtn pc_mt15 pc_w80per">${inner}</p>`;
+  };
+
+  const renderFigure = (img) => {
+    if (!img?.url) return '';
+    const cap = img.caption || '';
+    return [
+      `<p class="pc_tac pc_mt15"><img src="${escapeHtml(img.url)}" alt="${escapeHtml(img.alt || '')}" class="pc_w100per" /></p>`,
+      cap ? `<p class="pc_tac pc_fontS">${escapeHtml(cap)}</p>` : '',
+    ]
+      .filter(Boolean)
+      .join('\n');
+  };
+
+  const extras = Array.isArray(data.images) ? [...data.images] : [];
+  const takeByPlacement = (placement, h2 = '') => {
+    const out = [];
+    for (let i = extras.length - 1; i >= 0; i -= 1) {
+      const img = extras[i];
+      if (img.placement !== placement) continue;
+      if (placement === 'after_section') {
+        const needle = String(img.afterH2 || '').trim();
+        if (needle && !String(h2 || '').includes(needle)) continue;
+        if (!needle) continue;
+      }
+      out.unshift(img);
+      extras.splice(i, 1);
+    }
+    if (placement === 'after_section' && !out.length) {
+      for (let i = 0; i < extras.length; i += 1) {
+        const img = extras[i];
+        if (img.placement === 'after_section' && !String(img.afterH2 || '').trim()) {
+          out.push(img);
+          extras.splice(i, 1);
+          break;
+        }
+      }
+    }
+    return out.map((img) => renderFigure(img)).join('\n');
   };
 
   const parts = [];
+  // CMS貼り付け前提: ページ側で zzb_special4.css が読み込まれていること。埋め込みCSSは出さない。
+  parts.push('<!-- Requires zzb_special4.css (#fwCms_wrapper / #special / .top_title / .linkbtn 等) -->');
+  parts.push('<div id="fwCms_wrapper">');
+  parts.push('<div id="special">');
   if (data.seoTitle) parts.push(`<!-- SEO title: ${escapeHtml(data.seoTitle)} -->`);
   if (data.metaDescription) {
     parts.push(`<!-- meta description: ${escapeHtml(data.metaDescription)} -->`);
   }
-  if (data.title) parts.push(`<h1>${escapeHtml(data.title)}</h1>`);
+  if (data.title) {
+    parts.push(`<h1 class="top_title">${escapeHtml(data.title)}</h1>`);
+  }
+
+  if (data.mainImage?.url) {
+    parts.push(renderFigure(data.mainImage));
+  }
+
   if (data.releaseDate || data.reservationOpen) {
     const bits = [];
     if (data.releaseDate) bits.push(`発売日: ${escapeHtml(data.releaseDate)}`);
-    if (data.reservationOpen) bits.push('予約受付中');
-    parts.push(`<p class="launch-info"><strong>${bits.join(' ／ ')}</strong></p>`);
+    if (data.reservationOpen) {
+      bits.push('<span class="pc_redb">予約受付中</span>');
+    }
+    parts.push(`<p class="pc_blue pc_mt10"><strong>${bits.join(' ／ ')}</strong></p>`);
   }
   if (data.directAnswer) {
     parts.push(
-      `<p class="direct-answer"><strong>結論:</strong> ${escapeHtml(data.directAnswer)}</p>`
+      `<p class="pc_mt10"><strong>結論:</strong> ${escapeHtml(data.directAnswer)}</p>`
     );
   }
   if (data.introduction) {
@@ -430,8 +539,10 @@ function buildProductPageCmsHtml(data) {
       `<p>${escapeHtml(data.introduction).replace(/\n\n/g, '</p><p>').replace(/\n/g, '<br>')}</p>`
     );
   }
-  // ファーストビュー用CTA（導入直後）
-  const fvCta = renderCtaBlock('product-cta-fv');
+  const afterIntro = takeByPlacement('after_intro');
+  if (afterIntro) parts.push(afterIntro);
+
+  const fvCta = renderCtaBlock();
   if (fvCta) parts.push(fvCta);
 
   const bodySections = (data.sections || []).filter(
@@ -455,10 +566,16 @@ function buildProductPageCmsHtml(data) {
         }
       });
     });
+    const afterSec = takeByPlacement('after_section', sec.h2 || '');
+    if (afterSec) parts.push(afterSec);
   });
+
+  const beforeSpecs = takeByPlacement('before_specs');
+  if (beforeSpecs) parts.push(beforeSpecs);
   if ((data.specTable || []).length) {
     parts.push('<h2>主なスペック</h2>');
-    parts.push('<table><tbody>');
+    // pickup_spec は zzb_special4 外（記事併用CSS）。クラス名のみ合わせておく。
+    parts.push('<table class="pickup_spec pc_w100per"><tbody>');
     data.specTable.forEach((row) => {
       parts.push(
         `<tr><th>${escapeHtml(row.label)}</th><td>${escapeHtml(row.value)}</td></tr>`
@@ -467,14 +584,13 @@ function buildProductPageCmsHtml(data) {
     parts.push('</tbody></table>');
   }
   if ((data.options || []).length) {
-    // sections 側にオプションH2がある場合は見出しを重ねず一覧のみ
     const hasOptionsSection = bodySections.some((s) =>
       /オプション/.test(String(s.h2 || ''))
     );
     if (!hasOptionsSection) {
       parts.push('<h2>あわせて使いたいオプション</h2>');
     }
-    parts.push('<ul>');
+    parts.push('<ul class="listmark_m">');
     data.options.forEach((o) => {
       const label = [o.name, o.modelCode].filter(Boolean).join(' / ');
       let li = `<li><strong>${escapeHtml(label || 'オプション')}</strong>`;
@@ -487,12 +603,19 @@ function buildProductPageCmsHtml(data) {
     });
     parts.push('</ul>');
   }
+  const afterOptions = takeByPlacement('after_options');
+  if (afterOptions) parts.push(afterOptions);
+
+  const beforeSummary = takeByPlacement('before_summary');
+  if (beforeSummary) parts.push(beforeSummary);
   if (data.summary) {
     parts.push('<h2>まとめ</h2>');
     parts.push(
       `<p>${escapeHtml(data.summary).replace(/\n\n/g, '</p><p>').replace(/\n/g, '<br>')}</p>`
     );
   }
+  const beforeFaq = takeByPlacement('before_faq');
+  if (beforeFaq) parts.push(beforeFaq);
   if ((data.faq || []).length) {
     parts.push('<h2>よくある質問</h2>');
     data.faq.forEach((q) => {
@@ -500,13 +623,18 @@ function buildProductPageCmsHtml(data) {
       parts.push(`<p>${escapeHtml(q.answer)}</p>`);
     });
   }
-  // 記事末尾CTA
-  const endCta = renderCtaBlock('product-cta-end');
+  const beforeEnd = takeByPlacement('before_end_cta');
+  if (beforeEnd) parts.push(beforeEnd);
+  extras.forEach((img) => parts.push(renderFigure(img)));
+
+  const endCta = renderCtaBlock();
   if (endCta) parts.push(endCta);
 
   if (data.sourcesNote) {
-    parts.push(`<p class="sources-note"><small>${escapeHtml(data.sourcesNote)}</small></p>`);
+    parts.push(`<p class="pc_fontS pc_mt15">${escapeHtml(data.sourcesNote)}</p>`);
   }
+  parts.push('</div><!-- /#special -->');
+  parts.push('</div><!-- /#fwCms_wrapper -->');
   return parts.join('\n');
 }
 
@@ -531,6 +659,11 @@ async function generateProductPage({ input, scrapedTexts, getAiModel, tone }) {
     normalizeReleaseDate(input?.releaseDate || input?.launchDate) ||
     normalizeReleaseDate(data?.releaseDate);
   const reservationOpen = normalizeReservationOpen(input?.reservationOpen);
+  const mainImage = normalizeMainImage(
+    input?.mainImage || { url: input?.mainImageUrl, alt: input?.mainImageAlt },
+    label
+  );
+  const images = normalizeExtraImages(input?.images);
 
   const article = {
     title: String(data?.title || '').trim() || label,
@@ -550,6 +683,8 @@ async function generateProductPage({ input, scrapedTexts, getAiModel, tone }) {
     options,
     releaseDate,
     reservationOpen,
+    mainImage,
+    images,
     summary: ensureConclusionPrefix(data?.summary, data?.summaryConclusion),
     faq: normalizeFaq(data?.faq, normalizedTone),
     seoTitle: String(data?.seoTitle || '').trim(),
@@ -572,6 +707,8 @@ async function generateProductPage({ input, scrapedTexts, getAiModel, tone }) {
       options: article.options,
       releaseDate: article.releaseDate,
       reservationOpen: article.reservationOpen,
+      mainImage: article.mainImage,
+      images: article.images,
     },
     html: buildProductPageCmsHtml(article),
   };
@@ -582,6 +719,9 @@ module.exports = {
   normalizeTone,
   productLabel,
   normalizeOptionsInput,
+  normalizeMainImage,
+  normalizeExtraImages,
+  SAMPLE_MAIN_IMAGE_URL,
   generateProductPage,
   buildProductPageCmsHtml,
 };

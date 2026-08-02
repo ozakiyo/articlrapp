@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Content Radar — 週次レポート・記事生成</title>
     <link rel="stylesheet" href="/css/style.css" />
+    <link rel="stylesheet" href="/css/zzb_special4.css" />
   </head>
   <body>
     <div class="app">
@@ -523,6 +524,25 @@
               <span>補足特長・メモ</span>
               <textarea id="productlp-notes" rows="4" placeholder="例: 冷風・温風・ドライ・送風の1台4役。おやすみ運転。キャスター付き。"></textarea>
             </label>
+
+            <fieldset class="productlp-options-fieldset productlp-images-fieldset">
+              <legend>画像</legend>
+              <p class="field-hint">
+                メイン画像はファーストビュー（タイトル直下）に入ります。URLが空のときはサンプル画像を使います。その他画像は挿入位置を指定できます。
+              </p>
+              <label class="field">
+                <span>メイン画像URL（ファーストビュー）</span>
+                <input type="url" id="productlp-main-image-url" placeholder="https://（空ならサンプル画像）" />
+              </label>
+              <label class="field">
+                <span>メイン画像の代替テキスト</span>
+                <input type="text" id="productlp-main-image-alt" placeholder="例: ビックアイデア スポットクーラー BIM-PA26A" />
+              </label>
+              <div id="productlp-images-list" class="productlp-options-list"></div>
+              <div class="actions">
+                <button type="button" class="secondary" id="productlp-add-image">その他画像を追加</button>
+              </div>
+            </fieldset>
 
             <fieldset class="productlp-options-fieldset">
               <legend>オプション品（任意・プラスワン）</legend>

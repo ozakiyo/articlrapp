@@ -193,24 +193,93 @@ header p {
   word-break: break-word;
 }
 
-.productlp-spec-table {
+.productlp-spec-table,
+.productlp-html-preview .pickup_spec,
+.productlp-html-preview table.pickup_spec {
   border-collapse: collapse;
   width: 100%;
-  max-width: 40rem;
   margin: 0.5rem 0 1rem;
+  table-layout: fixed;
+  word-break: break-all;
 }
 .productlp-spec-table th,
-.productlp-spec-table td {
-  border: 1px solid #d1d5db;
-  padding: 0.35rem 0.6rem;
+.productlp-spec-table td,
+.productlp-html-preview .pickup_spec th,
+.productlp-html-preview .pickup_spec td {
+  border: solid 1px #ccc;
+  padding: 10px;
   text-align: left;
   vertical-align: top;
+}
+.productlp-spec-table th,
+.productlp-html-preview .pickup_spec th {
+  width: 30%;
+  font-weight: bold;
+  background: #8a8a8a;
+  color: #fff;
+}
+.productlp-spec-table td,
+.productlp-html-preview .pickup_spec td {
+  width: 70%;
+  background: #fff;
+  color: #000;
+}
+/* プレビュー枠内は zzb_special4.css をそのまま使う（幅だけアプリに合わせる） */
+.productlp-html-preview #special {
+  width: 100%;
+  max-width: 960px;
+  box-sizing: border-box;
+}
+.product-cta {
+  font-size: 120%;
+  text-align: center;
+  margin: 0 auto;
+  background: #fff;
+  border: solid 1px #000;
+  border-radius: 5px;
+  max-width: 80%;
+  padding: 0;
+}
+.product-cta-fv {
+  margin-top: 15px !important;
+}
+.product-cta a,
+.product-cta .product-cta-button,
+.product-cta .product-cta-label {
+  padding: 10px;
+  display: block;
+  text-decoration: none !important;
+  color: #000 !important;
+  background: transparent;
+  border: none;
+  box-shadow: none;
+  font-size: inherit;
+  line-height: 1.4;
+  max-width: 100%;
+  box-sizing: border-box;
+}
+.product-cta a:hover,
+.product-cta-button:hover {
+  color: #fff !important;
+  background: #ccc;
+  border-radius: 5px;
+  box-shadow: none;
 }
 .productlp-options-fieldset {
   margin: 1rem 0;
   padding: 0.75rem 1rem 1rem;
   border: 1px solid #d1d5db;
   border-radius: 6px;
+}
+.productlp-images-fieldset .productlp-image-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 0.5rem 0.75rem;
+}
+@media (min-width: 720px) {
+  .productlp-images-fieldset .productlp-image-grid {
+    grid-template-columns: 1.4fr 1fr 1fr;
+  }
 }
 .productlp-options-fieldset legend {
   padding: 0 0.35rem;
@@ -240,38 +309,6 @@ header p {
 }
 .productlp-option-row .actions {
   margin-top: 0.5rem;
-}
-.product-cta {
-  margin: 1.25rem 0 1.5rem;
-  text-align: center;
-  padding: 0;
-  background: none;
-  border: none;
-}
-.product-cta-fv {
-  margin-top: 0.75rem;
-}
-.product-cta-button,
-.product-cta a,
-.product-cta .product-cta-label {
-  display: inline-block;
-  padding: 1rem 2.25rem;
-  background: #1f3c88;
-  color: #fff !important;
-  font-size: 1.125rem;
-  font-weight: 700;
-  line-height: 1.4;
-  text-decoration: none !important;
-  border-radius: 8px;
-  border: 2px solid #003d99;
-  box-shadow: 0 4px 14px rgba(31, 60, 136, 0.35);
-  max-width: 100%;
-  box-sizing: border-box;
-}
-.product-cta a:hover,
-.product-cta-button:hover {
-  background: #003d99;
-  box-shadow: 0 6px 18px rgba(0, 61, 153, 0.4);
 }
 
 .usecase-html-preview th,
