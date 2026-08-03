@@ -170,10 +170,42 @@ header p {
   border: 1px solid #e5e7eb;
   border-radius: 8px;
   background: #fff;
+  max-width: 1000px;
+  overflow-x: auto;
 }
-
-.usecase-html-preview table,
-.usecase-html-preview .usecase-feature-table,
+/* mixer.html PC: #mainblock006479 は 960px */
+.usecase-html-preview #mainblock006479 {
+  width: 960px;
+  max-width: 100%;
+  box-sizing: border-box;
+  margin: 0 auto;
+  font-family: 'ヒラギノ角ゴ Pro W3','Hiragino Kaku Gothic Pro','メイリオ',Meiryo,'ＭＳ Ｐゴシック',sans-serif;
+}
+.usecase-html-preview #mainblock006479 h3 {
+  font-weight: bold;
+  border-top: 1px solid #d0d0d0;
+  font-size: 24px;
+  margin: 60px 0 40px;
+  padding-top: 40px;
+}
+.usecase-html-preview #mainblock006479 h3:first-of-type {
+  margin-top: 24px;
+}
+.usecase-html-preview #mainblock006479 h4 {
+  font-weight: bold;
+  border-bottom: 2px dotted;
+  font-size: 20px;
+  margin: 30px 0 16px;
+}
+/* 埋め込みCSS（mixer記事内style）を優先。ここは補助のみ */
+.usecase-html-preview .commentblock {
+  overflow: hidden;
+}
+.usecase-html-preview .commentblock img {
+  max-width: 100%;
+  height: auto;
+  display: inline-block;
+}
 .usecase-feature-table {
   border-collapse: collapse;
   margin: 0.5rem 0 1rem;
@@ -181,9 +213,6 @@ header p {
   max-width: 36rem;
   table-layout: fixed;
 }
-
-.usecase-html-preview th,
-.usecase-html-preview td,
 .usecase-feature-table th,
 .usecase-feature-table td {
   border: 1px solid #d1d5db;
@@ -691,6 +720,100 @@ button.secondary {
   margin-top: 1rem;
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
   font-size: 0.75rem;
+}
+
+.article-images-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  margin: 0.5rem 0;
+}
+.article-image-row {
+  padding: 0.75rem;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  background: #fafbfc;
+}
+.article-image-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(12rem, 1fr));
+  gap: 0.5rem 0.75rem;
+}
+
+/* 記事CMSプレビュー: mixer / zzb_special4 寄せ */
+.article-cms-preview {
+  margin-top: 0.75rem;
+}
+.article-cms-preview #mainblock006479 {
+  width: 960px;
+  max-width: 100%;
+  margin: 0 auto;
+  box-sizing: border-box;
+  font-family: 'ヒラギノ角ゴ Pro W3','Hiragino Kaku Gothic Pro','メイリオ',Meiryo,'ＭＳ Ｐゴシック',sans-serif;
+}
+.article-cms-preview .top_title {
+  margin: 20px 0;
+  padding: 15px 20px 10px;
+  font-size: 20px;
+  font-weight: bold;
+  background: #f3f3f3;
+}
+.article-cms-preview #mainblock006479 h2 {
+  font-size: 24px;
+  margin: 60px 0 30px;
+  padding-top: 20px;
+  border-top: 1px solid #d0d0d0;
+}
+.article-cms-preview #mainblock006479 h3 {
+  font-size: 20px;
+  font-weight: bold;
+  margin: 40px 0 16px;
+}
+.article-cms-preview #mainblock006479 h4 {
+  font-size: 18px;
+  font-weight: bold;
+  margin: 28px 0 12px;
+  border-bottom: 2px dotted #666;
+}
+.article-cms-preview .commentblock {
+  overflow: hidden;
+  margin-bottom: 24px;
+  border-bottom: 1px #666 dotted;
+  padding-bottom: 12px;
+}
+.article-cms-preview .commentblock .block2 {
+  float: left;
+  box-sizing: border-box;
+  padding: 5px 1%;
+}
+.article-cms-preview .pc_w35per { width: 35%; }
+.article-cms-preview .pc_w40per { width: 40%; }
+.article-cms-preview .pc_w50per { width: 50%; }
+.article-cms-preview .pc_w60per { width: 60%; }
+.article-cms-preview .pc_w65per { width: 65%; }
+.article-cms-preview .pc_w90per { width: 90%; }
+.article-cms-preview .pc_w95per { width: 95%; }
+.article-cms-preview .pc_w100per { width: 100%; }
+.article-cms-preview .pc_tac { text-align: center; }
+.article-cms-preview .pc_mb20 { margin-bottom: 20px; }
+.article-cms-preview .pc_mb30 { margin-bottom: 30px; }
+.article-cms-preview .image_box img {
+  max-width: 100%;
+  height: auto;
+}
+.article-cms-preview .ref {
+  display: block;
+  margin-top: 6px;
+  color: #666;
+}
+.article-cms-preview .listmark_m {
+  margin: 0 0 1rem 1.25rem;
+}
+@media (max-width: 700px) {
+  .article-cms-preview .commentblock .block2 {
+    float: none;
+    width: 100% !important;
+  }
 }
 
 .direct-answer-block {

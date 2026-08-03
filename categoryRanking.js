@@ -7,6 +7,7 @@ const path = require('path');
 const cheerio = require('cheerio');
 const { chromium } = require('playwright');
 const { loadSavedRankingUrls } = require('./rankingUrlStore');
+const { keywordMatchesBlock } = require('./categoryKeywordMatch');
 
 const CSV_EXPORT_DIR = path.join(__dirname, 'exports', 'rankings');
 
@@ -941,6 +942,40 @@ function categoryMatchTokens(category) {
   return [...tokens];
 }
 
+/** カテゴリ名 ↔ 商品タイトルの別名グループ（新規カテゴリの取りこぼし緩和） */
+const CATEGORY_TITLE_SYNONYM_GROUPS = [
+  ['スポットクーラー', 'スポットエアコン', '冷風機', '冷風扇', 'ポータブルクーラー', 'ポータブルエアコン', '移動式クーラー'],
+  ['体重計', '体組成計', '体脂肪計', '体脂肪計付き体重計'],
+  ['掃除機', 'クリーナー', 'スティッククリーナー', 'コードレス掃除機'],
+  ['窓用エアコン', 'ウィンドウエアコン', '窓エアコン', 'ウインドウエアコン'],
+  ['空気清浄機', 'エアパージャー', 'airpurifier', 'air purifier'],
+  ['加湿器', '気化式加湿器', '超音波加湿器'],
+  ['除湿機', '除湿器', '衣類乾燥除湿機'],
+  ['電子レンジ', 'オーブンレンジ', '電子オーブンレンジ'],
+  ['炊飯器', 'ジャー炊飯器', '圧力IH炊飯器'],
+  ['洗濯機', '全自動洗濯機', 'ドラム式洗濯機'],
+  ['冷蔵庫', '冷凍冷蔵庫'],
+  ['扇風機', 'サーキュレーター', 'リビング扇'],
+];
+
+function categorySynonymTokens(category) {
+  const catNorm = String(category || '').replace(/\s+/g, '');
+  if (!catNorm) return [];
+  const out = new Set();
+  for (const group of CATEGORY_TITLE_SYNONYM_GROUPS) {
+    const hit = group.some((g) => {
+      const gn = String(g).replace(/\s+/g, '');
+      return catNorm.includes(gn) || gn.includes(catNorm);
+    });
+    if (!hit) continue;
+    for (const g of group) {
+      const gn = String(g).replace(/\s+/g, '');
+      if (gn.length >= 2) out.add(gn.toLowerCase());
+    }
+  }
+  return [...out];
+}
+
 function titleMatchesCategory(title, category) {
   const raw = String(title || '');
   const normalized = raw.replace(/\s+/g, '');
@@ -971,6 +1006,23 @@ function titleMatchesCategory(title, category) {
   if (tokens.some((t) => lower.includes(t.replace(/\s+/g, '').toLowerCase()))) {
     return true;
   }
+
+  // 別名グループ
+  const synonyms = categorySynonymTokens(category);
+  if (synonyms.some((s) => lower.includes(s))) {
+    return true;
+  }
+
+  // トークンの主要部（3文字以上）— 記号分割後の断片でも拾う
+  if (
+    tokens.some((t) => {
+      const n = t.replace(/\s+/g, '').toLowerCase();
+      return n.length >= 3 && lower.includes(n);
+    })
+  ) {
+    return true;
+  }
+
   if (/エアコン/.test(cat) && /エアコン|aircon|air.?con|airconditioner|クーラー/i.test(raw)) {
     return true;
   }
@@ -1775,18 +1827,18 @@ function buildCompositeRanking(sourceResults) {
 function productTextForThemeMatch(row) {
   return `${row.modelKey || ''} ${row.manufacturer || ''} ${row.representativeModel || ''}`
     .replace(/\s+/g, ' ')
-    .toLowerCase();
+    .trim();
 }
 
-function matchesRankingTheme(row, theme) {
+function matchesRankingTheme(row, theme, category) {
   const text = productTextForThemeMatch(row);
   for (const kw of theme.excludeKeywords || []) {
-    if (kw && text.includes(String(kw).toLowerCase())) return false;
+    if (kw && keywordMatchesBlock(kw, text, category)) return false;
   }
   const keywords = theme.keywords || [];
   if (keywords.length === 0) return true;
-  // キーワードは OR（いずれか1つが商品名に含まれれば候補）
-  return keywords.some((kw) => text.includes(String(kw).toLowerCase()));
+  // キーワードは OR（いずれか1つがカテゴリ別ルール／部分一致で当たれば候補）
+  return keywords.some((kw) => keywordMatchesBlock(kw, text, category));
 }
 
 function scoreProductForTheme(row, theme) {
@@ -1810,20 +1862,21 @@ function pickPrimaryProductHref(row) {
  * 横断比較（型番マスタ）から、ユーザー指定テーマごとに最大 N 件を生成
  * @param {object[]} compositeItems
  * @param {object[]} themes 最大3件
- * @param {{ topPerTheme?: number, avoidDuplicateAcrossThemes?: boolean }} [options]
+ * @param {{ topPerTheme?: number, avoidDuplicateAcrossThemes?: boolean, category?: string }} [options]
  */
 function buildThemedRankings(compositeItems, themes, options = {}) {
   const topPerTheme = Math.min(
     Math.max(Number(options.topPerTheme) || THEME_RANKING_TOP, 1),
     10
   );
+  const category = String(options.category || '').trim();
   const avoidDup = options.avoidDuplicateAcrossThemes === true;
   const usedKeys = avoidDup ? new Set() : null;
   const themeBlocks = [];
 
   for (const theme of (themes || []).slice(0, 3)) {
     const pool = (compositeItems || [])
-      .filter((row) => matchesRankingTheme(row, theme))
+      .filter((row) => matchesRankingTheme(row, theme, category))
       .map((row) => ({ row, score: scoreProductForTheme(row, theme) }))
       .filter((x) => x.score >= 0)
       .sort((a, b) => {
@@ -1872,7 +1925,7 @@ function buildThemedRankings(compositeItems, themes, options = {}) {
   return { themes: themeBlocks };
 }
 
-function scoreFeaturesFromProductRows(rows, scored) {
+function scoreFeaturesFromProductRows(rows, scored, category) {
   for (const row of rows || []) {
     const productRow = {
       modelKey: row.modelKey || extractModelKey(`${row.representativeModel || ''} ${row.manufacturer || ''}`),
@@ -1889,7 +1942,7 @@ function scoreFeaturesFromProductRows(rows, scored) {
     }
 
     for (const entry of scored) {
-      if (matchesRankingTheme(productRow, entry)) {
+      if (matchesRankingTheme(productRow, entry, category)) {
         entry.score += weight;
         entry.matchCount += 1;
       }
@@ -1929,7 +1982,7 @@ function finalizeFeatureScores(scored, maxFeatures) {
 /** 横断比較（総合ランキング）から需要の高い機能・切り口を最大 N 件抽出 */
 function pickUserFeaturesFromComposite(compositeItems, category, maxFeatures = USER_FEATURE_PICK_MAX) {
   const scored = initFeatureScoreRules(category);
-  scoreFeaturesFromProductRows(compositeItems, scored);
+  scoreFeaturesFromProductRows(compositeItems, scored, category);
   return finalizeFeatureScores(scored, maxFeatures);
 }
 
@@ -1949,7 +2002,8 @@ function pickUserFeaturesFromRankings(sourceResults, category, maxFeatures = USE
             rank: item.rank,
           },
         ],
-        scored
+        scored,
+        category
       );
     }
   }
@@ -2008,6 +2062,7 @@ function applyCategoryThemedRankings(category, compositeItems, rankingThemesInpu
   );
   const themedRanking = buildThemedRankings(compositeItems, rankingThemes, {
     topPerTheme: THEME_RANKING_TOP,
+    category: trimmedCategory,
   });
   const themedCsvOutput = writeThemedRankingsCsv(trimmedCategory, themedRanking);
   const warnings = [];
@@ -2313,10 +2368,43 @@ async function fetchCategoryRankings(category, deps, options = {}) {
 
   const sourceResults = [];
   const warnings = [];
+  const unfilteredFallbackSources = [];
+
+  function extractWithOptionalUnfilteredRetry(extractFn, html, categoryForExtract, forceCategoryFilter) {
+    let items = extractFn(html, CATEGORY_RANKING_TOP, categoryForExtract);
+    let usedUnfilteredFallback = false;
+    if (
+      items.length === 0 &&
+      categoryForExtract &&
+      !forceCategoryFilter
+    ) {
+      const unfiltered = extractFn(html, CATEGORY_RANKING_TOP, '');
+      if (unfiltered.length > 0) {
+        items = unfiltered;
+        usedUnfilteredFallback = true;
+      }
+    }
+    return { items, usedUnfilteredFallback };
+  }
+
+  function noteUnfilteredFallback(mallLabel, mallId) {
+    unfilteredFallbackSources.push(mallId);
+    const message =
+      'カテゴリ名フィルタで0件だったため、検索結果をそのまま採用しました。公式ランキングURLの保存を推奨します。';
+    warnings.push({ source: mallLabel, url: '', message });
+    urlNotes.push(`${mallLabel}: ${message}`);
+    if (mallId === 'bic') {
+      const bicNote =
+        'ビックカメラはカテゴリ専用URLが無い可能性が高いです。複合ランキングでは参考程度に扱ってください。';
+      warnings.push({ source: mallLabel, url: '', message: bicNote });
+      urlNotes.push(bicNote);
+    }
+  }
 
   async function fetchMall(mall, url, extractFn, playwrightOpts) {
     let items = [];
     let html = '';
+    let usedUnfilteredFallback = false;
     const fetchUrl = mall.id === 'yahoo' ? ensureYahooRankingListUrl(url) : url;
     let effectiveUrl = fetchUrl;
     try {
@@ -2336,13 +2424,25 @@ async function fetchCategoryRankings(category, deps, options = {}) {
       const forceCategoryFilter = /スポット/.test(trimmedCategory);
       const categoryForExtract =
         skipCategoryFilter && !forceCategoryFilter ? '' : trimmedCategory;
-      items = extractFn(html, CATEGORY_RANKING_TOP, categoryForExtract);
+      ({ items, usedUnfilteredFallback } = extractWithOptionalUnfilteredRetry(
+        extractFn,
+        html,
+        categoryForExtract,
+        forceCategoryFilter
+      ));
       if (items.length === 0 && mall.id === 'bic') {
         const corporateUrl = buildBicCorporateRankingUrl(fetchUrl);
         if (corporateUrl) {
           try {
             const corporateHtml = await fetchHtmlWithHttpClient(corporateUrl);
-            items = extractFn(corporateHtml, CATEGORY_RANKING_TOP, categoryForExtract);
+            const retried = extractWithOptionalUnfilteredRetry(
+              extractFn,
+              corporateHtml,
+              categoryForExtract,
+              forceCategoryFilter
+            );
+            items = retried.items;
+            usedUnfilteredFallback = retried.usedUnfilteredFallback;
             if (items.length > 0) {
               effectiveUrl = corporateUrl;
               urlNotes.push('ビックカメラは公式法人サイトの週間ランキングで補完しました。');
@@ -2355,7 +2455,14 @@ async function fetchCategoryRankings(category, deps, options = {}) {
       if (items.length === 0 && (mall.id === 'amazon' || mall.id === 'bic')) {
         try {
           html = await fetchHtmlWithPlaywright(url, playwrightOpts);
-          items = extractFn(html, CATEGORY_RANKING_TOP, categoryForExtract);
+          const retried = extractWithOptionalUnfilteredRetry(
+            extractFn,
+            html,
+            categoryForExtract,
+            forceCategoryFilter
+          );
+          items = retried.items;
+          usedUnfilteredFallback = retried.usedUnfilteredFallback;
         } catch (pwErr) {
           console.warn(`⚠️ ${mall.label} Playwright fallback failed:`, pwErr.message);
         }
@@ -2369,6 +2476,9 @@ async function fetchCategoryRankings(category, deps, options = {}) {
           parseJsonFromModelOutput
         );
       }
+      if (usedUnfilteredFallback) {
+        noteUnfilteredFallback(mall.label, mall.id);
+      }
     } catch (err) {
       warnings.push({ source: mall.label, url: fetchUrl, message: err.message });
     }
@@ -2377,7 +2487,9 @@ async function fetchCategoryRankings(category, deps, options = {}) {
       sourceLabel: mall.label,
       sourceType: 'mall',
       rankingUrl: effectiveUrl,
+      urlResolution: urlResolution?.[mall.id] || null,
       count: items.length,
+      usedUnfilteredFallback,
       items: items.map((it) => ({
         ...it,
         sourceLabel: mall.label,
@@ -2414,6 +2526,8 @@ async function fetchCategoryRankings(category, deps, options = {}) {
   // コジマネット（モールではなく kojima.net から取得）
   const kojimaUrl = urls.kojima || KOJIMA_NET_SOURCE.defaultRankingUrl(trimmedCategory);
   let kojimaItems = [];
+  let kojimaUsedUnfilteredFallback = false;
+  const kojimaForceCategoryFilter = /スポット/.test(trimmedCategory);
   try {
     const pageUrls = kojimaNetRankingPageUrls(kojimaUrl, 3);
     const seenHref = new Set();
@@ -2434,6 +2548,28 @@ async function fetchCategoryRankings(category, deps, options = {}) {
       }
       if (merged.length >= CATEGORY_RANKING_TOP) break;
     }
+    if (merged.length === 0 && !kojimaForceCategoryFilter) {
+      for (const pageUrl of pageUrls) {
+        let html;
+        try {
+          html = await fetchHtmlWithHttpClient(pageUrl);
+        } catch (err) {
+          if (!merged.length) break;
+          break;
+        }
+        const part = extractKojimaNetRankingRows(html, CATEGORY_RANKING_TOP, '');
+        for (const row of part) {
+          if (row.href && seenHref.has(row.href)) continue;
+          if (row.href) seenHref.add(row.href);
+          merged.push(row);
+        }
+        if (merged.length >= CATEGORY_RANKING_TOP) break;
+      }
+      if (merged.length > 0) {
+        kojimaUsedUnfilteredFallback = true;
+        noteUnfilteredFallback(KOJIMA_NET_SOURCE.label, KOJIMA_NET_SOURCE.id);
+      }
+    }
     kojimaItems = merged
       .sort((a, b) => a.rank - b.rank)
       .slice(0, CATEGORY_RANKING_TOP)
@@ -2452,7 +2588,9 @@ async function fetchCategoryRankings(category, deps, options = {}) {
     sourceLabel: KOJIMA_NET_SOURCE.label,
     sourceType: KOJIMA_NET_SOURCE.type,
     rankingUrl: kojimaUrl,
+    urlResolution: urlResolution?.kojima || null,
     count: kojimaItems.length,
+    usedUnfilteredFallback: kojimaUsedUnfilteredFallback,
     items: kojimaItems,
   });
 
@@ -2490,6 +2628,7 @@ async function fetchCategoryRankings(category, deps, options = {}) {
     );
     themedRanking = buildThemedRankings(compositeRanking.items, rankingThemes, {
       topPerTheme: THEME_RANKING_TOP,
+      category: trimmedCategory,
     });
     themedCsvOutput = writeThemedRankingsCsv(trimmedCategory, themedRanking);
     themeSelectionSource = 'user';
@@ -2508,6 +2647,7 @@ async function fetchCategoryRankings(category, deps, options = {}) {
     rankingThemes = buildOverallOnlyThemes(trimmedCategory);
     themedRanking = buildThemedRankings(compositeRanking.items, rankingThemes, {
       topPerTheme: THEME_RANKING_TOP,
+      category: trimmedCategory,
     });
     if (themedRanking.themes[0]?.items.length < THEME_RANKING_TOP) {
       warnings.push({
@@ -2517,6 +2657,49 @@ async function fetchCategoryRankings(category, deps, options = {}) {
       });
     }
   }
+
+  const totalSourceItems = sourceResults.reduce((sum, s) => sum + (s.count || 0), 0);
+  const fallbackUrlKeys = Object.entries(urlResolution || {})
+    .filter(([, v]) => v === 'fallback')
+    .map(([k]) => k);
+  const savedUrlCount = Object.values(urlResolution || {}).filter((v) => v === 'saved').length;
+  const knownOrBetterCount = Object.values(urlResolution || {}).filter(
+    (v) => v && v !== 'fallback'
+  ).length;
+  let emptyReason = null;
+  if (totalSourceItems === 0) {
+    emptyReason =
+      fallbackUrlKeys.length >= 3
+        ? '検索フォールバックURL中心で商品を抽出できませんでした。競合調査で公式ランキングURLを自動取得→保存してください。'
+        : '各モールから商品を抽出できませんでした。URL・スクレイピング可否を確認してください。';
+  } else if ((compositeRanking.items || []).length === 0) {
+    emptyReason =
+      'サイト別の掲載はありますが、型番抽出できず横断比較が空です。タイトル表記を確認してください。';
+  }
+  if (unfilteredFallbackSources.length > 0 && !emptyReason) {
+    urlNotes.push(
+      '新規カテゴリでは公式ランキングURLの保存を推奨します（競合調査タブ → URL自動取得 → 保存）。'
+    );
+  }
+  if (totalSourceItems === 0 && knownOrBetterCount === 0) {
+    warnings.push({
+      source: 'ランキング取得',
+      url: '',
+      message: emptyReason,
+    });
+  }
+
+  const rankingDiagnostics = {
+    totalSourceItems,
+    compositeCount: (compositeRanking.items || []).length,
+    usedUnfilteredFallbackSources: [...unfilteredFallbackSources],
+    fallbackUrlSources: fallbackUrlKeys,
+    savedUrlCount,
+    emptyReason,
+    recommendSaveOfficialUrls:
+      unfilteredFallbackSources.length > 0 ||
+      (fallbackUrlKeys.length >= 2 && savedUrlCount === 0),
+  };
 
   return {
     category: trimmedCategory,
@@ -2537,6 +2720,7 @@ async function fetchCategoryRankings(category, deps, options = {}) {
     themedRanking,
     pickedFeatures,
     warnings,
+    rankingDiagnostics,
     csvFilename: csvOutput.filename,
     csvDownloadUrl: csvOutput.csvDownloadUrl,
     compositeCsvFilename: compositeCsvOutput.filename,
@@ -2572,6 +2756,7 @@ module.exports = {
   applyManualRankingUrls,
   hasProvidedRankingUrls,
   isAmazonBestsellerUrl,
+  titleMatchesCategory,
   getRankingThemePresets,
   getDefaultRankingThemeSelection,
   buildArticleRankingThemes,

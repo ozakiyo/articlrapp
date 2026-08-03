@@ -16,7 +16,8 @@ services:
       - ./:/app
       # コンテナ内の node_modules をホストで上書きしない
       - app_node_modules:/app/node_modules
-    command: ["npx", "nodemon", "--watch", ".", "--ext", "js,ejs,json,css", "app.js"]
+    # nodemon.json で data/exports の JSON 書き込みによる再起動を防ぐ
+    command: ["npx", "nodemon", "app.js"]
     restart: unless-stopped
 
 volumes:

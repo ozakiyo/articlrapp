@@ -87,7 +87,7 @@
             <li>
               <span class="pillar-tag pillar-aeo">AEO</span>
               <strong>答えエンジンが抜き出しやすい</strong>
-              <p>冒頭の直接回答、各見出し先頭の「結論:」、FAQ で、AI Overview 等が答えを取りやすくします。</p>
+              <p>冒頭の直接回答、各見出し本文の冒頭に答えの1文、FAQ で、AI Overview 等が答えを取りやすくします。</p>
             </li>
             <li>
               <span class="pillar-tag pillar-geo">GEO</span>
@@ -107,7 +107,7 @@
               <strong>用途別おすすめ</strong> … 結論1文（AEO）＋向いている人（GEO）＋機能表の判断軸
             </li>
             <li>
-              <strong>記事生成</strong> … 本文の「結論:」（AEO）＋補助オプションで直接回答・FAQ・title/meta・内部リンク・出典メモ
+              <strong>記事生成</strong> … 本文冒頭に答えの1文（AEO・ラベルなし）＋補助オプションで直接回答・FAQ・title/meta・内部リンク・出典メモ
             </li>
           </ul>
           <p class="field-hint">
@@ -165,6 +165,7 @@
           <h2>品質を上げるポイント</h2>
           <ul class="guide-list">
             <li>見出し生成は<strong>参考URL</strong>がいちばん効きます（選びのポイント／人気メーカー構成の手本）。</li>
+            <li>他社URLは空欄でも可。生成時にSEO上位の家電量販店記事を自動取得します。</li>
             <li>H4 を作るかは見出しタブで指定。先に見出しを決め、記事生成は本文専用にします。</li>
             <li>商品のおすすめ見出し・説明は<strong>用途別おすすめ</strong>側で作ります。</li>
             <li>競合調査は初回セットアップとURL変更時。毎週の本体は週次レポートです。</li>
@@ -452,7 +453,7 @@
             <ul class="aeo-intent-list">
               <li>
                 <span class="pillar-tag pillar-aeo">AEO</span>
-                冒頭の直接回答と各段落の「結論:」で、質問への答えを抜き出しやすく
+                冒頭の直接回答と各段落冒頭の答えの1文で、質問への答えを抜き出しやすく
               </li>
               <li>
                 <span class="pillar-tag pillar-geo">GEO</span>
@@ -859,7 +860,7 @@
         <section class="panel">
           <h2>週次・競合からの取り込み</h2>
           <p class="field-hint">
-            週次・競合のニーズを選び方の観点として取り込みます（任意）。
+            週次・競合のカテゴリや他社URLを取り込みます（任意）。追加キーワードは自動入力しません。
           </p>
           <div class="actions">
             <button type="button" id="headings-import-sources">
@@ -887,7 +888,7 @@
             </label>
             <p class="field-hint">参考記事の「選びのポイント」「人気メーカー」構成を最優先で参照します。</p>
             <label class="field">
-              <span>他社URL 1（任意）</span>
+              <span>他社URL 1（任意・空欄なら自動取得）</span>
               <input type="url" id="headings-url1" placeholder="https://example.com/article" />
             </label>
             <label class="field">
@@ -898,29 +899,38 @@
               <span>他社URL 3（任意）</span>
               <input type="url" id="headings-url3" placeholder="https://example.com/article" />
             </label>
+            <p class="field-hint">
+              空欄のまま見出し生成すると、検索上位の家電量販店・価格.comなどの特集記事URLを自動取得します（ビック／ヨドバシ／価格.com 等。コジマは他社扱いのため除外）。
+            </p>
+            <div class="actions">
+              <button type="button" class="secondary" id="headings-discover-urls">
+                他社URLを自動取得（SEO上位）
+              </button>
+            </div>
+            <p class="field-hint" id="headings-discover-msg"></p>
             <div id="headings-candidates-panel" class="field">
-              <span>選び方の観点候補（任意・最大5件）</span>
+              <span>追加キーワード（任意・最大5件）</span>
               <p class="field-hint" id="headings-candidates-hint">
-                週次・競合から取り込んだ観点を、選びのポイントのH3に活かします。
+                デフォルトは空欄でOK。必要なときだけ入力すると、見出し生成時に考慮します。
               </p>
               <label class="field nested-field">
-                <span class="field-sub">観点 1</span>
+                <span class="field-sub">キーワード 1</span>
                 <input type="text" id="headings-candidate-1" placeholder="例: 集じん方法" />
               </label>
               <label class="field nested-field">
-                <span class="field-sub">観点 2</span>
+                <span class="field-sub">キーワード 2</span>
                 <input type="text" id="headings-candidate-2" placeholder="例: 電源タイプ" />
               </label>
               <label class="field nested-field">
-                <span class="field-sub">観点 3</span>
+                <span class="field-sub">キーワード 3</span>
                 <input type="text" id="headings-candidate-3" placeholder="例: ヘッドの種類" />
               </label>
               <label class="field nested-field">
-                <span class="field-sub">観点 4</span>
+                <span class="field-sub">キーワード 4</span>
                 <input type="text" id="headings-candidate-4" />
               </label>
               <label class="field nested-field">
-                <span class="field-sub">観点 5</span>
+                <span class="field-sub">キーワード 5</span>
                 <input type="text" id="headings-candidate-5" />
               </label>
             </div>
@@ -979,7 +989,7 @@
               </li>
               <li>
                 <span class="pillar-tag pillar-aeo">AEO</span>
-                AI Overview 等が抜き出しやすい（冒頭の直接回答、各見出しの「結論:」、FAQ）
+                AI Overview 等が抜き出しやすい（冒頭の直接回答、各見出し冒頭の答えの1文、FAQ）
               </li>
               <li>
                 <span class="pillar-tag pillar-geo">GEO</span>
@@ -1042,8 +1052,19 @@
                 <span>FAQ（3〜5問）を作成する <em class="opt-intent">（AEO: 質問単位の抜き出し）</em></span>
               </label>
               <p class="field-hint">
-                本文は常に各見出し先頭に「結論:」を付けます（AEO向け）。補助ブロックは CMS 貼り付け用です。
+                本文は各見出しの冒頭に答えの1文を自然に埋め込みます（AEO向け。「結論:」とは書きません）。補助ブロックは CMS 貼り付け用です。
               </p>
+            </div>
+
+            <div class="field">
+              <span>画像（任意・コジマ特集と同型レイアウト）</span>
+              <p class="field-hint">
+                mixer特集のように、左画像＋右本文（または全幅）で挿入できます。位置とサイズを指定してください。「TOP（H1の直後）」で記事冒頭にも置けます。生成後のCMS用HTMLに反映されます。
+              </p>
+              <div id="article-images-list" class="article-images-list"></div>
+              <div class="actions">
+                <button type="button" class="secondary" id="article-add-image">画像行を追加</button>
+              </div>
             </div>
 
             <div class="field">
@@ -1073,6 +1094,8 @@
           <div id="article-warnings" class="warning" hidden></div>
           <div id="article-aeo-checklist" class="aeo-checklist" hidden></div>
           <div id="article-body" class="generated-article"></div>
+          <h3 class="field-sub">CMS用HTMLプレビュー（zzb_special4.css）</h3>
+          <div id="article-cms-preview" class="article-cms-preview usecase-html-preview" hidden></div>
           <textarea id="article-html-output" class="article-html-output" rows="8" readonly hidden></textarea>
         </section>
       </section>

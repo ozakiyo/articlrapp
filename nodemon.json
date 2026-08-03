@@ -1,0 +1,13 @@
+{
+  "watch": ["."],
+  "ext": "js,ejs,css",
+  "ignore": [
+    "data/**",
+    "exports/**",
+    "logs/**",
+    "node_modules/**",
+    ".git/**",
+    "public/css/zzb_special4.css"
+  ],
+  "delay": 800
+}

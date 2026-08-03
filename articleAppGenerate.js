@@ -4,6 +4,7 @@ const {
   parseJsonFromModelOutput,
   normalizeSectionsArray,
 } = require('./parseModelJson');
+const { discoverRetailerArticleUrls } = require('./discoverRetailerArticleUrls');
 
 /** introductionData から sections を配列で取得（キー名ゆれ・配列風オブジェクト対応） */
 function pickSectionsFromIntroduction(obj) {
@@ -112,22 +113,52 @@ function bodyPromptRules() {
 - 家電販売店にふさわしいフォーマルな文体
 - 数値・比較・用途別の提案など、検索ユーザーの満足度を意識
 - 製品名・価格は直接記載しない
-- AEO/GEO向け: content の先頭は必ず「結論: …」の1文（40字前後）から始め、空行のあとに本文を続ける
+- AEO/GEO向け: content の先頭段落は「答えになる1文」（40字前後・句点で終える）を「結論:」などのラベルなしで書き、空行のあとに本文を続ける
+- 「結論:」「まとめ:」など見出しラベルを本文に書かない
 - 曖昧語（おすすめ・高品質など単体）を避け、「向いている人」「選ぶ基準」など定義・列挙を明確にする
 - 出力は厳密にJSONのみ`;
 }
 
-/** 本文先頭に結論が無ければ付与 */
+/** 「結論:」等の明示ラベルを除去 */
+function stripConclusionLabel(text) {
+  return String(text || '')
+    .trim()
+    .replace(/^結論\s*[:：]\s*/, '')
+    .replace(/^まとめ\s*[:：]\s*/, '');
+}
+
+/**
+ * 本文先頭に答えとなる1文を埋め込む（「結論:」ラベルは付けない）
+ */
 function ensureConclusionPrefix(content, conclusion) {
-  const body = String(content || '').trim();
-  const conc = String(conclusion || '').trim();
+  let body = stripConclusionLabel(content);
+  const conc = stripConclusionLabel(conclusion);
   if (!body && !conc) return '';
-  if (/^結論[:：]/.test(body)) return body;
-  if (conc) {
-    const line = /^結論[:：]/.test(conc) ? conc : `結論: ${conc}`;
-    return body ? `${line}\n\n${body}` : line;
+  if (!conc) return body;
+
+  const firstPara = body.split(/\n\n+/)[0].trim();
+  if (firstPara === conc || body.startsWith(conc)) {
+    return body;
   }
-  return body;
+  // AIが「結論: xxx\n\n本文」と返した場合、先頭段落だけ再ストリップ
+  body = body
+    .split(/\n\n+/)
+    .map((p, i) => (i === 0 ? stripConclusionLabel(p) : p))
+    .join('\n\n');
+  const firstAgain = body.split(/\n\n+/)[0].trim();
+  if (firstAgain === conc || body.startsWith(conc)) {
+    return body;
+  }
+  return body ? `${conc}\n\n${body}` : conc;
+}
+
+/** 先頭段落が答え文として機能しているか（チェックリスト用） */
+function hasLeadAnswerParagraph(content) {
+  const t = stripConclusionLabel(content);
+  if (!t) return false;
+  if (/^結論[:：]/.test(String(content || '').trim())) return true;
+  const first = t.split(/\n\n+/)[0].trim();
+  return first.length >= 12 && first.length <= 100 && /[。．]$/.test(first);
 }
 
 async function generateH3BodyContent({
@@ -149,8 +180,8 @@ async function generateH3BodyContent({
 - 形式:
 {
   "h3": "${h3Heading}",
-  "conclusion": "この見出しの結論1文（40字前後・句点で終える）",
-  "content": "結論: （上記conclusion）\\n\\n本文（合計200文字程度。結論行を含む）"
+  "conclusion": "この見出しの答えになる1文（40字前後・句点で終える。ラベルは書かない）",
+  "content": "（conclusionと同じ文を先頭段落に）\\n\\n本文（合計200文字程度。先頭に答えの1文を含む）"
 }
 ${bodyPromptRules()}
 ${competitorTexts ? `\n# 他社記事\n${competitorTexts}` : ''}${referenceOutputSection}
@@ -161,7 +192,11 @@ ${competitorTexts ? `\n# 他社記事\n${competitorTexts}` : ''}${referenceOutpu
   const data = parseJsonFromModelOutput(raw) || {};
   const content = ensureConclusionPrefix(data.content, data.conclusion);
   console.log(`🧾 H3-${index} generated:`, { ...data, content });
-  return { ...data, content, conclusion: String(data.conclusion || '').trim() };
+  return {
+    ...data,
+    content,
+    conclusion: stripConclusionLabel(data.conclusion),
+  };
 }
 
 /** 同一H3配下のH4本文を1回のGemini呼び出しでまとめて生成（API回数削減） */
@@ -190,8 +225,8 @@ ${list}
   "h4_items": [
     {
       "h4": "対象H4と同じ文言",
-      "conclusion": "結論1文（40字前後）",
-      "content": "結論: （conclusion）\\n\\n本文（各200文字程度）"
+      "conclusion": "答えになる1文（40字前後。ラベルは書かない）",
+      "content": "（conclusionと同じ文を先頭段落に）\\n\\n本文（各200文字程度）"
     }
   ]
 }
@@ -212,13 +247,13 @@ ${competitorTexts ? `\n# 他社記事\n${competitorTexts}` : ''}${referenceOutpu
     if (!key) return;
     byH4.set(key, {
       content: ensureConclusionPrefix(item?.content, item?.conclusion),
-      conclusion: String(item?.conclusion || '').trim(),
+      conclusion: stripConclusionLabel(item?.conclusion),
     });
   });
   return h4Headings.map((h4, index) => {
     const hit = byH4.get(h4) || {
       content: ensureConclusionPrefix(itemsRaw[index]?.content, itemsRaw[index]?.conclusion),
-      conclusion: String(itemsRaw[index]?.conclusion || '').trim(),
+      conclusion: stripConclusionLabel(itemsRaw[index]?.conclusion),
     };
     return { h4, content: hit.content, conclusion: hit.conclusion };
   });
@@ -273,9 +308,9 @@ function buildHeadingCandidatesPromptSection(candidates) {
   if (!candidates?.length) return '';
   const lines = candidates.map((c, i) => `${i + 1}. ${c}`).join('\n');
   return `
-# 選び方の観点候補（週次・競合から拾った読者ニーズ）
-以下は「選び方」の観点として使う。商品ランキングやおすすめ商品の見出しにはしない。
-H2/H3 は購入判断の軸（比較ポイント・チェック項目）に変換して反映すること。
+# 追加キーワード（ユーザーが指定）
+以下のキーワードを見出し生成で考慮すること。商品ランキングやおすすめ商品の見出しにはしない。
+「選びのポイント」配下のH3などへ、購入判断の軸として自然に反映する（文言の直コピーは禁止）。
 ${lines}
 `;
 }
@@ -317,9 +352,9 @@ function buildSelectionGuideHeadingPrompt({
       "h2": "${pointsH2}",
       "searchIntent": "選び方",
       "subsections": [
-        { "h3": "観点H3-1", "intent": "比較" },
-        { "h3": "観点H3-2", "intent": "選び方" },
-        { "h3": "観点H3-3", "intent": "用途" }
+        { "h3": "判断軸H3-1", "intent": "比較" },
+        { "h3": "判断軸H3-2", "intent": "選び方" },
+        { "h3": "判断軸H3-3", "intent": "用途" }
       ]
     },
     {
@@ -665,7 +700,10 @@ async function generateOutlineArticleBodies({
   return { contentResults, outlineResultSections };
 }
 
-function registerArticleAppRoutes(app, { scrape, getGeminiModel, bindGetAiModel }) {
+function registerArticleAppRoutes(
+  app,
+  { scrape, getGeminiModel, bindGetAiModel, fetchHtmlWithHttpClient }
+) {
   function resolveGetAiModel(req) {
     if (typeof bindGetAiModel === 'function') {
       return bindGetAiModel(req);
@@ -675,6 +713,27 @@ function registerArticleAppRoutes(app, { scrape, getGeminiModel, bindGetAiModel 
     });
     return Object.assign(fallback, { provider: 'gemini' });
   }
+
+  app.post('/api/article/discover-competitor-urls', async (req, res) => {
+    try {
+      const keyword = String(req.body?.keyword || req.body?.category || '').trim();
+      if (!keyword) {
+        return res.status(400).json({ error: 'キーワードを入力してください。' });
+      }
+      const getAiModel = resolveGetAiModel(req);
+      const result = await discoverRetailerArticleUrls(keyword, {
+        fetchHtml: fetchHtmlWithHttpClient,
+        getGeminiModel: getAiModel,
+        limit: 3,
+      });
+      return res.json(result);
+    } catch (err) {
+      console.error('💥 /api/article/discover-competitor-urls error:', err);
+      return res.status(502).json({
+        error: err?.message || '他社記事URLの自動取得に失敗しました。',
+      });
+    }
+  });
 
   app.post('/api/article/generate', async (req, res) => {
     const requestStartedAt = Date.now();
@@ -703,6 +762,7 @@ function registerArticleAppRoutes(app, { scrape, getGeminiModel, bindGetAiModel 
         scrape,
         getGeminiModel: getAiModel,
         aiProviderUsed: getAiModel.provider,
+        fetchHtmlWithHttpClient,
       });
     } catch (err) {
       console.error('💥 /api/article/generate-headings unhandled error:', err);
@@ -722,6 +782,7 @@ function registerArticleAppRoutes(app, { scrape, getGeminiModel, bindGetAiModel 
         scrape,
         getGeminiModel: getAiModel,
         aiProviderUsed: getAiModel.provider,
+        fetchHtmlWithHttpClient,
       });
     } catch (err) {
       console.error('💥 /api/article/generate-sub-headings unhandled error:', err);
@@ -763,7 +824,7 @@ function buildAeoChecklist({
       }
     }
   }
-  const withConclusion = flatContents.filter((c) => /^結論[:：]/.test(String(c).trim()));
+  const withConclusion = flatContents.filter((c) => hasLeadAnswerParagraph(c));
   return [
     {
       id: 'directAnswer',
@@ -775,8 +836,8 @@ function buildAeoChecklist({
     {
       id: 'h3Conclusion',
       pillar: 'AEO',
-      label: '見出し本文に結論行あり',
-      purpose: '段落単位で答えを抜き出せるようにする',
+      label: '見出し本文の冒頭に答えの1文あり',
+      purpose: '段落単位で答えを抜き出せるようにする（「結論:」ラベルは不要）',
       ok: flatContents.length > 0 && withConclusion.length >= Math.ceil(flatContents.length * 0.5),
     },
     {
@@ -855,8 +916,8 @@ ${String(bodiesForSummary || '').slice(0, 6000)}
 # 出力（厳密にJSONのみ）
 {
   "seoTitle": "検索結果用タイトル（28〜32字目安。キーワードを自然に含む）",
-  "metaDescription": "メタディスクリプション（80〜120字。結論と対象読者を含める）",
-  "directAnswer": "検索クエリへの直接回答（40〜80字。1文で完結）",
+  "metaDescription": "メタディスクリプション（80〜120字。答えの要点と対象読者を含める）",
+  "directAnswer": "検索クエリへの直接回答（40〜80字。1文で完結。「結論:」ラベルは付けない）",
   "faq": [
     { "question": "よくある質問", "answer": "簡潔な回答（60〜120字）" }
   ],
@@ -890,7 +951,7 @@ ${referenceUrls?.length ? `\n# 参考URL\n${referenceUrls.join('\n')}` : ''}
   return {
     seoTitle: String(data.seoTitle || data.title || '').trim(),
     metaDescription: String(data.metaDescription || '').trim(),
-    directAnswer: String(data.directAnswer || '').trim(),
+    directAnswer: stripConclusionLabel(data.directAnswer),
     faq,
     relatedLinks,
     sourcesNote: String(data.sourcesNote || '').trim(),
@@ -1185,16 +1246,20 @@ async function handleHeadingGenerate(
   req,
   res,
   requestStartedAt,
-  { scrape, getGeminiModel, aiProviderUsed = 'gemini' }
+  { scrape, getGeminiModel, aiProviderUsed = 'gemini', fetchHtmlWithHttpClient }
 ) {
   const { keyword } = req.body;
   const headingCandidates = collectHeadingCandidates(req.body);
+  const autoDiscover =
+    req.body?.autoDiscoverCompetitors !== false &&
+    req.body?.autoDiscoverCompetitors !== 'false';
 
   console.log('🛎️ POST /api/article/generate-headings called with:', {
     keyword,
     headingCandidates,
     competitorUrls: collectCandidateUrls(req.body),
     referenceUrls: collectReferenceUrls(req.body),
+    autoDiscover,
   });
 
   if (!keyword) {
@@ -1202,17 +1267,54 @@ async function handleHeadingGenerate(
     return res.status(400).json({ error: 'キーワードを入力してください。' });
   }
 
-  const candidateUrls = collectCandidateUrls(req.body);
+  let candidateUrls = collectCandidateUrls(req.body);
   const referenceUrls = collectReferenceUrls(req.body);
+  const warnings = [];
+  let discoveredCompetitorUrls = [];
+
+  if (autoDiscover && candidateUrls.length < 3) {
+    try {
+      console.log('🔎 Auto-discovering retailer article URLs for:', keyword);
+      const discovered = await discoverRetailerArticleUrls(keyword, {
+        fetchHtml: fetchHtmlWithHttpClient,
+        getGeminiModel,
+        limit: 3,
+      });
+      const existing = new Set(candidateUrls);
+      for (const a of discovered.articles || []) {
+        if (existing.has(a.url)) continue;
+        candidateUrls.push(a.url);
+        existing.add(a.url);
+        discoveredCompetitorUrls.push(a);
+        if (candidateUrls.length >= 3) break;
+      }
+      for (const note of discovered.notes || []) {
+        warnings.push({ message: note });
+      }
+      if (discoveredCompetitorUrls.length) {
+        warnings.push({
+          message: `SEO上位の家電量販店記事を自動取得しました: ${discoveredCompetitorUrls
+            .map((a) => `${a.site}`)
+            .join(' / ')}`,
+        });
+      }
+    } catch (err) {
+      console.warn('⚠️ Auto-discover competitor URLs failed:', err.message);
+      warnings.push({
+        message: `他社URLの自動取得に失敗しました: ${err.message}`,
+      });
+    }
+  }
 
   if (candidateUrls.length === 0 && referenceUrls.length === 0) {
     console.warn('⚠️ No URLs provided');
     return res.status(400).json({
-      error: '参考URL（推奨）または他社URLを少なくとも1つ入力してください。選び方見出しの作成には参考URLがあると精度が上がります。',
+      error:
+        '参考URL（推奨）または他社URLを少なくとも1つ入力してください。空欄のまま生成するとSEO上位の家電量販店記事を自動取得します。自動取得も失敗した場合はURLを手入力してください。',
+      warnings,
     });
   }
 
-  const warnings = [];
   let scrapedArticles = [];
   let scrapedReferenceArticles = [];
 
@@ -1233,6 +1335,7 @@ async function handleHeadingGenerate(
     return res.status(502).json({
       error: '記事の取得に失敗しました。',
       warnings,
+      discoveredCompetitorUrls,
     });
   }
 
@@ -1277,6 +1380,7 @@ async function handleHeadingGenerate(
     return res.status(502).json({
       error: '見出しの生成に失敗しました。',
       warnings,
+      discoveredCompetitorUrls,
     });
   }
 
@@ -1298,6 +1402,8 @@ async function handleHeadingGenerate(
       items: sec.items,
     })),
     headingCandidatesUsed: headingCandidates,
+    competitorUrlsUsed: candidateUrls,
+    discoveredCompetitorUrls,
     aiProviderUsed,
     warnings,
   });

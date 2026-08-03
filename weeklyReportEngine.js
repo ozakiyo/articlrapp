@@ -1483,6 +1483,8 @@ function buildWeeklyReport({
     changeTargets: buildChangeTargets(articleMaster),
     compositeMeta: fetchResult?.compositeRanking?.stats || {},
     warnings: fetchResult?.warnings || [],
+    rankingDiagnostics: fetchResult?.rankingDiagnostics || null,
+    urlNotes: fetchResult?.urlNotes || [],
   };
 }
 
@@ -1681,7 +1683,12 @@ function buildReportFromSnapshot(snapshot, articleMaster, compareMode = 'latest'
     report = buildWeeklyReport({
       category: snapshot.category,
       weekId: snapshot.weekId,
-      fetchResult: { compositeRanking: snapshot.compositeRanking, warnings: snapshot.warnings },
+      fetchResult: {
+        compositeRanking: snapshot.compositeRanking,
+        warnings: snapshot.warnings,
+        rankingDiagnostics: snapshot.rankingDiagnostics,
+        urlNotes: snapshot.urlNotes,
+      },
       previousSnapshot,
       articleMaster,
       fetchedAt: snapshot.fetchedAt,

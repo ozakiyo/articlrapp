@@ -118,6 +118,10 @@ const {
 const weeklyReportConfig = require('./weeklyReportConfig');
 const { fetchGoogleSuggestTop10 } = require('./googleSearchSuggest');
 const {
+  keywordMatchesBlock,
+  resolveMatchProfileId,
+} = require('./categoryKeywordMatch');
+const {
   loadSavedRankingUrls,
   listSavedRankingCategories,
   saveRankingUrls,
@@ -184,67 +188,172 @@ Gemini / Cursor は aiProvider.js で切り替え。既定は Gemini。
 const ENABLE_AI_RANKING_EXTRACTION =
   String(process.env.ENABLE_AI_RANKING_EXTRACTION || '').toLowerCase() === 'true';
 
-function normalizeForKeywordMatch(text) {
-  return String(text || '')
-    .toLowerCase()
-    .replace(/×/g, 'x')
-    .replace(/\s+/g, '')
-    .trim();
-}
-
-function parseInchThresholdFromKeyword(keyword) {
-  const normalized = normalizeForKeywordMatch(keyword);
-  const match = normalized.match(/(\d+(?:\.\d+)?)インチ以上/);
-  if (!match) return null;
-  const value = Number(match[1]);
-  return Number.isFinite(value) ? value : null;
-}
-
-function includes4kSignal(text) {
-  const normalized = normalizeForKeywordMatch(text);
-  return (
-    normalized.includes('4k') ||
-    normalized.includes('3840x2160') ||
-    normalized.includes('uhd')
-  );
-}
-
-function extractMaxInchFromText(text) {
-  const normalized = normalizeForKeywordMatch(text).replace(/ｃ/g, 'c');
-  const regex = /(\d+(?:\.\d+)?)c?インチ/g;
-  let max = null;
-  let m;
-  while ((m = regex.exec(normalized)) !== null) {
-    const value = Number(m[1]);
-    if (!Number.isFinite(value)) continue;
-    if (max === null || value > max) {
-      max = value;
-    }
-  }
-  return max;
-}
-
-function keywordMatchesBlock(keyword, blockText) {
-  const normalizedKeyword = normalizeForKeywordMatch(keyword);
-  const normalizedBlock = normalizeForKeywordMatch(blockText);
-
-  if (!normalizedKeyword) return true;
-  if (normalizedKeyword === '4k') {
-    return includes4kSignal(normalizedBlock);
-  }
-
-  const inchThreshold = parseInchThresholdFromKeyword(normalizedKeyword);
-  if (inchThreshold !== null) {
-    const maxInch = extractMaxInchFromText(normalizedBlock);
-    return maxInch !== null && maxInch >= inchThreshold;
-  }
-
-  return normalizedBlock.includes(normalizedKeyword);
-}
-
 function isResolutionLikeToken(token) {
   const t = String(token || '').replace(/\s/g, '');
   return /^\d{3,5}[x×]\d{3,5}$/i.test(t);
+}
+
+/** 型番候補として除外するノイズトークンか */
+function isNoiseModelToken(token) {
+  const t = String(token || '');
+  if (t.length < 3) return true;
+  if (!/[A-Za-z]/.test(t) || !/\d/.test(t)) return true;
+  if (isResolutionLikeToken(t)) return true;
+  if (/(gpt|itemlist|728x90|div-)/i.test(t)) return true;
+  if (/^(IPS|VA|TN|OLED|HDR|HDCP|WQHD|UHD|4K|FHD|QHD)$/i.test(t)) return true;
+  if (/(Hz|kHz|cd\/m2)$/i.test(t)) return true;
+  if (!/^[A-Za-z0-9][A-Za-z0-9\-_/+.]{1,60}$/.test(t)) return true;
+  return false;
+}
+
+/**
+ * メーカー名なしで、英数字の型番コードらしきトークンを返す（型番優先の本体）。
+ */
+function extractModelCodeFromText(text) {
+  const head = String(text || '');
+  const tokens = head.match(/[A-Za-z0-9][A-Za-z0-9\-_/+.]{2,}/g) || [];
+  const candidates = [];
+  for (const token of tokens) {
+    if (isNoiseModelToken(token)) continue;
+    candidates.push(token);
+  }
+  if (candidates.length === 0) return null;
+  candidates.sort((a, b) => {
+    const score = (t) =>
+      (/-/.test(t) ? 12 : 0) + (/_/.test(t) ? 6 : 0) + Math.min(t.length, 24);
+    return score(b) - score(a);
+  });
+  return candidates[0];
+}
+
+/**
+ * 型番の直前〜近傍からメーカー候補を推定する。
+ * 短い補助リストに一致すればそれを優先し、なければ直前の固有語を返す。
+ */
+function inferManufacturerBeforeModel(text, model, knownManufacturers) {
+  const head = String(text || '');
+  const modelStr = String(model || '');
+  if (!head || !modelStr) return null;
+
+  const idx = head.indexOf(modelStr);
+  const before =
+    idx >= 0
+      ? head.slice(Math.max(0, idx - 100), idx).replace(/[\s　:：\-–—・|｜\[\(（]+$/g, '').trim()
+      : head.slice(0, 120).trim();
+
+  const listed =
+    findManufacturerInBlock(before, knownManufacturers) ||
+    (idx >= 0
+      ? findManufacturerInBlock(head.slice(0, idx + modelStr.length), knownManufacturers)
+      : findManufacturerInBlock(head, knownManufacturers));
+  if (listed) return listed;
+
+  if (!before) return null;
+  const m = before.match(
+    /(?:^|[\s　])([A-Za-z][A-Za-z0-9&.\-]*(?:\s+[A-Za-z][A-Za-z0-9&.\-]*){0,2}|[\u3040-\u30ff\u4e00-\u9fff\u3400-\u4dbf]{2,24})\s*$/
+  );
+  if (!m) return null;
+  const cand = String(m[1] || '').trim();
+  if (cand.length < 2 || cand.length > 40) return null;
+  if (/^\d+$/.test(cand) || /位$/.test(cand)) return null;
+  // 型番ノイズ判定は英数字トークン向け。日本語メーカー名には適用しない
+  if (/[A-Za-z]/.test(cand) && isNoiseModelToken(cand)) return null;
+  if (/[A-Za-z]/.test(cand) && !/[A-Za-z]{2,}/.test(cand)) return null;
+  return cand;
+}
+
+/**
+ * 商品タイトル（価格.comリンク文言など）をメーカー＋型番/商品名に分割。
+ * リスト必須にせず、先頭固有語＋型番コードで推定する。
+ */
+function splitProductTitle(titleText, knownManufacturers) {
+  const s = String(titleText || '').replace(/\s+/g, ' ').trim();
+  if (!s) return { manufacturer: '不明', model: '不明' };
+
+  const listed = findManufacturerInBlock(s, knownManufacturers);
+  if (listed) {
+    const rest = s.replace(listed, '').replace(/^[\s　]+/, '').trim();
+    return { manufacturer: listed, model: rest || s };
+  }
+
+  const modelCode = extractModelCodeFromText(s);
+  if (modelCode) {
+    const idx = s.indexOf(modelCode);
+    const before = idx >= 0 ? s.slice(0, idx).trim() : '';
+    const after = idx >= 0 ? s.slice(idx + modelCode.length).trim() : '';
+    if (before) {
+      const jp = before.match(
+        /^([A-Za-z][A-Za-z0-9&.\-]*(?:\s+[A-Za-z][A-Za-z0-9&.\-]*){0,2}|[\u3040-\u30ff\u4e00-\u9fff\u3400-\u4dbfA-Za-z][^\s]{0,39})/
+      );
+      const manufacturer = String(jp?.[1] || before.split(/\s+/)[0] || '').trim();
+      const modelRest = [before.slice(manufacturer.length).trim(), modelCode, after]
+        .filter(Boolean)
+        .join(' ')
+        .trim();
+      return {
+        manufacturer: manufacturer || '不明',
+        model: modelRest || modelCode,
+      };
+    }
+    return {
+      manufacturer: '不明',
+      model: [modelCode, after].filter(Boolean).join(' ').trim() || modelCode,
+    };
+  }
+
+  const parts = s.split(/\s+/).filter(Boolean);
+  if (parts.length >= 2) {
+    return { manufacturer: parts[0], model: parts.slice(1).join(' ') };
+  }
+  return { manufacturer: '不明', model: s };
+}
+
+/**
+ * 型番優先でメーカー・型番を推定する共通入口。
+ * @param {string} text
+ * @param {{ titleStyle?: boolean, knownManufacturers?: string[], preferredManufacturer?: string }} [opts]
+ */
+function extractManufacturerAndModelFromText(text, opts = {}) {
+  const head = String(text || '').replace(/\s+/g, ' ').trim();
+  if (!head) return { manufacturer: '不明', model: '不明' };
+
+  const known = opts.knownManufacturers || KNOWN_MANUFACTURERS_RANKING;
+  const preferred = String(opts.preferredManufacturer || '').trim();
+
+  if (opts.titleStyle) {
+    const split = splitProductTitle(head, known);
+    if (preferred && split.manufacturer === '不明') {
+      return { manufacturer: preferred, model: split.model };
+    }
+    return preferred ? { manufacturer: preferred, model: split.model } : split;
+  }
+
+  if (preferred) {
+    const model =
+      extractLikelyModelFromBlock(head, preferred) ||
+      extractModelCodeFromText(head) ||
+      head.replace(preferred, '').replace(/^[\s　]+/, '').trim() ||
+      null;
+    return { manufacturer: preferred, model: model || '不明' };
+  }
+
+  const listed = findManufacturerInBlock(head, known);
+  let model = listed ? extractLikelyModelFromBlock(head, listed) : null;
+  if (!model) model = extractModelCodeFromText(head);
+
+  let manufacturer = listed || null;
+  if (!manufacturer && model) {
+    manufacturer = inferManufacturerBeforeModel(head, model, known);
+  }
+  if (manufacturer && !model) {
+    model =
+      head.replace(manufacturer, '').replace(/^[\s　]+/, '').trim().slice(0, 200) || null;
+  }
+
+  return {
+    manufacturer: manufacturer || '不明',
+    model: model || '不明',
+  };
 }
 
 /**
@@ -355,43 +464,43 @@ function extractLikelyModelFromBlock(block, manufacturer) {
   return candidate.length >= 2 ? candidate : null;
 }
 
-/** ルールベース／ヨドバシHTML解析で共通のメーカー名候補 */
+/** 補助ブースト用の短いメーカー候補（必須ではない。曖昧時の確定のみ） */
 const KNOWN_MANUFACTURERS_RANKING = [
-  'IODATA',
   'IO DATA',
-  'DELL',
-  'Dell',
-  'ASUS',
-  'LG',
+  'IODATA',
   'LGエレクトロニクス',
-  'Acer',
-  'Lenovo',
+  'TVS REGZA',
+  'Titan Army',
+  'フィリップス',
+  'PHILIPS',
+  'Philips',
+  'JAPANNEXT',
+  'ViewSonic',
+  'Thermalright',
+  '日本電気',
+  'FUJITSU',
+  '富士通',
+  'GIGABYTE',
+  'iiyama',
+  'MAXZEN',
+  'INNOCN',
+  'REGZA',
+  'Corsair',
+  'Pixio',
+  'ASUS',
   'BenQ',
   'EIZO',
-  'MSI',
-  'Philips',
-  'PHILIPS',
-  'フィリップス',
-  'JAPANNEXT',
-  'iiyama',
-  'HP',
-  'TVS REGZA',
-  'REGZA',
-  'Titan Army',
-  'Corsair',
-  'MAXZEN',
-  'Pixio',
-  'ViewSonic',
-  'SONY',
+  'Lenovo',
   'Apple',
-  'GIGABYTE',
-  'AOC',
-  'Thermalright',
-  'INNOCN',
-  '富士通',
-  'FUJITSU',
+  'SONY',
+  'DELL',
+  'Dell',
+  'Acer',
   'NEC',
-  '日本電気',
+  'MSI',
+  'AOC',
+  'HP',
+  'LG',
 ];
 
 /** 長さ降順の事前ソート索引（毎回の sort を避ける） */
@@ -418,11 +527,9 @@ function findManufacturerInBlock(headBlock, knownManufacturers) {
   return best;
 }
 
-function extractRankingByKeywordsRuleBased(pageText, keywords) {
+function extractRankingByKeywordsRuleBased(pageText, keywords, category) {
   const normalizedKeywords = keywords.map((k) => String(k || '').trim()).filter(Boolean);
   const compactText = String(pageText || '').replace(/\s+/g, ' ').trim();
-
-  const knownManufacturers = KNOWN_MANUFACTURERS_RANKING;
 
   // N位の出現位置を基準に、順位ごとの周辺テキストを切り出す
   const rankMarker = /(\d{1,3})\s*位/g;
@@ -448,13 +555,11 @@ function extractRankingByKeywordsRuleBased(pageText, keywords) {
     const keywordMatched =
       normalizedKeywords.length === 0
         ? true
-        : normalizedKeywords.every((kw) => keywordMatchesBlock(kw, rawBlock));
+        : normalizedKeywords.every((kw) => keywordMatchesBlock(kw, rawBlock, category));
     if (!keywordMatched) continue;
     if (seenRanks.has(rank)) continue;
 
-    const manufacturer = findManufacturerInBlock(rawBlock, knownManufacturers) || '不明';
-    const model =
-      manufacturer === '不明' ? null : extractLikelyModelFromBlock(rawBlock, manufacturer);
+    const { manufacturer, model } = extractManufacturerAndModelFromText(rawBlock);
     const modelSafe = model || '不明';
     if (keywords.length === 0 && rank <= 2 && modelSafe === '不明') {
       const mi = manufacturer === '不明' ? -1 : rawBlock.indexOf(manufacturer);
@@ -473,7 +578,7 @@ function extractRankingByKeywordsRuleBased(pageText, keywords) {
 
     items.push({
       rank,
-      manufacturer,
+      manufacturer: manufacturer || '不明',
       model: modelSafe,
       feature:
         normalizedKeywords.length > 0
@@ -755,26 +860,6 @@ function extractKakakuItemlistRowsFromHtml(html, seenHref) {
     return m ? parseInt(m[1], 10) : null;
   }
 
-  const knownManufacturers = [
-    'IODATA',
-    'IO DATA',
-    'Dell',
-    'DELL',
-    'ASUS',
-    'LG',
-    'LGエレクトロニクス',
-    'フィリップス',
-    'Philips',
-    'JAPANNEXT',
-    'Titan Army',
-    'EIZO',
-    'MSI',
-    'BenQ',
-    'Acer',
-    'Lenovo',
-    'HP',
-  ];
-
   const productTexts = [];
 
   $('tr.tr-border').each((_, tr) => {
@@ -813,11 +898,9 @@ function extractKakakuItemlistRowsFromHtml(html, seenHref) {
   }
 
   return productTexts.map(({ href, titleText, blockText, listRank }, idx) => {
-    const manufacturer = findManufacturerInBlock(titleText, knownManufacturers) || '不明';
-    const model =
-      manufacturer === '不明'
-        ? titleText
-        : titleText.replace(manufacturer, '').replace(/^[\s　]+/, '').trim();
+    const { manufacturer, model } = extractManufacturerAndModelFromText(titleText, {
+      titleStyle: true,
+    });
     return {
       rank: listRank != null ? listRank : idx + 1,
       manufacturer,
@@ -828,13 +911,13 @@ function extractKakakuItemlistRowsFromHtml(html, seenHref) {
   });
 }
 
-function finalizeKakakuItemlistRows(allRanked, keywords) {
+function finalizeKakakuItemlistRows(allRanked, keywords, category) {
   const normalizedKeywords = keywords.map((k) => String(k || '').trim()).filter(Boolean);
   const filtered =
     normalizedKeywords.length === 0
       ? allRanked
       : allRanked.filter((row) =>
-          normalizedKeywords.every((kw) => keywordMatchesBlock(kw, row._text))
+          normalizedKeywords.every((kw) => keywordMatchesBlock(kw, row._text, category))
         );
 
   return filtered
@@ -851,9 +934,9 @@ function finalizeKakakuItemlistRows(allRanked, keywords) {
     }));
 }
 
-function extractKakakuItemlistFromHtml(html, keywords) {
+function extractKakakuItemlistFromHtml(html, keywords, category) {
   const rows = extractKakakuItemlistRowsFromHtml(html, new Set());
-  return finalizeKakakuItemlistRows(rows, keywords);
+  return finalizeKakakuItemlistRows(rows, keywords, category);
 }
 
 /**
@@ -893,7 +976,6 @@ function extractYodobashiModelFromImgAlt(imgAlt) {
 function extractYodobashiRankingRowsFromHtml(html, seenHref) {
   const hrefSeen = seenHref || new Set();
   const $ = cheerio.load(String(html || ''));
-  const knownManufacturers = KNOWN_MANUFACTURERS_RANKING;
 
   const rows = [];
   $('.listContentsLine.rnkngBrdrT.js_productBlock').each((_, block) => {
@@ -929,22 +1011,17 @@ function extractYodobashiRankingRowsFromHtml(html, seenHref) {
     const blockText = $box.text().replace(/\s+/g, ' ').trim();
     const _text = [blockText, imgAlt].filter(Boolean).join(' ');
 
-    const manufacturer =
-      findManufacturerInBlock(`${titleText} ${blockText}`, knownManufacturers) || '不明';
-
-    let model;
-    if (manufacturer === '不明') {
-      model =
-        extractYodobashiModelFromImgAlt(imgAlt) || titleText || imgAlt || '不明';
-    } else {
-      model =
-        extractYodobashiModelFromImgAlt(imgAlt) ||
-        extractLikelyModelFromBlock(_text, manufacturer);
-      if (!model) {
-        model = titleText.replace(manufacturer, '').replace(/^[\s　]+/, '').trim();
-      }
-      if (!model) model = imgAlt;
-      if (!model) model = '不明';
+    const parsed = extractManufacturerAndModelFromText(`${titleText} ${blockText}`);
+    const manufacturer = parsed.manufacturer;
+    let model =
+      extractYodobashiModelFromImgAlt(imgAlt) ||
+      (parsed.model !== '不明' ? parsed.model : null) ||
+      titleText ||
+      imgAlt ||
+      '不明';
+    if (manufacturer !== '不明' && model === titleText) {
+      const stripped = titleText.replace(manufacturer, '').replace(/^[\s　]+/, '').trim();
+      if (stripped) model = stripped;
     }
 
     rows.push({
@@ -1097,7 +1174,6 @@ function kojimaRankingPageUrls(originalUrlStr, pageCount) {
 function extractKojimaRankingRowsFromHtml(html, seenHref) {
   const hrefSeen = seenHref || new Set();
   const $ = cheerio.load(String(html || ''));
-  const knownManufacturers = KNOWN_MANUFACTURERS_RANKING;
   const rows = [];
 
   $('div.ranking-box').each((_, box) => {
@@ -1128,20 +1204,14 @@ function extractKojimaRankingRowsFromHtml(html, seenHref) {
     const blockText = $box.text().replace(/\s+/g, ' ').trim();
     const _text = [catchText, titleText, blockText].filter(Boolean).join(' ');
 
-    const manufacturer =
-      findManufacturerInBlock(`${titleText} ${catchText} ${blockText}`, knownManufacturers) ||
-      '不明';
-
-    let model;
-    if (manufacturer === '不明') {
-      model = titleText || '不明';
-    } else {
-      model = extractLikelyModelFromBlock(_text, manufacturer);
-      if (!model) {
-        model = titleText.replace(manufacturer, '').replace(/^[\s　]+/, '').trim();
-      }
-      if (!model) model = titleText;
-      if (!model) model = '不明';
+    const parsed = extractManufacturerAndModelFromText(
+      `${titleText} ${catchText} ${blockText}`
+    );
+    let { manufacturer, model } = parsed;
+    if (model === '不明' && titleText) model = titleText;
+    if (manufacturer !== '不明' && model === titleText) {
+      const stripped = titleText.replace(manufacturer, '').replace(/^[\s　]+/, '').trim();
+      if (stripped) model = stripped;
     }
 
     rows.push({
@@ -1159,7 +1229,7 @@ function extractKojimaRankingRowsFromHtml(html, seenHref) {
 /**
  * ビックカメラ商品ブロックから 1 行分を組み立てる（.prod_box / .cssopa / .bcs_maker）
  */
-function extractOneBiccameraProdBox($, $box, rank, knownManufacturers, hrefSeen) {
+function extractOneBiccameraProdBox($, $box, rank, _knownManufacturers, hrefSeen) {
   const hrefSeenSet = hrefSeen || new Set();
   const $link = $box.find('a.cssopa').first();
   let rawHref = $link.attr('href') || '';
@@ -1199,21 +1269,16 @@ function extractOneBiccameraProdBox($, $box, rank, knownManufacturers, hrefSeen)
   const blockText = $box.text().replace(/\s+/g, ' ').trim();
   const _text = [blockText, imgAlt, makerFromDom].filter(Boolean).join(' ');
 
-  const manufacturer =
-    findManufacturerInBlock(`${titleText} ${blockText}`, knownManufacturers) ||
-    makerShort ||
-    '不明';
-
-  let model;
-  if (manufacturer === '不明') {
-    model = titleText || imgAlt || '不明';
-  } else {
-    model = extractLikelyModelFromBlock(_text, manufacturer);
-    if (!model) {
-      model = titleText.replace(manufacturer, '').replace(/^[\s　]+/, '').trim();
-    }
-    if (!model) model = imgAlt;
-    if (!model) model = '不明';
+  // DOM のメーカーを最優先し、無ければ型番優先ヒューリスティック
+  const parsed = extractManufacturerAndModelFromText(`${titleText} ${blockText}`, {
+    preferredManufacturer: makerShort || undefined,
+  });
+  const manufacturer = makerShort || parsed.manufacturer || '不明';
+  let model = parsed.model;
+  if (model === '不明') model = titleText || imgAlt || '不明';
+  if (manufacturer !== '不明' && model === titleText) {
+    const stripped = titleText.replace(manufacturer, '').replace(/^[\s　]+/, '').trim();
+    if (stripped) model = stripped;
   }
 
   return {
@@ -1919,12 +1984,21 @@ app.post('/api/weekly/fetch', async (req, res) => {
       fetchedAt: report.fetchedAt,
       compositeRanking: fetchResult.compositeRanking,
       warnings: fetchResult.warnings || [],
+      rankingDiagnostics: fetchResult.rankingDiagnostics || null,
+      urlNotes: fetchResult.urlNotes || [],
       report,
     });
 
     console.log('✅ Completed /api/weekly/fetch in', `${Date.now() - requestStartedAt}ms`);
 
-    const reportWithInterest = await attachGoogleSearchInterest(report, category);
+    // 応答前の追加処理は短時間で終える（失敗してもレポート本体は返す）
+    let reportWithInterest = report;
+    try {
+      reportWithInterest = await attachGoogleSearchInterest(report, category);
+    } catch (interestErr) {
+      console.warn('⚠️ attachGoogleSearchInterest failed:', interestErr.message);
+      reportWithInterest = report;
+    }
 
     return res.json({
       ...reportWithInterest,
@@ -2020,12 +2094,16 @@ function normalizeRankingKeywordsFromBody(body) {
 app.post('/api/extract-ranking-by-keywords', async (req, res) => {
   const requestStartedAt = Date.now();
   const { rankingUrl } = req.body;
+  const category = String(req.body?.category ?? '').trim();
+  const matchProfileId = resolveMatchProfileId(category);
 
   const keywords = normalizeRankingKeywordsFromBody(req.body);
 
   console.log('🛎️ POST /api/extract-ranking-by-keywords called with:', {
     rankingUrl,
     keywords,
+    category,
+    matchProfileId,
   });
 
   if (!rankingUrl || typeof rankingUrl !== 'string' || !rankingUrl.trim()) {
@@ -2034,6 +2112,8 @@ app.post('/api/extract-ranking-by-keywords', async (req, res) => {
   if (keywords.length > 2) {
     return res.status(400).json({ error: 'キーワードは2つまでです。' });
   }
+
+  const rankingMeta = { category: category || null, matchProfileId };
 
   let pageText = '';
   try {
@@ -2073,11 +2153,12 @@ app.post('/api/extract-ranking-by-keywords', async (req, res) => {
         .replace(/\s+/g, ' ')
         .trim()
         .slice(0, maxChars);
-      const items = finalizeKakakuItemlistRows(mergedRows, keywords);
+      const items = finalizeKakakuItemlistRows(mergedRows, keywords, category);
       if (items.length === 0) {
         return res.json({
           rankingUrl: trimmedUrl,
           keywords,
+          ...rankingMeta,
           count: 0,
           extractionMode: 'rule-based',
           fetchedPageUrls,
@@ -2087,6 +2168,7 @@ app.post('/api/extract-ranking-by-keywords', async (req, res) => {
       return res.json({
         rankingUrl: trimmedUrl,
         keywords,
+        ...rankingMeta,
         count: items.length,
         extractionMode: 'rule-based',
         fetchedPageUrls,
@@ -2113,11 +2195,12 @@ app.post('/api/extract-ranking-by-keywords', async (req, res) => {
       const { rows: mergedRows, fetchedApiUrls } =
         await extractYodobashiRankingRowsMergedWithMcol(html, trimmedUrl, seenHref);
       const fetchedPageUrls = [trimmedUrl, ...fetchedApiUrls];
-      const items = finalizeKakakuItemlistRows(mergedRows, keywords);
+      const items = finalizeKakakuItemlistRows(mergedRows, keywords, category);
       if (items.length === 0) {
         return res.json({
           rankingUrl: trimmedUrl,
           keywords,
+          ...rankingMeta,
           count: 0,
           extractionMode: 'rule-based',
           fetchedPageUrls,
@@ -2127,6 +2210,7 @@ app.post('/api/extract-ranking-by-keywords', async (req, res) => {
       return res.json({
         rankingUrl: trimmedUrl,
         keywords,
+        ...rankingMeta,
         count: items.length,
         extractionMode: 'rule-based',
         fetchedPageUrls,
@@ -2162,11 +2246,12 @@ app.post('/api/extract-ranking-by-keywords', async (req, res) => {
         .replace(/\s+/g, ' ')
         .trim()
         .slice(0, maxChars);
-      const items = finalizeKakakuItemlistRows(mergedRows, keywords);
+      const items = finalizeKakakuItemlistRows(mergedRows, keywords, category);
       if (items.length === 0) {
         return res.json({
           rankingUrl: trimmedUrl,
           keywords,
+          ...rankingMeta,
           count: 0,
           extractionMode: 'rule-based',
           fetchedPageUrls,
@@ -2176,6 +2261,7 @@ app.post('/api/extract-ranking-by-keywords', async (req, res) => {
       return res.json({
         rankingUrl: trimmedUrl,
         keywords,
+        ...rankingMeta,
         count: items.length,
         extractionMode: 'rule-based',
         fetchedPageUrls,
@@ -2204,11 +2290,12 @@ app.post('/api/extract-ranking-by-keywords', async (req, res) => {
       const seenHref = new Set();
       const mergedRows = extractBiccameraRankingRowsFromHtml(html, seenHref);
       const fetchedPageUrls = [fetchedUrlForLog || trimmedUrl];
-      const items = finalizeKakakuItemlistRows(mergedRows, keywords);
+      const items = finalizeKakakuItemlistRows(mergedRows, keywords, category);
       if (items.length === 0) {
         return res.json({
           rankingUrl: trimmedUrl,
           keywords,
+          ...rankingMeta,
           count: 0,
           extractionMode: 'rule-based',
           fetchedPageUrls,
@@ -2218,6 +2305,7 @@ app.post('/api/extract-ranking-by-keywords', async (req, res) => {
       return res.json({
         rankingUrl: trimmedUrl,
         keywords,
+        ...rankingMeta,
         count: items.length,
         extractionMode: 'rule-based',
         fetchedPageUrls,
@@ -2236,11 +2324,12 @@ app.post('/api/extract-ranking-by-keywords', async (req, res) => {
 
   // キーワードが無い場合は、AIに渡さずルールベースで「順位一覧」を返す
   if (!ENABLE_AI_RANKING_EXTRACTION || keywords.length === 0) {
-    const items = extractRankingByKeywordsRuleBased(pageText, keywords);
+    const items = extractRankingByKeywordsRuleBased(pageText, keywords, category);
     if (items.length === 0) {
       console.log('⚠️ rule-based extraction returned 0 items', {
         rankingUrl: rankingUrl.trim(),
         keywords,
+        category,
         pageTextLen: String(pageText || '').length,
       });
       // キーワードなしのときは「順位一覧」が目的のため 200 で空配列を返す
@@ -2248,6 +2337,7 @@ app.post('/api/extract-ranking-by-keywords', async (req, res) => {
         return res.json({
           rankingUrl: rankingUrl.trim(),
           keywords,
+          ...rankingMeta,
           count: 0,
           extractionMode: 'rule-based',
           items: [],
@@ -2256,6 +2346,7 @@ app.post('/api/extract-ranking-by-keywords', async (req, res) => {
       return res.status(404).json({
         error:
           'キーワードに一致するランキング商品を抽出できませんでした。キーワードを変更して再実行してください。',
+        ...rankingMeta,
       });
     }
     console.log(
@@ -2266,6 +2357,7 @@ app.post('/api/extract-ranking-by-keywords', async (req, res) => {
     return res.json({
       rankingUrl: rankingUrl.trim(),
       keywords,
+      ...rankingMeta,
       count: items.length,
       extractionMode: 'rule-based',
       items,
@@ -2273,10 +2365,13 @@ app.post('/api/extract-ranking-by-keywords', async (req, res) => {
   }
 
   const keywordList = keywords.join('、');
+  const categoryHint = category
+    ? `\n# カテゴリ\n${category}\n（カテゴリに応じた表記ゆれ・同義語も考慮してキーワード一致を判断すること）\n`
+    : '';
   const prompt = `
 あなたは情報抽出アシスタントです。
 以下のテキストは家電などのランキングページから取得した本文です。
-
+${categoryHint}
 # キーワード（すべてに関連する商品のみ抽出）
 ${keywordList}
 
@@ -2344,6 +2439,7 @@ ${pageText}
     return res.json({
       rankingUrl: rankingUrl.trim(),
       keywords,
+      ...rankingMeta,
       count: normalized.length,
       extractionMode: 'ai',
       items: normalized,
@@ -2659,6 +2755,7 @@ const {
   resolveFeatureLabels,
   normalizeFeatureRows,
   productCacheKey,
+  resolveKojimaProductImage,
 } = require('./useCaseRecommendEngine');
 
 function normalizeUseCaseProductsPayload(items) {
@@ -2803,6 +2900,7 @@ app.post('/api/usecase/generate-copy', async (req, res) => {
                 product: p,
                 manufacturerUrl: p.manufacturerUrl || null,
                 scrape: scrapeFast,
+                fetchHtml: fetchHtmlWithHttpClient,
                 getGeminiModel: getAiModel,
                 featureLabels,
               });
@@ -2828,6 +2926,17 @@ app.post('/api/usecase/generate-copy', async (req, res) => {
               productLabel: p?.label || p?.productName || '',
               error: message,
             });
+            let imageUrl = '';
+            try {
+              // eslint-disable-next-line no-await-in-loop
+              const imageMeta = await resolveKojimaProductImage({
+                product: p,
+                fetchHtml: fetchHtmlWithHttpClient,
+              });
+              imageUrl = imageMeta.url;
+            } catch (_) {
+              imageUrl = '';
+            }
             productsOut.push({
               ...p,
               copy: {
@@ -2837,6 +2946,7 @@ app.post('/api/usecase/generate-copy', async (req, res) => {
                 linkLabel: '商品詳細はこちら',
                 hrefKojima: p?.hrefKojima || null,
                 manufacturerUrl: p?.manufacturerUrl || null,
+                imageUrl,
               },
               manufacturerUrl: p?.manufacturerUrl || null,
               scrapeError: message,
@@ -2858,7 +2968,7 @@ app.post('/api/usecase/generate-copy', async (req, res) => {
         aiProviderUsed: getAiModel.provider,
         featureLabels,
         sections: outSections,
-        html: renderUseCaseHtml(outSections),
+        html: renderUseCaseHtml(outSections, { category }),
         errorCount: errors.length,
         errors,
       });
@@ -2875,6 +2985,7 @@ app.post('/api/usecase/generate-copy', async (req, res) => {
       product,
       manufacturerUrl,
       scrape: scrapeFast,
+      fetchHtml: fetchHtmlWithHttpClient,
       getGeminiModel: getAiModel,
       featureLabels,
     });
@@ -2902,7 +3013,12 @@ app.post('/api/usecase/generate-copy', async (req, res) => {
 });
 
 const registerArticleAppRoutes = require('./articleAppGenerate');
-registerArticleAppRoutes(app, { scrape, bindGetAiModel, resolveAiProvider });
+registerArticleAppRoutes(app, {
+  scrape,
+  bindGetAiModel,
+  resolveAiProvider,
+  fetchHtmlWithHttpClient,
+});
 
   const {
   generateProductPage,

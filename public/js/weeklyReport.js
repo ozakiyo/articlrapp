@@ -165,18 +165,13 @@
   }
 
   function applyToHeadingsTab(headings) {
-    const list = headings?.length ? headings : [];
-    for (let i = 1; i <= 5; i++) {
-      const el = document.getElementById(`headings-candidate-${i}`);
-      if (el) el.value = list[i - 1] || '';
-    }
+    // 追加キーワードは手動入力のみ。週次からはカテゴリだけ反映する
     const kw = document.getElementById('headings-keyword');
     if (kw) kw.value = currentReport?.category || '';
     const hint = document.getElementById('headings-candidates-hint');
     if (hint) {
-      hint.textContent = list.length
-        ? `週次レポートより ${list.filter(Boolean).length} 件を入力済み（編集してから見出し生成してください）`
-        : '';
+      hint.textContent =
+        'デフォルトは空欄でOK。必要なときだけ入力すると、見出し生成時に考慮します。';
     }
   }
 
@@ -451,11 +446,16 @@
     } else if (!report.bestsellers?.length && report.fetchedAt) {
       if (statusText) statusText.textContent = `最終取得: ${fmtDate(report.fetchedAt)}　｜　ランキング0件`;
       if (dot) dot.style.background = '#ef4444';
-      const warn =
-        report.warnings?.length > 0
+      const diag = report.rankingDiagnostics || {};
+      let warn =
+        diag.emptyReason ||
+        (report.warnings?.length > 0
           ? `｜取得失敗（${report.warnings.length}件の警告 — サーバーログを確認）`
-          : '｜ランキングデータが空です';
-      if (fetchMsg) fetchMsg.textContent = warn;
+          : '｜ランキングデータが空です');
+      if (diag.recommendSaveOfficialUrls || (diag.fallbackUrlSources || []).length >= 2) {
+        warn += '｜競合調査で公式ランキングURLを保存してください';
+      }
+      if (fetchMsg) fetchMsg.textContent = warn.startsWith('｜') ? warn : `｜${warn}`;
     } else {
       if (statusText) {
         const compareLabel = meta.compareLabel || (meta.hasPrevious ? 'あり' : 'なし');
@@ -1379,8 +1379,26 @@
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || data.details || '取得に失敗しました');
       await renderReport(data);
+      if (msg) {
+        const diag = data.rankingDiagnostics || {};
+        if (!data.bestsellers?.length) {
+          msg.textContent = diag.emptyReason
+            ? `｜${diag.emptyReason}`
+            : '｜ランキング0件。競合調査で公式URLを保存してください';
+        } else if (diag.recommendSaveOfficialUrls) {
+          msg.textContent =
+            '｜取得完了（検索フォールバックあり — 競合調査で公式URL保存を推奨）';
+        } else {
+          msg.textContent = '｜取得完了';
+        }
+      }
     } catch (err) {
-      showError(err.message);
+      const raw = String(err?.message || err || '');
+      const friendly =
+        /failed to fetch|networkerror|load failed|aborted/i.test(raw)
+          ? '通信が切れました。取得中にサーバーが再起動したか、時間がかかりすぎた可能性があります。もう一度「今週のランキングを取得」を実行してください。'
+          : raw;
+      showError(friendly);
       if (msg) msg.textContent = '｜取得失敗';
     } finally {
       if (btn) {

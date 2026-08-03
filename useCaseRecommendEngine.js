@@ -1,6 +1,9 @@
 'use strict';
 
+const cheerio = require('cheerio');
 const { parseJsonFromModelOutput } = require('./parseModelJson');
+
+const KOJIMA_ORIGIN = 'https://www.kojima.net';
 
 function productKey(p) {
   return String(p?.modelKey || p?.modelCode || p?.id || `${p?.manufacturer || ''}|${p?.productName || ''}`).trim();
@@ -8,6 +11,80 @@ function productKey(p) {
 
 function hasKojimaStock(p) {
   return p?.rankKojima != null || Boolean(p?.hrefKojima);
+}
+
+function dummyProductImageUrl(seed) {
+  const s = String(seed || 'product')
+    .replace(/[^a-zA-Z0-9_-]+/g, '-')
+    .slice(0, 48) || 'product';
+  return `https://picsum.photos/seed/kojima-${encodeURIComponent(s)}/480/480`;
+}
+
+function absolutizeKojimaUrl(src) {
+  const s = String(src || '').trim();
+  if (!s) return '';
+  if (/^https?:\/\//i.test(s)) return s;
+  if (s.startsWith('//')) return `https:${s}`;
+  if (s.startsWith('/')) return `${KOJIMA_ORIGIN}${s}`;
+  return `${KOJIMA_ORIGIN}/${s.replace(/^\//, '')}`;
+}
+
+function extractKojimaProdCode(url) {
+  const u = String(url || '');
+  const m = /[?&](?:prod|sku)=(\d{8,14})/i.exec(u);
+  return m ? m[1] : '';
+}
+
+/** コジマCDNの定番パス（JAN / prod コードから推定） */
+function buildKojimaCdnImageUrl(prodCode) {
+  const jan = String(prodCode || '').replace(/\D/g, '');
+  if (jan.length < 8) return '';
+  const p6 = jan.slice(0, 6);
+  const p9 = jan.slice(0, Math.min(9, jan.length));
+  return `${KOJIMA_ORIGIN}/ito/img_public/prod/${p6}/${p9}/${jan}/IMG_PATH_L/pc/${jan}_A01.jpg`;
+}
+
+/**
+ * コジマ商品詳細 or CDN から画像URLを取得。見つからなければダミー。
+ * @returns {Promise<{ url: string, source: string, isDummy: boolean }>}
+ */
+async function resolveKojimaProductImage({ product, fetchHtml }) {
+  const href = String(product?.hrefKojima || '').trim();
+  const seed = productCacheKey(product) || product?.label || product?.productName || 'product';
+  const dummy = dummyProductImageUrl(seed);
+
+  if (product?.imageUrl && /^https?:\/\//i.test(String(product.imageUrl))) {
+    return { url: String(product.imageUrl).trim(), source: 'product', isDummy: false };
+  }
+
+  if (href && typeof fetchHtml === 'function') {
+    try {
+      const html = await fetchHtml(href);
+      const $ = cheerio.load(String(html || ''));
+      const candidates = [
+        $('meta[property="og:image"]').attr('content'),
+        $('meta[name="thumbnail"]').attr('content'),
+        $('img[src*="img_public/prod"]').first().attr('src'),
+        $('img[src*="IMG_PATH"]').first().attr('src'),
+        $('img[src*="/ito/img"]').first().attr('src'),
+      ];
+      for (const c of candidates) {
+        const abs = absolutizeKojimaUrl(c);
+        if (abs && !/noimage|spacer|blank|1x1/i.test(abs)) {
+          return { url: abs, source: 'kojima-detail', isDummy: false };
+        }
+      }
+    } catch (err) {
+      console.warn('⚠️ Kojima product image scrape failed:', err.message);
+    }
+  }
+
+  const cdn = buildKojimaCdnImageUrl(extractKojimaProdCode(href));
+  if (cdn) {
+    return { url: cdn, source: 'kojima-cdn', isDummy: false };
+  }
+
+  return { url: dummy, source: 'dummy', isDummy: true };
 }
 
 function filterKojimaProducts(items) {
@@ -434,45 +511,176 @@ function renderProductBlockHtml(copy, rankIndex) {
   const rows = (copy.featureRows || [])
     .map(
       (r) =>
-        `<tr><th scope="row">${escapeHtml(r.label)}</th><td>${escapeHtml(r.value)}</td></tr>`
+        `<tr>
+                                                <th>${escapeHtml(r.label)}</th>
+                                                <td>${escapeHtml(r.value)}</td>
+                                              </tr>`
     )
-    .join('');
-  const link =
-    copy.hrefKojima
-      ? `<p><a href="${escapeHtml(copy.hrefKojima)}" target="_blank" rel="noopener">${escapeHtml(copy.linkLabel || '商品詳細はこちら')}</a></p>`
-      : '';
-  const conclusion = copy.conclusion
-    ? `<p><strong><span class="pillar-tag pillar-aeo">AEO</span> 結論:</strong> ${escapeHtml(copy.conclusion)}</p>`
+    .join('\n');
+  const detailUrl = copy.hrefKojima || copy.manufacturerUrl || '';
+  const linkLabel = copy.linkLabel || '商品詳細はこちら';
+  const link = detailUrl
+    ? `<p class="linkbtn"><a title="" href="${escapeHtml(detailUrl)}">${escapeHtml(linkLabel)}</a></p>`
     : '';
-  const suitableFor = copy.suitableFor
-    ? `<p><strong><span class="pillar-tag pillar-geo">GEO</span> 向いている人:</strong> ${escapeHtml(copy.suitableFor)}</p>`
+
+  const descParts = [];
+  if (copy.conclusion) {
+    descParts.push(`<p class="pc_mb10"><strong>結論:</strong> ${escapeHtml(copy.conclusion)}</p>`);
+  }
+  if (copy.suitableFor) {
+    descParts.push(
+      `<p class="pc_mb10"><strong>向いている人:</strong> ${escapeHtml(copy.suitableFor)}</p>`
+    );
+  }
+  if (copy.description) {
+    const paras = String(copy.description)
+      .split(/\n\n+/)
+      .map((p) => p.trim())
+      .filter(Boolean)
+      .map((p) => `<p class="pc_mb20">${escapeHtml(p).replace(/\n/g, '<br>')}</p>`);
+    descParts.push(...paras);
+  }
+
+  const table = rows
+    ? `<table class="pickup_spec pc_w100per">
+                                            <tbody>
+${rows}
+                                            </tbody>
+                                        </table>`
     : '';
+
+  const heading = escapeHtml(copy.heading || '');
+  const imageUrl =
+    String(copy.imageUrl || '').trim() ||
+    dummyProductImageUrl(copy.heading || String(rankIndex));
+  const imgInner = detailUrl
+    ? `<a title="" href="${escapeHtml(detailUrl)}"><img alt="${heading}" src="${escapeHtml(imageUrl)}"></a>`
+    : `<img alt="${heading}" src="${escapeHtml(imageUrl)}">`;
+
+  // mixer.html と同型: 左画像(35%) + 右スペック/CTA(65%)
+  const specBlock = `<div class="commentblock pc_mb30">
+                                <div class="block2 pc_w35per sp_w90per pc_tac sp_mha">${imgInner}
+                                </div>
+                                <div class="block2 pc_w65per sp_w100per sp_mha">
+                                        ${table}
+                                        ${link}
+                                </div>
+                        </div>`;
+
   return `
-<p><strong>${rankIndex}</strong></p>
-<h4>${escapeHtml(copy.heading)}</h4>
-${conclusion}
-${suitableFor}
-<p>${escapeHtml(copy.description)}</p>
-${rows ? `<table class="usecase-feature-table"><tbody>${rows}</tbody></table>` : ''}
-${link}
-`.trim();
+<div class="pickup">
+                        <div>
+                                        <h4 class="pc_mt0">${heading}</h4>
+                                </div>
+                        ${descParts.join('\n                        ')}
+                        ${specBlock}
+                        </div>`.trim();
+}
+
+/**
+ * mixer.html 記事内 style と同系（pickup_spec は zzb_special4 外）
+ */
+function buildUseCaseEmbeddedCss() {
+  return `<style type="text/css">
+#mainblock006479 .pickup{
+    border: 1px solid #e7e7e7;
+    border-radius: 3px;
+    -webkit-box-shadow: none;
+    box-shadow: none;
+    margin: 0 0 20px;
+    padding: 10px;
+}
+.pickup .commentblock{
+  border-bottom: 1px #666666 dotted;
+}
+/*レスポンシブtable*/
+#mainblock006479 table {
+  width: 100%;
+  table-layout: fixed;
+  word-break: break-all;
+  word-wrap: break-word;
+}
+.pickup_spec th, .recycling th {
+  background: #8a8a8a;
+  border: solid 1px #ccc;
+  color: #fff;
+  width: 100%;
+}
+.pickup_spec td, .recycling td {
+  width: 100%;
+}
+@media screen and (min-width:701px){
+#mainblock006479 {
+    width: 960px;
+    margin: 0 auto 100px !important;
+}
+#mainblock006479 .pickup{
+    padding: 30px;
+}
+#mainblock006479 table {
+  margin: 20px auto;
+  border-collapse: collapse;
+}
+.pickup_spec td, .recycling td{
+  padding: 10px;
+  border: solid 1px #ccc;
+  width: 70%;
+}
+.pickup_spec th, .recycling th{
+  padding: 10px;
+  width: 30%;
+}
+}
+@media screen and (max-width:700px){
+.pickup_spec {
+    width: 100%;
+}
+.pickup_spec th,
+.pickup_spec td {
+  border-bottom: none;
+  display: inline-block;
+  width: 100%;
+}
+.pickup_spec td {
+  padding: 10px 0;
+}
+.pickup_spec th {
+  padding: 5px 0;
+}
+}
+</style>`;
 }
 
 /**
  * @param {{ label: string, products: object[] }[]} sections
  *   products[].copy に generateProductCopy 結果
+ * @param {{ category?: string, title?: string }} [meta]
  */
-function renderUseCaseHtml(sections) {
-  const blocks = (sections || []).map((sec) => {
+function renderUseCaseHtml(sections, meta = {}) {
+  const category = String(meta.category || '').trim();
+  const title =
+    String(meta.title || '').trim() ||
+    (category ? `【用途別】${category}のおすすめ` : '用途別おすすめ');
+
+  const blocks = (sections || []).map((sec, secIdx) => {
+    const ank = `ank${String(secIdx + 1).padStart(2, '0')}`;
     const productsHtml = (sec.products || [])
       .map((p, i) => renderProductBlockHtml(p.copy || p, i + 1))
       .join('\n\n');
     return `
-<h3>${escapeHtml(sec.label)}のおすすめ</h3>
-${productsHtml}
-`.trim();
+                <h3 id="${ank}">${escapeHtml(sec.label)} おすすめ</h3>
+                ${productsHtml}`.trim();
   });
-  return blocks.join('\n\n');
+
+  // mixer.html と同系: zzb_special4.css ＋ 記事内 pickup_spec CSS
+  return `<!-- Requires zzb_special4.css (#fwCms_wrapper / #mainblock006479 / .pickup / .linkbtn) -->
+${buildUseCaseEmbeddedCss()}
+<div id="fwCms_wrapper">
+<div id="mainblock006479">
+<h1 class="top_title">${escapeHtml(title)}</h1>
+${blocks.join('\n\n')}
+</div><!-- /#mainblock006479 -->
+</div><!-- /#fwCms_wrapper -->`;
 }
 
 /**
@@ -484,6 +692,7 @@ async function generateCopyForProduct({
   product,
   manufacturerUrl: forcedUrl,
   scrape,
+  fetchHtml,
   getGeminiModel,
   featureLabels,
 }) {
@@ -506,6 +715,8 @@ async function generateCopyForProduct({
     ? await scrapeManufacturerFacts({ url: manufacturerUrl, scrape })
     : { text: '', error: 'メーカーURL未設定', charCount: 0 };
 
+  const imageMeta = await resolveKojimaProductImage({ product, fetchHtml });
+
   const copy = await generateProductCopy({
     category,
     useCase,
@@ -517,7 +728,12 @@ async function generateCopyForProduct({
   });
 
   return {
-    copy,
+    copy: {
+      ...copy,
+      imageUrl: imageMeta.url,
+      imageSource: imageMeta.source,
+      imageIsDummy: imageMeta.isDummy,
+    },
     manufacturerUrl,
     urlMeta,
     scrapeError: scraped.error,
@@ -538,6 +754,7 @@ module.exports = {
   generateProductCopy,
   generateCopyForProduct,
   renderUseCaseHtml,
+  resolveKojimaProductImage,
   hasKojimaStock,
   productKey,
 };

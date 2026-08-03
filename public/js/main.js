@@ -444,6 +444,51 @@
     }
   }
 
+  function fillHeadingsCompetitorUrls(articles) {
+    const list = (articles || []).slice(0, 3);
+    for (let i = 0; i < 3; i++) {
+      const el = document.getElementById(`headings-url${i + 1}`);
+      if (!el) continue;
+      el.value = list[i]?.url || el.value || '';
+    }
+  }
+
+  async function discoverCompetitorUrlsForHeadings() {
+    const keyword = document.getElementById('headings-keyword')?.value.trim();
+    const msg = document.getElementById('headings-discover-msg');
+    const btn = document.getElementById('headings-discover-urls');
+    if (!keyword) {
+      showError(headingsError, 'キーワードを入力してから他社URLを自動取得してください。');
+      return;
+    }
+    showError(headingsError, '');
+    if (msg) msg.textContent = '検索中（家電量販店の上位記事）…';
+    setLoading(btn, true, '他社URLを自動取得（SEO上位）', '取得中...');
+    try {
+      const data = await postJson('/api/article/discover-competitor-urls', { keyword });
+      const articles = data.articles || [];
+      if (!articles.length) {
+        if (msg) {
+          msg.textContent =
+            (data.notes || []).join(' / ') ||
+            '該当する家電量販店記事が見つかりませんでした。手入力してください。';
+        }
+        return;
+      }
+      fillHeadingsCompetitorUrls(articles);
+      if (msg) {
+        msg.textContent = `取得 ${articles.length} 件: ${articles
+          .map((a) => `${a.site}`)
+          .join(' / ')}`;
+      }
+    } catch (err) {
+      showError(headingsError, err.message);
+      if (msg) msg.textContent = '';
+    } finally {
+      setLoading(btn, false, '他社URLを自動取得（SEO上位）', '取得中...');
+    }
+  }
+
   function setHeadingCandidatesToForm(features, hintText) {
     const list = uniqueCandidateStrings([features]);
     for (let i = 1; i <= 5; i++) {
@@ -455,8 +500,8 @@
       hint.textContent =
         hintText ||
         (list.length
-          ? `週次・競合の結果より ${list.length} 件を入力済み（編集してから見出し生成してください）`
-          : '週次レポートまたは競合調査の結果を取り込むと、候補と他社URLが入ります。');
+          ? `追加キーワード ${list.length} 件を入力済み（見出し生成時に考慮されます）`
+          : 'デフォルトは空欄でOK。必要なときだけ入力すると、見出し生成時に考慮します。');
     }
   }
 
@@ -476,25 +521,22 @@
     if (kw && category && (force || !kw.value.trim())) {
       kw.value = category;
     }
-    const candidates = collectBridgeHeadingCandidates(category);
+    // 追加キーワードは手動入力のみ（自動では埋めない）
     const existing = getHeadingCandidatesFromForm();
-    if (force || !existing.length) {
-      setHeadingCandidatesToForm(
-        candidates,
-        candidates.length
-          ? `週次・競合の結果より ${candidates.length} 件を入力済み（編集してから見出し生成してください）`
-          : undefined
-      );
+    const hint = document.getElementById('headings-candidates-hint');
+    if (hint && !existing.length) {
+      hint.textContent =
+        'デフォルトは空欄でOK。必要なときだけ入力すると、見出し生成時に考慮します。';
     }
     const urls = await fetchCompetitorArticleUrls(category);
     if (urls.length) setUrlFields('headings', urls, { force });
     const status = document.getElementById('headings-bridge-msg');
     if (status) {
       status.textContent = category
-        ? `反映: ${category} / 候補 ${candidates.length} 件 / 競合URL ${urls.length} 件`
+        ? `反映: ${category} / 競合URL ${urls.length} 件（追加キーワードは手動）`
         : '反映できる週次・競合データがありません。先に取得してください。';
     }
-    return { category, candidates, urls };
+    return { category, candidates: existing, urls };
   }
 
   async function syncArticleTabFromSources({ force = true } = {}) {
@@ -1529,6 +1571,27 @@
       if (data.warnings?.length) {
         meta += ` / 警告: ${data.warnings.length}件`;
       }
+      const diag = data.rankingDiagnostics || {};
+      if (Array.isArray(data.urlNotes) && data.urlNotes.length) {
+        meta += `<br><span class="field-hint">${escapeHtml(data.urlNotes.slice(0, 3).join(' '))}</span>`;
+      }
+      if (diag.recommendSaveOfficialUrls) {
+        meta +=
+          '<br><strong>推奨:</strong> 競合調査で「ランキング URL を自動取得」→「URLを保存」すると、次回から安定して取得できます。';
+      }
+      if (diag.emptyReason) {
+        meta += `<br><strong>空の理由:</strong> ${escapeHtml(diag.emptyReason)}`;
+      }
+      const sourceCounts = (data.sources || [])
+        .map(
+          (s) =>
+            `${escapeHtml(s.sourceLabel || s.sourceId || '')}: ${escapeHtml(String(s.count ?? 0))}件` +
+            (s.usedUnfilteredFallback ? '（フィルタ緩和）' : '')
+        )
+        .join(' · ');
+      if (sourceCounts) {
+        meta += `<br><span class="field-hint">取得件数: ${sourceCounts}</span>`;
+      }
       kyosoMeta.innerHTML = meta;
 
       kyosoTbody.innerHTML = rows
@@ -1548,6 +1611,11 @@
             </tr>`
         )
         .join('');
+
+      if (!rows.length) {
+        kyosoTbody.innerHTML =
+          '<tr><td colspan="6" class="weekly-empty-cell">商品が0件です。上の「空の理由」を確認し、公式ランキングURLを保存してから再取得してください。</td></tr>';
+      }
 
       const compositeItems = data.compositeRanking?.items || [];
       const compositeStats = data.compositeRanking?.stats || {};
@@ -1612,11 +1680,16 @@
       }
 
       if (data.warnings?.length) {
+        const diagHint = data.rankingDiagnostics?.emptyReason
+          ? `\n${data.rankingDiagnostics.emptyReason}`
+          : data.rankingDiagnostics?.recommendSaveOfficialUrls
+            ? '\n公式ランキングURLの保存を推奨します（このタブ上部の「ランキング URL を自動取得」→「URLを保存」）。'
+            : '';
         showError(
           kyosoError,
-          `一部の取得元でエラーがありました:\n${data.warnings
+          `一部の取得元で注意があります:\n${data.warnings
             .map((w) => `${w.source}: ${w.message}`)
-            .join('\n')}`
+            .join('\n')}${diagHint}`
         );
       }
 
@@ -1813,9 +1886,31 @@
         competitorUrl2: document.getElementById('headings-url2').value.trim(),
         competitorUrl3: document.getElementById('headings-url3').value.trim(),
         referenceUrl: document.getElementById('headings-ref-url').value.trim(),
+        autoDiscoverCompetitors: true,
       });
       lastHeadingsData = data;
       lastHeadingsKeyword = keyword;
+
+      if (Array.isArray(data.discoveredCompetitorUrls) && data.discoveredCompetitorUrls.length) {
+        fillHeadingsCompetitorUrls(
+          (data.competitorUrlsUsed || []).map((url) => {
+            const hit = data.discoveredCompetitorUrls.find((a) => a.url === url);
+            return hit || { url };
+          })
+        );
+        // 既存入力＋自動取得の最終URLも反映
+        const used = data.competitorUrlsUsed || [];
+        for (let i = 0; i < 3; i++) {
+          const el = document.getElementById(`headings-url${i + 1}`);
+          if (el && used[i]) el.value = used[i];
+        }
+        const dmsg = document.getElementById('headings-discover-msg');
+        if (dmsg) {
+          dmsg.textContent = `生成時に自動取得: ${(data.discoveredCompetitorUrls || [])
+            .map((a) => a.site)
+            .join(' / ')}`;
+        }
+      }
 
       renderWarnings(headingsWarnings, data.warnings);
 
@@ -1850,12 +1945,18 @@
     }
   });
 
+  document.getElementById('headings-discover-urls')?.addEventListener('click', () => {
+    discoverCompetitorUrlsForHeadings();
+  });
+
   document.getElementById('headings-reset')?.addEventListener('click', () => {
     formHeadings.reset();
     showError(headingsError, '');
     headingsResult.hidden = true;
     lastHeadingsData = null;
     lastHeadingsKeyword = '';
+    const discoverMsg = document.getElementById('headings-discover-msg');
+    if (discoverMsg) discoverMsg.textContent = '';
     const editor = document.getElementById('headings-outline-editor');
     if (editor) editor.innerHTML = '';
     const enableH4 = document.getElementById('headings-enable-h4');
@@ -2098,7 +2199,7 @@
   }
 
   function buildCmsHtmlFromArticle(data) {
-    const parts = [];
+    const images = collectArticleImages();
     const seoTitle = data.seoTitle || '';
     const meta = data.metaDescription || '';
     const direct = data.directAnswer || data.article?.directAnswer || '';
@@ -2109,60 +2210,351 @@
     const related = data.relatedLinks || data.article?.relatedLinks || [];
     const sources = data.sourcesNote || data.article?.sourcesNote || '';
 
-    if (seoTitle) parts.push(`<!-- SEO title: ${seoTitle} -->`);
-    if (meta) parts.push(`<!-- meta description: ${meta} -->`);
-    if (data.title || data.article?.h1) {
-      parts.push(`<h1>${escapeHtml(data.title || data.article?.h1 || '')}</h1>`);
-    }
-    if (direct) {
-      parts.push(`<p class="direct-answer"><strong>結論:</strong> ${escapeHtml(direct)}</p>`);
-    }
-    if (intro) {
-      parts.push(`<p>${escapeHtml(intro).replace(/\n\n/g, '</p><p>')}</p>`);
-    }
-    sections.forEach((sec) => {
-      parts.push(`<h2>${escapeHtml(sec.h2 || '')}</h2>`);
-      (sec.items || []).forEach((item) => {
-        parts.push(`<h3>${escapeHtml(item.h3 || '')}</h3>`);
-        if (item.content) {
-          parts.push(
-            `<p>${escapeHtml(item.content).replace(/\n\n/g, '</p><p>').replace(/\n/g, '<br>')}</p>`
-          );
+    const used = new Set();
+    const take = (placement, heading = '') => {
+      const out = [];
+      for (const img of images) {
+        if (used.has(img)) continue;
+        if (img.placement !== placement) continue;
+        if (
+          placement === 'after_h2' ||
+          placement === 'after_h3' ||
+          placement === 'after_h4'
+        ) {
+          const needle = String(img.afterHeading || '').trim();
+          if (!needle) continue;
+          if (!String(heading || '').includes(needle)) continue;
         }
+        used.add(img);
+        out.push(img);
+      }
+      return out;
+    };
+
+    const parts = [];
+    parts.push('<!-- Requires zzb_special4.css (#fwCms_wrapper / #mainblock006479 / .commentblock / .image_box) -->');
+    if (seoTitle) parts.push(`<!-- SEO title: ${escapeHtml(seoTitle)} -->`);
+    if (meta) parts.push(`<!-- meta description: ${escapeHtml(meta)} -->`);
+    parts.push('<div id="fwCms_wrapper">');
+    parts.push('<div id="mainblock006479">');
+
+    const h1 = data.title || data.article?.h1 || '';
+    if (h1) parts.push(`<h1 class="top_title">${escapeHtml(h1)}</h1>`);
+
+    for (const img of take('after_h1')) {
+      parts.push(renderArticleFullOrLoneImage(img));
+    }
+
+    if (direct) parts.push(articleParagraphsHtml(direct));
+    if (intro) parts.push(articleParagraphsHtml(intro));
+
+    for (const img of take('after_intro')) {
+      parts.push(renderArticleFullOrLoneImage(img));
+    }
+
+    let ank = 1;
+    sections.forEach((sec) => {
+      const h2 = String(sec.h2 || '').trim();
+      const ankId = `ank${String(ank).padStart(2, '0')}`;
+      ank += 1;
+      if (h2) {
+        parts.push(`<h2 class="title" id="${ankId}">${escapeHtml(h2)}</h2>`);
+        for (const img of take('after_h2', h2)) {
+          parts.push(renderArticleFullOrLoneImage(img));
+        }
+      }
+
+      (sec.items || []).forEach((item) => {
+        const h3 = String(item.h3 || '').trim();
+        const content = String(item.content || '').trim();
+        const sideImgs = h3 ? take('after_h3', h3) : [];
+        if (h3) parts.push(`<h3>${escapeHtml(h3)}</h3>`);
+
+        if (sideImgs.length && content) {
+          const [first, ...rest] = sideImgs;
+          parts.push(renderArticleImageTextBlock(first, articleParagraphsHtml(content)));
+          rest.forEach((img) => parts.push(renderArticleFullOrLoneImage(img)));
+        } else {
+          if (content) parts.push(articleParagraphsHtml(content));
+          sideImgs.forEach((img) => parts.push(renderArticleFullOrLoneImage(img)));
+        }
+
         (item.h4_items || []).forEach((h4item) => {
-          parts.push(`<h4>${escapeHtml(h4item.h4 || '')}</h4>`);
-          if (h4item.content) {
-            parts.push(
-              `<p>${escapeHtml(h4item.content).replace(/\n\n/g, '</p><p>').replace(/\n/g, '<br>')}</p>`
-            );
+          const h4 = String(h4item.h4 || '').trim();
+          const h4content = String(h4item.content || '').trim();
+          const h4Imgs = h4 ? take('after_h4', h4) : [];
+          if (h4) parts.push(`<h4>${escapeHtml(h4)}</h4>`);
+          if (h4Imgs.length && h4content) {
+            const [first, ...rest] = h4Imgs;
+            parts.push(renderArticleImageTextBlock(first, articleParagraphsHtml(h4content)));
+            rest.forEach((img) => parts.push(renderArticleFullOrLoneImage(img)));
+          } else {
+            if (h4content) parts.push(articleParagraphsHtml(h4content));
+            h4Imgs.forEach((img) => parts.push(renderArticleFullOrLoneImage(img)));
           }
         });
       });
     });
+
+    for (const img of take('before_summary')) {
+      parts.push(renderArticleFullOrLoneImage(img));
+    }
     if (summary) {
-      parts.push(`<h2>まとめ</h2>`);
-      parts.push(`<p>${escapeHtml(summary).replace(/\n\n/g, '</p><p>')}</p>`);
+      parts.push('<h2 class="title">まとめ</h2>');
+      parts.push(articleParagraphsHtml(summary));
+    }
+
+    for (const img of take('before_faq')) {
+      parts.push(renderArticleFullOrLoneImage(img));
     }
     if (faq.length) {
-      parts.push(`<h2>よくある質問</h2>`);
+      parts.push('<h2 class="title">よくある質問</h2>');
       faq.forEach((q) => {
         parts.push(`<h3>${escapeHtml(q.question)}</h3>`);
-        parts.push(`<p>${escapeHtml(q.answer)}</p>`);
+        parts.push(articleParagraphsHtml(q.answer));
       });
     }
+
     if (related.length) {
-      parts.push(`<h2>関連記事（候補）</h2><ul>`);
+      parts.push('<h2 class="title">関連記事（候補）</h2>');
+      parts.push('<ul class="listmark_m">');
       related.forEach((r) => {
         parts.push(
           `<li>${escapeHtml(r.anchor)}${r.hint ? ` — ${escapeHtml(r.hint)}` : ''}</li>`
         );
       });
-      parts.push(`</ul>`);
+      parts.push('</ul>');
     }
     if (sources) {
-      parts.push(`<p class="sources-note"><small>${escapeHtml(sources)}</small></p>`);
+      parts.push(
+        `<p class="pc_font12 pc_mb20"><small>${escapeHtml(sources)}</small></p>`
+      );
     }
+
+    for (const img of take('before_end')) {
+      parts.push(renderArticleFullOrLoneImage(img));
+    }
+    // 未使用（見出し不一致など）は末尾に全幅で出す
+    images.forEach((img) => {
+      if (used.has(img)) return;
+      used.add(img);
+      parts.push(renderArticleFullOrLoneImage(img));
+    });
+
+    parts.push('</div><!-- /#mainblock006479 -->');
+    parts.push('</div><!-- /#fwCms_wrapper -->');
     return parts.join('\n');
+  }
+
+  function setArticleCmsOutput(data) {
+    const html = buildCmsHtmlFromArticle(data);
+    const htmlOut = document.getElementById('article-html-output');
+    const preview = document.getElementById('article-cms-preview');
+    if (htmlOut) {
+      htmlOut.value = html;
+      htmlOut.hidden = false;
+    }
+    if (preview) {
+      preview.innerHTML = html;
+      preview.hidden = false;
+    }
+    return html;
+  }
+
+  let articleImageSeq = 0;
+  const ARTICLE_IMAGE_PLACEMENTS = [
+    { value: 'after_h1', label: 'TOP（H1の直後）' },
+    { value: 'after_intro', label: '導入文の後' },
+    { value: 'after_h2', label: '指定H2の後' },
+    { value: 'after_h3', label: '指定H3と本文を左右配置' },
+    { value: 'after_h4', label: '指定H4と本文を左右配置' },
+    { value: 'before_summary', label: 'まとめの前' },
+    { value: 'before_faq', label: 'FAQの前' },
+    { value: 'before_end', label: '末尾' },
+  ];
+  const ARTICLE_IMAGE_SIZES = [
+    { value: 'side_40', label: '左40% / 右本文60%' },
+    { value: 'full', label: '全幅' },
+  ];
+  const ARTICLE_SIZE_PRESETS = {
+    side_40: { image: 'pc_w40per', text: 'pc_w60per', imageFirst: true, layout: 'side' },
+    full: { image: 'pc_w100per', text: null, imageFirst: true, layout: 'full' },
+  };
+
+  function articlePlacementOptions(selected) {
+    return ARTICLE_IMAGE_PLACEMENTS.map(
+      (o) =>
+        `<option value="${o.value}"${o.value === selected ? ' selected' : ''}>${o.label}</option>`
+    ).join('');
+  }
+  function articleSizeOptions(selected) {
+    return ARTICLE_IMAGE_SIZES.map(
+      (o) =>
+        `<option value="${o.value}"${o.value === selected ? ' selected' : ''}>${o.label}</option>`
+    ).join('');
+  }
+
+  function syncArticleImageHeadingField(row) {
+    const placement = row.querySelector('.article-img-placement')?.value;
+    const wrap = row.querySelector('.article-img-heading-wrap');
+    if (!wrap) return;
+    wrap.hidden = !['after_h2', 'after_h3', 'after_h4'].includes(placement);
+  }
+
+  function addArticleImageRow(prefill) {
+    const list = document.getElementById('article-images-list');
+    if (!list) return;
+    articleImageSeq += 1;
+    const row = document.createElement('div');
+    row.className = 'article-image-row';
+    row.innerHTML = `
+      <div class="article-image-grid">
+        <label class="field">
+          <span>画像URL</span>
+          <input type="url" class="article-img-url" placeholder="https://" />
+        </label>
+        <label class="field">
+          <span>代替テキスト</span>
+          <input type="text" class="article-img-alt" placeholder="例: 集じん方式のイメージ" />
+        </label>
+        <label class="field">
+          <span>挿入位置</span>
+          <select class="article-img-placement">${articlePlacementOptions(
+            prefill?.placement || 'after_h3'
+          )}</select>
+        </label>
+        <label class="field">
+          <span>サイズ</span>
+          <select class="article-img-size">${articleSizeOptions(
+            prefill?.size || 'side_40'
+          )}</select>
+        </label>
+        <label class="field article-img-heading-wrap" hidden>
+          <span>対象見出し（部分一致）</span>
+          <input type="text" class="article-img-after-heading" placeholder="例: 集じん方法 / 選びのポイント" />
+        </label>
+        <label class="field">
+          <span>参照ラベル（任意）</span>
+          <input type="text" class="article-img-ref-label" placeholder="例: パナソニック" />
+        </label>
+        <label class="field">
+          <span>参照URL（任意）</span>
+          <input type="url" class="article-img-ref-url" placeholder="https://" />
+        </label>
+      </div>
+      <div class="actions">
+        <button type="button" class="secondary article-img-remove">この行を削除</button>
+      </div>`;
+    list.appendChild(row);
+    row.querySelector('.article-img-remove')?.addEventListener('click', () => {
+      row.remove();
+      if (lastArticleData) setArticleCmsOutput(lastArticleData);
+    });
+    row
+      .querySelector('.article-img-placement')
+      ?.addEventListener('change', () => {
+        syncArticleImageHeadingField(row);
+        if (lastArticleData) setArticleCmsOutput(lastArticleData);
+      });
+    if (prefill) {
+      if (prefill.url) row.querySelector('.article-img-url').value = prefill.url;
+      if (prefill.alt) row.querySelector('.article-img-alt').value = prefill.alt;
+      if (prefill.placement) row.querySelector('.article-img-placement').value = prefill.placement;
+      if (prefill.size) row.querySelector('.article-img-size').value = prefill.size;
+      if (prefill.afterHeading) {
+        row.querySelector('.article-img-after-heading').value = prefill.afterHeading;
+      }
+      if (prefill.refLabel) row.querySelector('.article-img-ref-label').value = prefill.refLabel;
+      if (prefill.refUrl) row.querySelector('.article-img-ref-url').value = prefill.refUrl;
+    }
+    syncArticleImageHeadingField(row);
+    if (lastArticleData) setArticleCmsOutput(lastArticleData);
+  }
+
+  function collectArticleImages() {
+    const out = [];
+    document.querySelectorAll('#article-images-list .article-image-row').forEach((row) => {
+      const url = String(row.querySelector('.article-img-url')?.value || '').trim();
+      if (!url) return;
+      out.push({
+        url,
+        alt: String(row.querySelector('.article-img-alt')?.value || '').trim(),
+        placement: row.querySelector('.article-img-placement')?.value || 'after_h3',
+        size: row.querySelector('.article-img-size')?.value || 'side_40',
+        afterHeading: String(row.querySelector('.article-img-after-heading')?.value || '').trim(),
+        refLabel: String(row.querySelector('.article-img-ref-label')?.value || '').trim(),
+        refUrl: String(row.querySelector('.article-img-ref-url')?.value || '').trim(),
+      });
+    });
+    return out;
+  }
+
+  function articleParagraphsHtml(text) {
+    return String(text || '')
+      .split(/\n\n+/)
+      .map((p) => p.trim())
+      .filter(Boolean)
+      .map(
+        (p) =>
+          `<p class="pc_mb20">${escapeHtml(p).replace(/\n/g, '<br>')}</p>`
+      )
+      .join('\n');
+  }
+
+  function renderArticleImageInner(img) {
+    const alt = escapeHtml(img.alt || '');
+    const src = escapeHtml(img.url);
+    let html = `<p class="img_area"><img alt="${alt}" class="pc_w100per" src="${src}"></p>`;
+    if (img.refLabel || img.refUrl) {
+      const label = escapeHtml(img.refLabel || img.refUrl);
+      const ref = img.refUrl
+        ? `参照：<a target="_blank" rel="noopener" title="" href="${escapeHtml(img.refUrl)}">${label}</a>`
+        : `参照：${label}`;
+      html += `<span class="ref pc_font12 sp_font12">${ref}</span>`;
+    }
+    return html;
+  }
+
+  function renderArticleImageTextBlock(img, textHtml) {
+    const preset = ARTICLE_SIZE_PRESETS[img.size] || ARTICLE_SIZE_PRESETS.side_40;
+    if (preset.layout === 'full') {
+      return `${renderArticleFullOrLoneImage(img)}\n${textHtml}`;
+    }
+    const imgCol = `<div class="block2 ${preset.image} sp_w90per image_box pc_tac">${renderArticleImageInner(
+      img
+    )}</div>`;
+    const textCol = `<div class="block2 ${preset.text} sp_w95per">${textHtml}</div>`;
+    const inner = preset.imageFirst ? `${imgCol}\n${textCol}` : `${textCol}\n${imgCol}`;
+    return `<div class="commentblock pc_mb30">\n${inner}\n</div>`;
+  }
+
+  function renderArticleFullOrLoneImage(img) {
+    const preset = ARTICLE_SIZE_PRESETS[img.size] || ARTICLE_SIZE_PRESETS.full;
+    if (preset.layout === 'side') {
+      // 単独挿入時は画像カラムのみ
+      return `<div class="commentblock pc_mb30"><div class="block2 ${preset.image} sp_w90per image_box pc_tac">${renderArticleImageInner(
+        img
+      )}</div></div>`;
+    }
+    return `<div class="image_box pc_tac pc_mb30">${renderArticleImageInner(img)}</div>`;
+  }
+
+  function clearArticleImagesList() {
+    const list = document.getElementById('article-images-list');
+    if (list) list.innerHTML = '';
+  }
+
+  function clearArticleCmsOutput() {
+    const htmlOut = document.getElementById('article-html-output');
+    const preview = document.getElementById('article-cms-preview');
+    if (htmlOut) {
+      htmlOut.value = '';
+      htmlOut.hidden = true;
+    }
+    if (preview) {
+      preview.innerHTML = '';
+      preview.hidden = true;
+    }
   }
 
   function renderOutlineArticleResult(data) {
@@ -2201,7 +2593,7 @@
         ? ` <span class="intent-badge">${escapeHtml(sec.searchIntent)}</span>`
         : '';
       html += `<div class="generated-block section-block"><h3>${escapeHtml(sec.h2 || '')}${intent}</h3>
-        <p class="field-hint">本文先頭の「結論:」は AEO（段落抜き出し）向け。意図タグは SEO/GEO の切り口固定です。</p>`;
+        <p class="field-hint">各見出し本文の冒頭に答えの1文を自然に置きます（AEO向け。「結論:」ラベルは付けません）。意図タグは SEO/GEO の切り口固定です。</p>`;
       (sec.items || []).forEach((item) => {
         html += `<div class="generated-block"><h4>${escapeHtml(item.h3 || '')}</h4>`;
         if (item.content) {
@@ -2297,11 +2689,7 @@
       renderWarnings(articleWarnings, data.warnings);
       renderAeoChecklist(data.aeoChecklist);
       articleBody.innerHTML = renderOutlineArticleResult(data);
-      const htmlOut = document.getElementById('article-html-output');
-      if (htmlOut) {
-        htmlOut.value = buildCmsHtmlFromArticle(data);
-        htmlOut.hidden = false;
-      }
+      setArticleCmsOutput(data);
       articleResult.hidden = false;
     } catch (err) {
       showError(articleError, err.message);
@@ -2312,10 +2700,23 @@
     }
   });
 
+  document.getElementById('article-add-image')?.addEventListener('click', () => {
+    addArticleImageRow();
+  });
+
+  document.getElementById('article-images-list')?.addEventListener('change', () => {
+    if (lastArticleData) setArticleCmsOutput(lastArticleData);
+  });
+  document.getElementById('article-images-list')?.addEventListener('input', () => {
+    if (lastArticleData) setArticleCmsOutput(lastArticleData);
+  });
+
   document.getElementById('article-copy-html')?.addEventListener('click', async () => {
     const htmlOut = document.getElementById('article-html-output');
     const msg = document.getElementById('article-copy-msg');
-    const text = htmlOut?.value || (lastArticleData ? buildCmsHtmlFromArticle(lastArticleData) : '');
+    const text = lastArticleData
+      ? setArticleCmsOutput(lastArticleData)
+      : String(htmlOut?.value || '').trim();
     if (!text) {
       if (msg) {
         msg.hidden = false;
@@ -2345,6 +2746,9 @@
     formArticle.reset();
     showError(articleError, '');
     articleResult.hidden = true;
+    clearArticleImagesList();
+    clearArticleCmsOutput();
+    lastArticleData = null;
     const editor = document.getElementById('article-outline-editor');
     if (editor) {
       editor.innerHTML =
@@ -2358,11 +2762,7 @@
     if (articleBody) articleBody.innerHTML = '';
     lastArticleData = null;
     renderAeoChecklist([]);
-    const htmlOut = document.getElementById('article-html-output');
-    if (htmlOut) {
-      htmlOut.value = '';
-      htmlOut.hidden = true;
-    }
+    clearArticleCmsOutput();
   });
 
 })();
