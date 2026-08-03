@@ -670,6 +670,26 @@ button.secondary {
   color: #1f2933;
 }
 
+.article-mode-toggle {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem 1.25rem;
+  margin-top: 0.35rem;
+}
+.radio-field {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  cursor: pointer;
+}
+.article-rewrite-fields {
+  margin-bottom: 0.75rem;
+  padding: 0.75rem;
+  border: 1px dashed #cbd5e1;
+  border-radius: 8px;
+  background: #f8fafc;
+}
+
 .intent-badge {
   display: inline-block;
   margin-left: 0.35rem;

@@ -1,10 +1,12 @@
 'use strict';
 
+const cheerio = require('cheerio');
 const {
   parseJsonFromModelOutput,
   normalizeSectionsArray,
 } = require('./parseModelJson');
 const { discoverRetailerArticleUrls } = require('./discoverRetailerArticleUrls');
+const { extractHeadingsFromHtml } = require('./competitorArticleEngine');
 
 /** introductionData から sections を配列で取得（キー名ゆれ・配列風オブジェクト対応） */
 function pickSectionsFromIntroduction(obj) {
@@ -428,6 +430,339 @@ ${referenceTexts}
 `;
 }
 
+function buildRewriteSourceSection(keyword, sourceTexts) {
+  if (!sourceTexts) return '';
+  return `
+# リライト指示
+あなたは既存特集記事のリライト担当です。キーワード「${keyword}」。
+- 下記「リライト元記事」の事実・数値・切り口を根拠にする（ソースにない断定的な新事実は足さない）
+- 文言の直コピーは禁止。コジマネット特集向けの丁寧な文体で書き直す
+- 出力する見出しは指定されたアウトラインに厳密に従う
+- AEO向けに、各本文の先頭段落は答えになる1文（ラベルなし）とする
+
+# リライト元記事
+${sourceTexts}
+`;
+}
+
+const REWRITE_NOISE_HEADING =
+  /^(目次|関連記事|おすすめ特集|人気記事|カテゴリ|シェア|breadcrumb|パンくず|footer|header|ログイン|会員登録|カート)$/i;
+
+/**
+ * HTML から h1–h4 を抽出（リライト用。competitor 用の h1–h3 抽出を拡張）
+ */
+function extractRewriteHeadingsFromHtml(html) {
+  const base = extractHeadingsFromHtml(html) || [];
+  const $ = cheerio.load(String(html || ''));
+  const rootSelectors = [
+    '#fwCms_wrapper',
+    '#mainblock006479',
+    'article',
+    'main',
+    '[role="main"]',
+    '#contents',
+    '#content',
+    '.contents',
+    '.article-body',
+    '.entry-content',
+    'body',
+  ];
+  let $root = $('body');
+  for (const sel of rootSelectors) {
+    const $found = $(sel).first();
+    if ($found.length && $found.find('h2, h3, h4').length >= 1) {
+      $root = $found;
+      break;
+    }
+  }
+
+  const headings = [];
+  const seen = new Set();
+  const push = (level, text) => {
+    const t = String(text || '').replace(/\s+/g, ' ').trim();
+    if (!t || t.length < 2 || t.length > 140) return;
+    if (REWRITE_NOISE_HEADING.test(t)) return;
+    const key = `${level}:${t.toLowerCase()}`;
+    if (seen.has(key)) return;
+    seen.add(key);
+    headings.push({ level, text: t });
+  };
+
+  $root.find('h1, h2, h3, h4').each((_, el) => {
+    const level = String(el.tagName || '').toLowerCase();
+    if (!['h1', 'h2', 'h3', 'h4'].includes(level)) return;
+    push(level, $(el).text());
+  });
+
+  // cheerio で取れない場合は既存の h1–h3 結果を返す
+  if (headings.length === 0 && base.length) return base;
+  return headings.length ? headings : base;
+}
+
+/**
+ * フラットな見出し列をアウトライン（H2→H3→H4）に変換
+ */
+function headingsToOutline(headings) {
+  const list = Array.isArray(headings) ? headings : [];
+  let title = '';
+  const sections = [];
+  let currentSec = null;
+  let currentItem = null;
+
+  const ensureSection = (h2) => {
+    currentSec = {
+      h2,
+      searchIntent: '',
+      items: [],
+      subsections: [],
+    };
+    sections.push(currentSec);
+    currentItem = null;
+  };
+
+  for (const h of list) {
+    const level = String(h?.level || '').toLowerCase();
+    const text = String(h?.text || '').trim();
+    if (!text) continue;
+    if (level === 'h1') {
+      if (!title) title = text;
+      continue;
+    }
+    if (level === 'h2') {
+      ensureSection(text);
+      continue;
+    }
+    if (level === 'h3') {
+      if (!currentSec) ensureSection(title || '本文');
+      currentItem = { h3: text, intent: '', h4s: [] };
+      currentSec.items.push(currentItem);
+      currentSec.subsections.push(text);
+      continue;
+    }
+    if (level === 'h4') {
+      if (!currentSec) ensureSection(title || '本文');
+      if (!currentItem) {
+        currentItem = { h3: text, intent: '', h4s: [] };
+        currentSec.items.push(currentItem);
+        currentSec.subsections.push(text);
+      } else if (currentItem.h4s.length < MAX_OUTLINE_H4) {
+        currentItem.h4s.push(text);
+      }
+    }
+  }
+
+  // H2のみでH3が無いセクションは、本文生成用に H3 を1つ補う
+  for (const sec of sections) {
+    if (!sec.items.length) {
+      sec.items.push({ h3: sec.h2, intent: '', h4s: [] });
+      sec.subsections.push(sec.h2);
+    }
+    sec.items = sec.items.map((it) => ({
+      ...it,
+      h4s: [...(it.h4s || []), '', '', ''].slice(0, MAX_OUTLINE_H4),
+    }));
+  }
+
+  return {
+    title,
+    outline: sections.filter((s) => s.h2 && s.items.length),
+  };
+}
+
+async function improveRewriteOutlineFromArticle(
+  getGeminiModel,
+  { keyword, title, text, seedOutline }
+) {
+  const clipped = String(text || '').slice(0, 12000);
+  const seedJson =
+    Array.isArray(seedOutline) && seedOutline.length
+      ? JSON.stringify(
+          {
+            h1: title || '',
+            sections: seedOutline.map((sec) => ({
+              h2: sec.h2,
+              searchIntent: sec.searchIntent || '',
+              items: (sec.items || []).map((it) => ({
+                h3: it.h3,
+                intent: it.intent || '',
+                h4s: (it.h4s || []).filter(Boolean),
+              })),
+            })),
+          },
+          null,
+          2
+        )
+      : '（なし）';
+
+  const prompt = `
+あなたはコジマネットなど家電量販店の特集記事の編集者です。
+リライト用に、元記事の見出しアウトラインを改善してください。
+
+# 方針
+- 元記事の切り口・情報の流れは保つ（まったく別テーマにしない）
+- 新規作成用の固定テンプレ（「選びのポイント」「人気メーカー」の2本強制）には載せない
+- **より良い見出しがあれば積極的に書き換える**
+  - 検索意図が伝わる／具体的／冗長・曖昧・宣伝ノイズを減らす
+  - SEO/AEO向けに「何が分かるか」が明確な見出しにする
+  - 重複・薄い見出しは統合または削除してよい
+- 元見出しのままで十分なものは無理に変えない
+- タイトル(h1)も、よりクリックされやすく正確なら改善してよい
+- H2は2〜8、各H2配下のH3は1〜6、各H3配下のH4は0〜3
+- JSONのみ出力
+
+# 形式
+{
+  "h1": "タイトル",
+  "keyword": "${keyword || ''}",
+  "sections": [
+    {
+      "h2": "H2",
+      "searchIntent": "選び方",
+      "items": [
+        { "h3": "H3", "intent": "", "h4s": ["H4"] }
+      ]
+    }
+  ]
+}
+
+# ヒント
+キーワード候補: ${keyword || '（本文から推定）'}
+タイトル候補: ${title || '（本文から推定）'}
+
+# 元見出し（抽出済み・改善の種）
+${seedJson}
+
+# 記事本文
+${clipped}
+`;
+  const raw = await generateGeminiTextWithRetry(getGeminiModel, prompt);
+  const data = parseJsonFromModelOutput(raw) || {};
+  const outline = collectOutlineSections({ sections: data.sections }) || [];
+  const padded = outline.map((sec) => ({
+    ...sec,
+    subsections: (sec.items || []).map((it) => it.h3),
+    items: (sec.items || []).map((it) => ({
+      h3: it.h3,
+      intent: it.intent || '',
+      h4s: [...(it.h4s || []), '', '', ''].slice(0, MAX_OUTLINE_H4),
+    })),
+  }));
+  return {
+    title: String(data.h1 || data.title || title || '').trim(),
+    keyword: String(data.keyword || keyword || '').trim(),
+    outline: padded,
+  };
+}
+
+async function extractRewriteOutlineFromUrl({
+  url,
+  keyword,
+  scrape,
+  getGeminiModel,
+  fetchHtmlWithHttpClient,
+}) {
+  const warnings = [];
+  const sourceUrl = String(url || '').trim();
+  if (!sourceUrl) {
+    throw Object.assign(new Error('リライト元URLを入力してください。'), { status: 400 });
+  }
+
+  let html = '';
+  let pageText = '';
+  let headings = [];
+
+  if (typeof fetchHtmlWithHttpClient === 'function') {
+    try {
+      html = await fetchHtmlWithHttpClient(sourceUrl);
+      headings = extractRewriteHeadingsFromHtml(html);
+    } catch (err) {
+      warnings.push({
+        url: sourceUrl,
+        message: `HTML取得失敗: ${String(err.message || '').slice(0, 120)}`,
+      });
+    }
+  }
+
+  try {
+    pageText = await scrape(sourceUrl);
+  } catch (err) {
+    warnings.push({
+      url: sourceUrl,
+      message: `テキスト取得失敗: ${String(err.message || '').slice(0, 120)}`,
+    });
+  }
+
+  let title = '';
+  let outline = [];
+  const fromHtml = headingsToOutline(headings);
+  title = fromHtml.title;
+  outline = fromHtml.outline;
+
+  if (!title && html) {
+    const $ = cheerio.load(html);
+    title =
+      $('h1.top_title').first().text().replace(/\s+/g, ' ').trim() ||
+      $('h1').first().text().replace(/\s+/g, ' ').trim() ||
+      $('title').first().text().replace(/\s+/g, ' ').trim();
+  }
+
+  let method = outline.length ? 'html' : 'none';
+  const sourceForAi = pageText || (outline.length ? JSON.stringify(outline) : '');
+
+  // 見出し改善: 本文（または抽出見出し）があるときは常にAIで良い見出しへ更新
+  if (sourceForAi && typeof getGeminiModel === 'function') {
+    try {
+      const improved = await improveRewriteOutlineFromArticle(getGeminiModel, {
+        keyword: String(keyword || '').trim(),
+        title,
+        text: pageText || `タイトル: ${title}\n\n抽出見出し:\n${JSON.stringify(outline, null, 2)}`,
+        seedOutline: outline,
+      });
+      if (improved.outline?.length) {
+        outline = improved.outline;
+        if (improved.title) title = improved.title;
+        method = pageText ? 'ai-improved' : 'ai-improved-from-html';
+        warnings.push({
+          message:
+            '見出しは読みやすさ・検索意図に合わせて改善案に更新しています。必要な箇所だけ戻・修正してください。',
+        });
+        return {
+          sourceUrl,
+          title,
+          keyword: String(keyword || improved.keyword || '').trim(),
+          outline,
+          headings,
+          warnings,
+          method,
+        };
+      }
+    } catch (err) {
+      warnings.push({
+        message: `見出し改善に失敗したため、抽出した元見出しを使います。（${String(err.message || '').slice(0, 120)}）`,
+      });
+    }
+  }
+
+  if (!outline.length) {
+    const err = new Error(
+      'リライト元URLから見出し構成を取得できませんでした。URLやページ内容を確認してください。'
+    );
+    err.status = 502;
+    err.warnings = warnings;
+    throw err;
+  }
+
+  return {
+    sourceUrl,
+    title,
+    keyword: String(keyword || '').trim(),
+    outline,
+    headings,
+    warnings,
+    method,
+  };
+}
+
 async function loadOptionalArticleContext(body, scrape, { maxCharsPerArticle = 4000 } = {}) {
   const warnings = [];
   const candidateUrls = collectCandidateUrls(body);
@@ -735,6 +1070,29 @@ function registerArticleAppRoutes(
     }
   });
 
+  app.post('/api/article/extract-outline-from-url', async (req, res) => {
+    try {
+      const getAiModel = resolveGetAiModel(req);
+      const url = String(req.body?.url || req.body?.rewriteSourceUrl || '').trim();
+      const keyword = String(req.body?.keyword || '').trim();
+      const result = await extractRewriteOutlineFromUrl({
+        url,
+        keyword,
+        scrape,
+        getGeminiModel: getAiModel,
+        fetchHtmlWithHttpClient,
+      });
+      return res.json(result);
+    } catch (err) {
+      console.error('💥 /api/article/extract-outline-from-url error:', err);
+      const status = err?.status || 502;
+      return res.status(status).json({
+        error: err?.message || '構成の取り込みに失敗しました。',
+        warnings: err?.warnings || [],
+      });
+    }
+  });
+
   app.post('/api/article/generate', async (req, res) => {
     const requestStartedAt = Date.now();
     try {
@@ -967,6 +1325,12 @@ async function handleArticleGenerate(
     const { keyword, title = '', urls = [], competitorUrl1, competitorUrl2, competitorUrl3 } =
       req.body;
 
+    const modeRaw = String(req.body.mode || 'outline').toLowerCase();
+    const isRewrite = modeRaw === 'rewrite';
+    const rewriteSourceUrl = String(
+      req.body.rewriteSourceUrl || req.body.referenceUrl || ''
+    ).trim();
+
     const generateIntroduction =
       req.body.generateIntroduction === true || req.body.generateIntroduction === 'true';
     const generateSummary =
@@ -977,8 +1341,10 @@ async function handleArticleGenerate(
       req.body.generateAeoPack !== false && req.body.generateAeoPack !== 'false';
 
     console.log('🛎️ POST /api/article/generate called with:', {
+      mode: isRewrite ? 'rewrite' : 'outline',
       keyword,
       title,
+      rewriteSourceUrl: isRewrite ? rewriteSourceUrl : undefined,
       generateIntroduction,
       generateSummary,
       generateFaq,
@@ -997,23 +1363,31 @@ async function handleArticleGenerate(
       return res.status(400).json({ error: 'キーワードを入力してください。' });
     }
 
+    if (isRewrite && !rewriteSourceUrl) {
+      return res.status(400).json({ error: 'リライト元URLを入力してください。' });
+    }
+
     const outlineSections = collectOutlineSections(req.body);
     if (!outlineSections?.length) {
       return res.status(400).json({
-        error:
-          '見出しアウトライン（sections）が必要です。見出し生成タブで見出しを確定してから引き継いでください。',
+        error: isRewrite
+          ? '見出しアウトライン（sections）が必要です。リライト元URLから構成を取り込んでください。'
+          : '見出しアウトライン（sections）が必要です。見出し生成タブで見出しを確定してから引き継いでください。',
       });
     }
 
-    const candidateUrls = collectCandidateUrls(req.body);
-    const referenceUrls = collectReferenceUrls(req.body);
+    const candidateUrls = isRewrite ? collectCandidateUrls(req.body) : collectCandidateUrls(req.body);
+    const referenceUrls = isRewrite
+      ? [rewriteSourceUrl, ...collectReferenceUrls(req.body).filter((u) => u !== rewriteSourceUrl)]
+      : collectReferenceUrls(req.body);
     const useArticleContext =
       req.body.useArticleContext === true || req.body.useArticleContext === 'true';
-    // 確定アウトラインがある場合は既定でURL再取得しない（joshin等のタイムアウトで全体が落ちるのを防ぐ）
-    const skipScrape =
-      !useArticleContext &&
-      req.body.skipScrape !== false &&
-      req.body.skipScrape !== 'false';
+    // リライトはソース必須のためスクレイプする。新規は確定アウトライン時は既定スキップ
+    const skipScrape = isRewrite
+      ? false
+      : !useArticleContext &&
+        req.body.skipScrape !== false &&
+        req.body.skipScrape !== 'false';
 
     const warnings = [];
     let scrapedArticles = [];
@@ -1034,7 +1408,21 @@ async function handleArticleGenerate(
       scrapedReferenceArticles = referenceResult.scrapedArticles;
     }
 
-    if (scrapedArticles.length === 0 && scrapedReferenceArticles.length === 0) {
+    if (isRewrite) {
+      const hasSource = scrapedReferenceArticles.some((a) => a.url === rewriteSourceUrl);
+      if (!hasSource && scrapedReferenceArticles.length === 0) {
+        return res.status(502).json({
+          error: 'リライト元URLの本文を取得できませんでした。URLを確認して再試行してください。',
+          warnings,
+        });
+      }
+      if (!hasSource && scrapedReferenceArticles.length > 0) {
+        warnings.push({
+          message:
+            '指定のリライト元URLと一致する取得結果がありませんが、取得できた参考本文で続行します。',
+        });
+      }
+    } else if (scrapedArticles.length === 0 && scrapedReferenceArticles.length === 0) {
         console.warn('⚠️ Scraping failed or skipped; continue with keyword + headings only');
         warnings.push({
           message:
@@ -1052,8 +1440,14 @@ async function handleArticleGenerate(
     }
 
     const competitorTexts = formatScrapedTexts(scrapedArticles, '他社記事', 2500);
-    const referenceTexts = formatScrapedTexts(scrapedReferenceArticles, '参考記事', 2500);
-    const referenceOutputSection = buildReferenceOutputSection(keyword, referenceTexts);
+    const referenceTexts = formatScrapedTexts(
+      scrapedReferenceArticles,
+      isRewrite ? 'リライト元記事' : '参考記事',
+      isRewrite ? 8000 : 2500
+    );
+    const referenceOutputSection = isRewrite
+      ? buildRewriteSourceSection(keyword, referenceTexts)
+      : buildReferenceOutputSection(keyword, referenceTexts);
 
     let introductionData = {
       h1: title || '',
@@ -1061,7 +1455,23 @@ async function handleArticleGenerate(
     };
 
     if (generateIntroduction) {
-      const introductionPrompt = `
+      const introductionPrompt = isRewrite
+        ? `
+あなたはSEOに強い家電専門ライターです。
+キーワード「${keyword}」、タイトル「${title}」のリライト記事について、導入文を200文字程度で作成してください。
+リライト元の導入意図を踏まえつつ文言は書き直してください。
+
+# 出力条件
+- JSON形式で出力
+- 形式:
+{
+  "h1": "${title}",
+  "introduction": "導入文(200文字程度)",
+}
+${bodyPromptRules()}
+${referenceOutputSection}
+`
+        : `
 あなたはSEOに強い家電専門ライターです。
 以下の競合記事を分析し、キーワード「${keyword}」、タイトル「${title}」の導入文を200文字程度で作成してください。
 
@@ -1103,7 +1513,7 @@ ${competitorTexts ? `\n# 他社記事\n${competitorTexts}` : ''}${referenceOutpu
       getGeminiModel,
       keyword,
       title,
-      competitorTexts,
+      competitorTexts: isRewrite ? '' : competitorTexts,
       referenceOutputSection,
         warnings,
       bodyGapMs: BODY_GAP_MS,
@@ -1139,7 +1549,7 @@ ${bodiesForSummary}
 - 家電販売店にふさわしいフォーマルな文体
 - 製品名・価格は直接記載しない
 - 出力は厳密にJSONのみ
-${competitorTexts ? `\n# 他社記事\n${competitorTexts}` : ''}${referenceOutputSection}
+${isRewrite ? referenceOutputSection : `${competitorTexts ? `\n# 他社記事\n${competitorTexts}` : ''}${referenceOutputSection}`}
 `;
 
       try {
@@ -1183,6 +1593,9 @@ ${competitorTexts ? `\n# 他社記事\n${competitorTexts}` : ''}${referenceOutpu
           referenceUrls,
           generateFaq,
         });
+        if (isRewrite && !aeoPack.sourcesNote) {
+          aeoPack.sourcesNote = `リライト元: ${rewriteSourceUrl}`;
+        }
       } catch (err) {
         console.error('❌ AEO/SEO pack generation failed', err.message);
         warnings.push({
@@ -1213,7 +1626,8 @@ ${competitorTexts ? `\n# 他社記事\n${competitorTexts}` : ''}${referenceOutpu
       generateSummary,
       generateFaq,
       generateAeoPack,
-      mode: 'outline',
+      mode: isRewrite ? 'rewrite' : 'outline',
+      rewriteSourceUrl: isRewrite ? rewriteSourceUrl : undefined,
       aiProviderUsed,
       title: introductionData.h1 || title || '',
       seoTitle: aeoPack.seoTitle,

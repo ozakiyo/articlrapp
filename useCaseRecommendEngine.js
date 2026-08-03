@@ -13,6 +13,168 @@ function hasKojimaStock(p) {
   return p?.rankKojima != null || Boolean(p?.hrefKojima);
 }
 
+/**
+ * カテゴリのコジマ人気ランキングURL。保存済みがあれば優先、なければ keyword 検索。
+ */
+function resolveKojimaRankingUrl(category, rankingUrlOverride) {
+  const override = String(rankingUrlOverride || '').trim();
+  if (override) return override;
+  const cat = String(category || '').trim();
+  if (!cat) return `${KOJIMA_ORIGIN}/ec/ranking.html`;
+  return `${KOJIMA_ORIGIN}/ec/ranking.html?keyword=${encodeURIComponent(cat)}`;
+}
+
+/**
+ * コジマ商品詳細HTMLから完売・取扱終了っぽいかを判定する。
+ */
+function isKojimaProductPageSoldOut(html) {
+  const raw = String(html || '');
+  if (!raw.trim()) return false;
+  const $ = cheerio.load(raw);
+  $('script, style, noscript, iframe').remove();
+  const zoneText = [
+    $('.cart').text(),
+    $('.buy').text(),
+    $('#cart').text(),
+    $('[class*="cart"]').first().text(),
+    $('[class*="stock"]').text(),
+    $('[class*="zaiko"]').text(),
+    $('[id*="stock"]').text(),
+    $('.btn_cart').text(),
+    $('.item_detail').text(),
+    $('.prod_detail').text(),
+  ]
+    .join(' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+  const mainText = (
+    $('#contents').text() ||
+    $('#content').text() ||
+    $('main').text() ||
+    $('body').text() ||
+    ''
+  )
+    .replace(/\s+/g, ' ')
+    .trim()
+    .slice(0, 8000);
+
+  const strong =
+    /現在完売|完売しました|完売につき|売り切れました|現在お取り扱いできません|この商品は現在販売しておりません|カートに入れられません|取扱[い]?終了|販売終了/;
+  const soft = /完売|売り切れ|売切れ|品切れ|在庫なし|在庫切れ/;
+
+  if (zoneText && (strong.test(zoneText) || soft.test(zoneText))) return true;
+  if (strong.test(mainText)) return true;
+  if (soft.test(mainText.slice(0, 2500))) return true;
+  if (/入荷待ち/.test(mainText) && /カート/.test(mainText) && /(できません|不可|受付停止)/.test(mainText)) {
+    return true;
+  }
+  return false;
+}
+
+async function fetchKojimaProductHtml(product, fetchHtml, prefetchedHtml) {
+  if (prefetchedHtml) return String(prefetchedHtml);
+  const href = String(product?.hrefKojima || '').trim();
+  if (!href || typeof fetchHtml !== 'function') return '';
+  try {
+    return String(await fetchHtml(href) || '');
+  } catch (err) {
+    console.warn('⚠️ Kojima product page fetch failed:', err.message);
+    return '';
+  }
+}
+
+function sortKojimaRankingProducts(items) {
+  return filterKojimaProducts(items)
+    .slice()
+    .sort((a, b) => {
+      const ra = Number.isFinite(Number(a.rankKojima)) ? Number(a.rankKojima) : 9999;
+      const rb = Number.isFinite(Number(b.rankKojima)) ? Number(b.rankKojima) : 9999;
+      if (ra !== rb) return ra - rb;
+      return String(a.label || a.productName || '').localeCompare(
+        String(b.label || b.productName || ''),
+        'ja'
+      );
+    });
+}
+
+function productIdentityKey(p) {
+  return (
+    productCacheKey(p) ||
+    productKey(p) ||
+    String(p?.hrefKojima || '').trim() ||
+    String(p?.key || '').trim()
+  );
+}
+
+/**
+ * 完売商品の差し替え先として、コジマ人気ランキング上位から在庫あり候補を選ぶ。
+ */
+async function pickAvailableRankingReplacement({
+  original,
+  rankingProducts,
+  usedKeys,
+  fetchHtml,
+  maxChecks = 8,
+}) {
+  const origKey = productIdentityKey(original);
+  const origHref = String(original?.hrefKojima || '').trim();
+  const used = usedKeys instanceof Set ? usedKeys : new Set();
+  const candidates = sortKojimaRankingProducts(rankingProducts || []);
+  let checked = 0;
+
+  for (const cand of candidates) {
+    const key = productIdentityKey(cand);
+    if (!key || key === origKey) continue;
+    if (origHref && String(cand.hrefKojima || '').trim() === origHref) continue;
+    if (used.has(key)) continue;
+    if (!String(cand.hrefKojima || '').trim()) continue;
+
+    checked += 1;
+    if (checked > maxChecks) break;
+
+    const html = await fetchKojimaProductHtml(cand, fetchHtml);
+    if (html && isKojimaProductPageSoldOut(html)) continue;
+
+    return {
+      product: {
+        ...cand,
+        _key: key,
+        label:
+          cand.label ||
+          [cand.manufacturer, cand.productName || cand.representativeModel, cand.modelCode]
+            .filter(Boolean)
+            .join(' '),
+      },
+      productHtml: html,
+      key,
+    };
+  }
+  return null;
+}
+
+/**
+ * 商品詳細の取得と完売判定（CTAは商品詳細のみ。完売時の誘導はしない）。
+ */
+async function resolveProductCtaLink({ product, fetchHtml, prefetchedHtml }) {
+  const detailUrl = String(product?.hrefKojima || '').trim();
+  const fallbackLabel = '商品詳細はこちら';
+  const productHtml = await fetchKojimaProductHtml(product, fetchHtml, prefetchedHtml);
+  const soldOut = detailUrl
+    ? productHtml
+      ? isKojimaProductPageSoldOut(productHtml)
+      : false
+    : true;
+
+  return {
+    ctaUrl: detailUrl,
+    linkLabel: fallbackLabel,
+    linkSoldOut: false,
+    soldOut,
+    detailUrl,
+    productHtml,
+  };
+}
+
 function dummyProductImageUrl(seed) {
   const s = String(seed || 'product')
     .replace(/[^a-zA-Z0-9_-]+/g, '-')
@@ -48,7 +210,7 @@ function buildKojimaCdnImageUrl(prodCode) {
  * コジマ商品詳細 or CDN から画像URLを取得。見つからなければダミー。
  * @returns {Promise<{ url: string, source: string, isDummy: boolean }>}
  */
-async function resolveKojimaProductImage({ product, fetchHtml }) {
+async function resolveKojimaProductImage({ product, fetchHtml, html: prefetchedHtml }) {
   const href = String(product?.hrefKojima || '').trim();
   const seed = productCacheKey(product) || product?.label || product?.productName || 'product';
   const dummy = dummyProductImageUrl(seed);
@@ -57,9 +219,17 @@ async function resolveKojimaProductImage({ product, fetchHtml }) {
     return { url: String(product.imageUrl).trim(), source: 'product', isDummy: false };
   }
 
-  if (href && typeof fetchHtml === 'function') {
+  let html = String(prefetchedHtml || '');
+  if (!html && href && typeof fetchHtml === 'function') {
     try {
-      const html = await fetchHtml(href);
+      html = await fetchHtml(href);
+    } catch (err) {
+      console.warn('⚠️ Kojima product image scrape failed:', err.message);
+    }
+  }
+
+  if (html) {
+    try {
       const $ = cheerio.load(String(html || ''));
       const candidates = [
         $('meta[property="og:image"]').attr('content'),
@@ -71,20 +241,20 @@ async function resolveKojimaProductImage({ product, fetchHtml }) {
       for (const c of candidates) {
         const abs = absolutizeKojimaUrl(c);
         if (abs && !/noimage|spacer|blank|1x1/i.test(abs)) {
-          return { url: abs, source: 'kojima-detail', isDummy: false };
+          return { url: abs, source: 'kojima-detail', isDummy: false, html };
         }
       }
     } catch (err) {
-      console.warn('⚠️ Kojima product image scrape failed:', err.message);
+      console.warn('⚠️ Kojima product image parse failed:', err.message);
     }
   }
 
   const cdn = buildKojimaCdnImageUrl(extractKojimaProdCode(href));
   if (cdn) {
-    return { url: cdn, source: 'kojima-cdn', isDummy: false };
+    return { url: cdn, source: 'kojima-cdn', isDummy: false, html };
   }
 
-  return { url: dummy, source: 'dummy', isDummy: true };
+  return { url: dummy, source: 'dummy', isDummy: true, html };
 }
 
 function filterKojimaProducts(items) {
@@ -450,9 +620,9 @@ ${labelsJson}
 # 出力（厳密にJSONのみ）
 {
   "heading": "メーカー「シリーズ」型番（主要スペック要約）",
-  "conclusion": "この商品の結論1文（40字前後。用途への適合を述べる）",
-  "suitableFor": "向いている人（短く。例: 一人暮らしで静音重視の方）",
-  "description": "2〜4文の説明。冒頭に結論の趣旨を含め、機能名は「」で示す。用途に結び付ける。",
+  "conclusion": "この商品の答えになる1文（40字前後・句点で終える。ラベルは書かない）",
+  "suitableFor": "向いている人を自然な一文で（例: 一人暮らしで静音を重視する方に向いています。ラベルは書かない）",
+  "description": "先頭段落に conclusion と同じ文 → 空行 → 続きの説明。suitableFor の内容も本文に自然に含める。機能名は「」で示す。",
   "featureRows": [
     { "label": "上記の項目名と完全一致", "value": "値。不明なら —" }
   ],
@@ -460,7 +630,8 @@ ${labelsJson}
 }
 
 # 制約
-- conclusion と suitableFor は必須（空にしない）
+- conclusion / suitableFor / description は必須（空にしない）
+- description の先頭は答えの1文（conclusion）とし、「結論:」「向いている人:」などのラベルは一切書かない
 - featureRows は上記ラベルをすべて、同じ順序で出力する（件数はラベル数と一致）
 - ラベル名を言い換えない・追加しない・省略しない
 - 取得テキストにないスペック・数値は捏造しない。不明な項目の value は「—」
@@ -477,14 +648,13 @@ ${labelsJson}
       }))
     : [];
   const featureRows = normalizeFeatureRows(rawRows, labels);
-  const conclusion = String(data?.conclusion || '').trim();
-  const suitableFor = String(data?.suitableFor || '').trim();
-  let description = String(data?.description || '').trim();
-  if (conclusion && !description.includes(conclusion)) {
-    description = description
-      ? `${conclusion}\n\n${description}`
-      : conclusion;
-  }
+  const conclusion = stripUseCaseLabel(data?.conclusion);
+  const suitableFor = stripUseCaseLabel(data?.suitableFor);
+  let description = ensureUseCaseDescriptionPrefix(
+    data?.description,
+    conclusion,
+    suitableFor
+  );
 
   return {
     heading: String(data?.heading || product.label || product.productName || '').trim(),
@@ -497,6 +667,47 @@ ${labelsJson}
     hrefKojima: product.hrefKojima || null,
     product: compactProductForPrompt(product),
   };
+}
+
+/** 「結論:」「向いている人:」等の明示ラベルを除去 */
+function stripUseCaseLabel(text) {
+  return String(text || '')
+    .trim()
+    .replace(/^結論\s*[:：]\s*/, '')
+    .replace(/^向いている人\s*[:：]\s*/, '')
+    .replace(/^おすすめ\s*[:：]\s*/, '');
+}
+
+/**
+ * 説明文の冒頭に答えの1文を自然に埋め込む（記事本文と同型。「結論:」ラベルなし）。
+ */
+function ensureUseCaseDescriptionPrefix(description, conclusion, suitableFor) {
+  let body = stripUseCaseLabel(description);
+  const conc = stripUseCaseLabel(conclusion);
+  const suit = stripUseCaseLabel(suitableFor);
+
+  // 先頭段落のラベル除去
+  body = body
+    .split(/\n\n+/)
+    .map((p, i) => (i === 0 ? stripUseCaseLabel(p) : p))
+    .join('\n\n')
+    .trim();
+
+  if (conc) {
+    const firstPara = body.split(/\n\n+/)[0]?.trim() || '';
+    if (!body) {
+      body = conc;
+    } else if (firstPara !== conc && !body.startsWith(conc)) {
+      body = `${conc}\n\n${body}`;
+    }
+  }
+
+  if (suit && !body.includes(suit.replace(/[。．]$/, ''))) {
+    const suitSentence = /[。．!！?？]$/.test(suit) ? suit : `${suit}。`;
+    body = body ? `${body}\n\n${suitSentence}` : suitSentence;
+  }
+
+  return body.trim();
 }
 
 function escapeHtml(s) {
@@ -517,28 +728,32 @@ function renderProductBlockHtml(copy, rankIndex) {
                                               </tr>`
     )
     .join('\n');
-  const detailUrl = copy.hrefKojima || copy.manufacturerUrl || '';
-  const linkLabel = copy.linkLabel || '商品詳細はこちら';
+  const detailUrl = String(copy.ctaUrl || copy.hrefKojima || copy.manufacturerUrl || '').trim();
+  const linkLabel = String(copy.linkLabel || '').trim() || '商品詳細はこちら';
   const link = detailUrl
     ? `<p class="linkbtn"><a title="" href="${escapeHtml(detailUrl)}">${escapeHtml(linkLabel)}</a></p>`
     : '';
 
   const descParts = [];
-  if (copy.conclusion) {
-    descParts.push(`<p class="pc_mb10"><strong>結論:</strong> ${escapeHtml(copy.conclusion)}</p>`);
-  }
-  if (copy.suitableFor) {
-    descParts.push(
-      `<p class="pc_mb10"><strong>向いている人:</strong> ${escapeHtml(copy.suitableFor)}</p>`
-    );
-  }
   if (copy.description) {
     const paras = String(copy.description)
       .split(/\n\n+/)
       .map((p) => p.trim())
       .filter(Boolean)
-      .map((p) => `<p class="pc_mb20">${escapeHtml(p).replace(/\n/g, '<br>')}</p>`);
+      .map((p) => {
+        // 旧出力の「結論:」「向いている人:」ラベルが残っていても表示しない
+        const cleaned = stripUseCaseLabel(p);
+        return cleaned
+          ? `<p class="pc_mb20">${escapeHtml(cleaned).replace(/\n/g, '<br>')}</p>`
+          : '';
+      })
+      .filter(Boolean);
     descParts.push(...paras);
+  }
+  if (copy.productReplaced && copy.replacedFromLabel) {
+    descParts.push(
+      `<p class="pc_font12 pc_mb10">※当初の「${escapeHtml(copy.replacedFromLabel)}」が完売・取扱終了のため、人気ランキング上位の本商品に差し替えました。</p>`
+    );
   }
 
   const table = rows
@@ -684,7 +899,8 @@ ${blocks.join('\n\n')}
 }
 
 /**
- * 1商品: URL解決 → スクレイプ → コピー生成
+ * 1商品: 完売ならランキング上位へ差し替え → URL解決 → スクレイプ → コピー生成。
+ * 差し替え候補が無い完売は skipped=true（掲載カット）。
  */
 async function generateCopyForProduct({
   category,
@@ -695,12 +911,67 @@ async function generateCopyForProduct({
   fetchHtml,
   getGeminiModel,
   featureLabels,
+  rankingProducts = [],
+  usedProductKeys = null,
 }) {
-  let manufacturerUrl = String(forcedUrl || '').trim() || null;
+  const usedKeys = usedProductKeys instanceof Set ? usedProductKeys : new Set();
+  let effectiveProduct = product;
+  let replacedFromLabel = '';
+  let productReplaced = false;
+  let productHtml = '';
+
+  const originalKey = productIdentityKey(product);
+  if (originalKey) usedKeys.add(originalKey);
+
+  const originalLabel =
+    product.label ||
+    product.productName ||
+    [product.manufacturer, product.modelCode].filter(Boolean).join(' ') ||
+    originalKey ||
+    '（不明）';
+
+  productHtml = await fetchKojimaProductHtml(product, fetchHtml);
+  const originalSoldOut = productHtml
+    ? isKojimaProductPageSoldOut(productHtml)
+    : !String(product?.hrefKojima || '').trim();
+
+  if (originalSoldOut) {
+    const swap = await pickAvailableRankingReplacement({
+      original: product,
+      rankingProducts,
+      usedKeys,
+      fetchHtml,
+    });
+    if (swap?.product) {
+      replacedFromLabel = originalLabel;
+      effectiveProduct = swap.product;
+      productHtml = swap.productHtml || '';
+      productReplaced = true;
+      if (originalKey) usedKeys.delete(originalKey);
+      if (swap.key) usedKeys.add(swap.key);
+      forcedUrl = null; // 差し替え商品では元のメーカーURLを使わない
+    } else {
+      if (originalKey) usedKeys.delete(originalKey);
+      return {
+        skipped: true,
+        skipReason: 'sold_out_no_replacement',
+        product,
+        productLabel: originalLabel,
+        productReplaced: false,
+        replacedFromLabel: '',
+        copy: null,
+      };
+    }
+  }
+
+  let manufacturerUrl = String(forcedUrl || effectiveProduct?.manufacturerUrl || '').trim() || null;
   let urlMeta = null;
   if (!manufacturerUrl) {
     try {
-      urlMeta = await resolveManufacturerPageUrl({ product, getGeminiModel });
+      urlMeta = await resolveManufacturerPageUrl({
+        product: effectiveProduct,
+        getGeminiModel,
+      });
       manufacturerUrl = urlMeta.url;
     } catch (err) {
       urlMeta = {
@@ -715,29 +986,50 @@ async function generateCopyForProduct({
     ? await scrapeManufacturerFacts({ url: manufacturerUrl, scrape })
     : { text: '', error: 'メーカーURL未設定', charCount: 0 };
 
-  const imageMeta = await resolveKojimaProductImage({ product, fetchHtml });
+  const imageMeta = await resolveKojimaProductImage({
+    product: effectiveProduct,
+    fetchHtml,
+    html: productHtml,
+  });
 
   const copy = await generateProductCopy({
     category,
     useCase,
-    product,
+    product: effectiveProduct,
     factsText: scraped.text,
     manufacturerUrl,
     getGeminiModel,
     featureLabels,
   });
 
+  const detailUrl = String(effectiveProduct.hrefKojima || '').trim();
+  const ctaUrl = detailUrl || manufacturerUrl || '';
+  const linkLabel = copy.linkLabel || '商品詳細はこちら';
+
+  const effectiveKey = productIdentityKey(effectiveProduct);
+  if (effectiveKey) usedKeys.add(effectiveKey);
+
   return {
+    skipped: false,
     copy: {
       ...copy,
       imageUrl: imageMeta.url,
       imageSource: imageMeta.source,
       imageIsDummy: imageMeta.isDummy,
+      hrefKojima: effectiveProduct.hrefKojima || null,
+      ctaUrl,
+      linkLabel,
+      productReplaced,
+      replacedFromLabel: productReplaced ? replacedFromLabel : '',
+      originalSoldOut: Boolean(originalSoldOut),
     },
+    product: effectiveProduct,
     manufacturerUrl,
     urlMeta,
     scrapeError: scraped.error,
     scrapeCharCount: scraped.charCount,
+    productReplaced,
+    replacedFromLabel: productReplaced ? replacedFromLabel : '',
   };
 }
 
@@ -755,6 +1047,10 @@ module.exports = {
   generateCopyForProduct,
   renderUseCaseHtml,
   resolveKojimaProductImage,
+  resolveKojimaRankingUrl,
+  resolveProductCtaLink,
+  pickAvailableRankingReplacement,
+  isKojimaProductPageSoldOut,
   hasKojimaStock,
   productKey,
 };

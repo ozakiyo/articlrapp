@@ -2872,14 +2872,23 @@ app.post('/api/usecase/generate-copy', async (req, res) => {
 
   try {
     const getAiModel = bindGetAiModel(req);
+
     // 一括: sections = [{ label, useCaseId, products: [{...}, manufacturerUrl?] }]
     if (sections?.length) {
       const featureLabels = await resolveFeatureLabels({ category, getGeminiModel: getAiModel });
       console.log('📋 usecase featureLabels (category):', featureLabels.join(' / '));
+      const rankingProducts = Array.isArray(req.body?.rankingItems)
+        ? req.body.rankingItems
+        : Array.isArray(req.body?.rankingProducts)
+          ? req.body.rankingProducts
+          : [];
       const outSections = [];
       const errors = [];
+      const omittedProducts = [];
       // 同一型番が複数用途に出た場合は生成結果を再利用
       const copyByProductKey = new Map();
+      // 完売差し替えの重複防止（割当済み・差し替え済みキー）
+      const usedProductKeys = new Set();
       for (const sec of sections) {
         const productsOut = [];
         for (const p of sec.products || []) {
@@ -2903,11 +2912,30 @@ app.post('/api/usecase/generate-copy', async (req, res) => {
                 fetchHtml: fetchHtmlWithHttpClient,
                 getGeminiModel: getAiModel,
                 featureLabels,
+                rankingProducts,
+                usedProductKeys,
               });
               if (cacheKey) copyByProductKey.set(cacheKey, generated);
             }
+            if (generated.skipped) {
+              omittedProducts.push({
+                useCaseId: sec.useCaseId,
+                label: sec.label,
+                productKey: p?.key || '',
+                productLabel:
+                  generated.productLabel ||
+                  p?.label ||
+                  p?.productName ||
+                  '',
+                reason: generated.skipReason || 'sold_out_no_replacement',
+              });
+              continue;
+            }
+            const effectiveProduct = generated.product || p;
             productsOut.push({
-              ...p,
+              ...effectiveProduct,
+              // 元の割当キーは残してUI追跡しやすくする
+              assignedKey: p.key || p._key || cacheKey || '',
               copy: {
                 ...generated.copy,
                 featureRows: normalizeFeatureRows(generated.copy?.featureRows, featureLabels),
@@ -2915,6 +2943,11 @@ app.post('/api/usecase/generate-copy', async (req, res) => {
               manufacturerUrl: generated.manufacturerUrl,
               scrapeError: generated.scrapeError,
               scrapeCharCount: generated.scrapeCharCount,
+              productReplaced: Boolean(
+                generated.productReplaced || generated.copy?.productReplaced
+              ),
+              replacedFromLabel:
+                generated.replacedFromLabel || generated.copy?.replacedFromLabel || '',
             });
           } catch (err) {
             const message = String(err?.message || err);
@@ -2962,6 +2995,10 @@ app.post('/api/usecase/generate-copy', async (req, res) => {
           products: productsOut,
         });
       }
+      const allProducts = outSections.flatMap((s) => s.products || []);
+      const productReplacedCount = allProducts.filter(
+        (p) => p.productReplaced || p.copy?.productReplaced
+      ).length;
       return res.json({
         ok: true,
         category,
@@ -2971,6 +3008,9 @@ app.post('/api/usecase/generate-copy', async (req, res) => {
         html: renderUseCaseHtml(outSections, { category }),
         errorCount: errors.length,
         errors,
+        productReplacedCount,
+        soldOutOmittedCount: omittedProducts.length,
+        omittedProducts,
       });
     }
 
@@ -2979,6 +3019,11 @@ app.post('/api/usecase/generate-copy', async (req, res) => {
     }
 
     const featureLabels = await resolveFeatureLabels({ category, getGeminiModel: getAiModel });
+    const rankingProducts = Array.isArray(req.body?.rankingItems)
+      ? req.body.rankingItems
+      : Array.isArray(req.body?.rankingProducts)
+        ? req.body.rankingProducts
+        : [];
     const generated = await generateCopyForProduct({
       category,
       useCase,
@@ -2988,7 +3033,21 @@ app.post('/api/usecase/generate-copy', async (req, res) => {
       fetchHtml: fetchHtmlWithHttpClient,
       getGeminiModel: getAiModel,
       featureLabels,
+      rankingProducts,
+      usedProductKeys: new Set(),
     });
+    if (generated.skipped) {
+      return res.json({
+        ok: true,
+        category,
+        aiProviderUsed: getAiModel.provider,
+        featureLabels,
+        skipped: true,
+        skipReason: generated.skipReason || 'sold_out_no_replacement',
+        productLabel: generated.productLabel || '',
+        productReplaced: false,
+      });
+    }
     return res.json({
       ok: true,
       category,
@@ -2999,6 +3058,8 @@ app.post('/api/usecase/generate-copy', async (req, res) => {
         ...generated.copy,
         featureRows: normalizeFeatureRows(generated.copy?.featureRows, featureLabels),
       },
+      productReplaced: Boolean(generated.productReplaced || generated.copy?.productReplaced),
+      replacedFromLabel: generated.replacedFromLabel || generated.copy?.replacedFromLabel || '',
     });
   } catch (err) {
     console.error('💥 /api/usecase/generate-copy error:', err);

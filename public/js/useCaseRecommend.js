@@ -327,8 +327,12 @@
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(
           window.AiProvider
-            ? window.AiProvider.withBody({ category, sections })
-            : { category, sections }
+            ? window.AiProvider.withBody({
+                category,
+                sections,
+                rankingItems,
+              })
+            : { category, sections, rankingItems }
         ),
         signal: controller.signal,
       });
@@ -361,14 +365,25 @@
         .flatMap((s) => s.products || [])
         .filter((p) => p.scrapeError && !p.generateError)
         .length;
+      const allProducts = generatedSections.flatMap((s) => s.products || []);
+      const productReplaced =
+        Number(data.productReplacedCount) ||
+        allProducts.filter((p) => p.productReplaced || p.copy?.productReplaced).length;
+      const soldOutOmitted = Number(data.soldOutOmittedCount) || 0;
       if (genFails > 0) {
         const first = data.errors?.[0]?.error || '不明';
         showError(`一部の商品で生成失敗（${genFails}件）。最初のエラー: ${first}`);
         if (msg) msg.textContent = `一部完了（生成失敗 ${genFails} 件）`;
       } else if (msg) {
-        msg.textContent = scrapeIssues
-          ? `生成完了（メーカー取得失敗 ${scrapeIssues} 件。URLを直して再生成できます）`
-          : '生成完了';
+        const parts = ['生成完了'];
+        if (scrapeIssues) parts.push(`メーカー取得失敗 ${scrapeIssues} 件`);
+        if (productReplaced > 0) {
+          parts.push(`完売 ${productReplaced} 件を人気ランキング上位商品に差し替え`);
+        }
+        if (soldOutOmitted > 0) {
+          parts.push(`差し替え候補なし ${soldOutOmitted} 件は掲載カット`);
+        }
+        msg.textContent = parts.join('。');
       }
     } catch (err) {
       const message =

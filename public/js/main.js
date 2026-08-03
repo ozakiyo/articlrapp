@@ -614,6 +614,47 @@
     });
   }
 
+  /** リライト用: H2/H3 件数を強制せず、取り込み構成をそのまま編集可能にする */
+  function normalizeFlexibleOutline(sectionsRaw) {
+    const list = Array.isArray(sectionsRaw) ? sectionsRaw : [];
+    return list
+      .map((src) => {
+        const itemsSrc = Array.isArray(src.items)
+          ? src.items
+          : Array.isArray(src.subsections)
+            ? src.subsections.map((h3) =>
+                typeof h3 === 'string' ? { h3, h4s: [], intent: '' } : h3
+              )
+            : [];
+        const items = itemsSrc
+          .map((raw) => {
+            const h3 =
+              typeof raw === 'string'
+                ? raw.trim()
+                : String(raw?.h3 || raw?.title || '').trim();
+            const h4s = [0, 1, 2].map((k) => {
+              const h4 = Array.isArray(raw?.h4s) ? raw.h4s[k] : '';
+              return String(h4 || '').trim();
+            });
+            const intent = String(
+              (raw && typeof raw === 'object' ? raw.intent || raw.searchIntent : '') || ''
+            ).trim();
+            return { h3, h4s, intent };
+          })
+          .filter((it) => it.h3);
+        if (!items.length && String(src.h2 || '').trim()) {
+          items.push({ h3: String(src.h2).trim(), h4s: ['', '', ''], intent: '' });
+        }
+        return {
+          h2: String(src.h2 || '').trim(),
+          searchIntent: String(src.searchIntent || src.intent || '').trim(),
+          subsections: items.map((it) => it.h3),
+          items,
+        };
+      })
+      .filter((sec) => sec.h2 && sec.items.length);
+  }
+
   function saveOutlineToStorage(outline, keyword, title, extra = {}) {
     try {
       sessionStorage.setItem(
@@ -643,10 +684,21 @@
     }
   }
 
-  function renderOutlineEditor(containerId, outline, { withH4 = false, allowSuggest = false } = {}) {
+  function renderOutlineEditor(
+    containerId,
+    outline,
+    { withH4 = false, allowSuggest = false, flexible = false } = {}
+  ) {
     const root = document.getElementById(containerId);
     if (!root) return;
-    const sections = normalizeClientOutline('', outline);
+    const sections = flexible
+      ? normalizeFlexibleOutline(outline)
+      : normalizeClientOutline('', outline);
+    if (!sections.length) {
+      root.innerHTML =
+        '<p class="field-hint">見出しがありません。構成を取り込むか、見出し生成タブから引き継いでください。</p>';
+      return;
+    }
     root.innerHTML = sections
       .map((sec, si) => {
         const h3Html = (sec.items || [])
@@ -886,9 +938,15 @@
     const refA = document.getElementById('article-ref-url');
     if (refA && refH) refA.value = refH;
     const showH4 = enableH4 || outlineHasAnyH4(outline);
+    articleOutlineFlexible = false;
+    if (document.getElementById('article-mode-create')) {
+      document.getElementById('article-mode-create').checked = true;
+      syncArticleModeUi();
+    }
     renderOutlineEditor('article-outline-editor', outline, {
       withH4: showH4,
       allowSuggest: false,
+      flexible: false,
     });
     saveOutlineToStorage(outline, lastHeadingsKeyword, lastHeadingsData?.title || '', {
       enableH4: showH4,
@@ -2568,6 +2626,10 @@
     const related = data.relatedLinks || data.article?.relatedLinks || [];
     const sources = data.sourcesNote || data.article?.sourcesNote || '';
     let html = '';
+    if (data.mode === 'rewrite') {
+      html += `<div class="generated-block"><h3>リライト結果</h3>
+        <p class="field-hint">元URL: ${escapeHtml(data.rewriteSourceUrl || '')}</p></div>`;
+    }
     if (seoTitle || meta) {
       html += `<div class="generated-block"><h3><span class="pillar-tag pillar-seo">SEO</span> タイトル／メタ候補</h3>
         <p class="field-hint">検索結果に出す表示用。クリックされやすい要約を意図しています。</p>`;
@@ -2640,14 +2702,111 @@
   }
 
   let lastArticleData = null;
+  let articleOutlineFlexible = false;
+
+  function isArticleRewriteMode() {
+    return Boolean(document.getElementById('article-mode-rewrite')?.checked);
+  }
+
+  function syncArticleModeUi() {
+    const rewrite = isArticleRewriteMode();
+    const createDesc = document.getElementById('article-mode-desc-create');
+    const rewriteDesc = document.getElementById('article-mode-desc-rewrite');
+    const createActions = document.getElementById('article-create-actions');
+    const createUrls = document.getElementById('article-create-urls');
+    const rewriteFields = document.getElementById('article-rewrite-fields');
+    const outlineHint = document.getElementById('article-outline-hint');
+    const submitBtn = document.getElementById('article-submit');
+
+    if (createDesc) createDesc.hidden = rewrite;
+    if (rewriteDesc) rewriteDesc.hidden = !rewrite;
+    if (createActions) createActions.hidden = rewrite;
+    if (createUrls) createUrls.hidden = rewrite;
+    if (rewriteFields) rewriteFields.hidden = !rewrite;
+    if (outlineHint) {
+      outlineHint.textContent = rewrite
+        ? 'リライト元から取り込み、良い見出しは改善した案です。必要なら戻・微修正してから本文を生成してください。'
+        : 'H4 の有無は見出し生成タブで指定済みです。ここでは誤字などの微修正のみ行い、本文を生成します。';
+    }
+    if (submitBtn) {
+      submitBtn.textContent = rewrite
+        ? 'リライト本文を生成'
+        : '確定した見出しで記事を生成';
+    }
+  }
+
+  document.querySelectorAll('input[name="article-mode"]').forEach((el) => {
+    el.addEventListener('change', () => {
+      syncArticleModeUi();
+      showError(articleError, '');
+    });
+  });
+  syncArticleModeUi();
+
+  document.getElementById('article-extract-outline')?.addEventListener('click', async () => {
+    const btn = document.getElementById('article-extract-outline');
+    const msg = document.getElementById('article-rewrite-msg');
+    const url = document.getElementById('article-rewrite-url')?.value.trim();
+    showError(articleError, '');
+    if (msg) msg.textContent = '';
+    if (!url) {
+      showError(articleError, 'リライト元URLを入力してください。');
+      return;
+    }
+    setLoading(btn, true, '構成を取り込み（見出し改善）', '改善中...');
+    try {
+      const data = await postJson('/api/article/extract-outline-from-url', {
+        url,
+        keyword: document.getElementById('article-keyword')?.value.trim() || '',
+      });
+      const outline = normalizeFlexibleOutline(data.outline || []);
+      if (!outline.length) {
+        throw new Error('構成を取得できませんでした。');
+      }
+      articleOutlineFlexible = true;
+      if (data.keyword && !document.getElementById('article-keyword')?.value.trim()) {
+        document.getElementById('article-keyword').value = data.keyword;
+      }
+      if (data.title) {
+        document.getElementById('article-title').value = data.title;
+      }
+      const kw = document.getElementById('article-keyword')?.value.trim() || data.keyword || '';
+      renderOutlineEditor('article-outline-editor', outline, {
+        withH4: true,
+        allowSuggest: false,
+        flexible: true,
+      });
+      saveOutlineToStorage(outline, kw, data.title || '', {
+        enableH4: true,
+        mode: 'rewrite',
+        rewriteSourceUrl: url,
+      });
+      if (msg) {
+        const warn = formatWarningHint(data.warnings);
+        msg.textContent = `構成を取り込み、見出し改善案を反映しました（${data.method || 'ai-improved'}）。確認して本文を生成してください。${warn}`;
+      }
+    } catch (err) {
+      showError(articleError, err.message);
+      if (msg) msg.textContent = '';
+    } finally {
+      setLoading(btn, false, '構成を取り込み（見出し改善）', '改善中...');
+    }
+  });
 
   formArticle?.addEventListener('submit', async (e) => {
     e.preventDefault();
     showError(articleError, '');
 
+    const rewrite = isArticleRewriteMode();
     const keyword = document.getElementById('article-keyword').value.trim();
     if (!keyword) {
       showError(articleError, 'キーワードを入力してください。');
+      return;
+    }
+
+    const rewriteUrl = document.getElementById('article-rewrite-url')?.value.trim() || '';
+    if (rewrite && !rewriteUrl) {
+      showError(articleError, 'リライト元URLを入力してください。');
       return;
     }
 
@@ -2656,7 +2815,9 @@
     if (!sections.length) {
       showError(
         articleError,
-        '見出しが空です。見出し生成タブで見出しを確定してから引き継いでください。'
+        rewrite
+          ? '見出しが空です。リライト元URLから構成を取り込んでください。'
+          : '見出しが空です。見出し生成タブで見出しを確定してから引き継いでください。'
       );
       return;
     }
@@ -2665,25 +2826,41 @@
       outline,
       keyword,
       document.getElementById('article-title')?.value.trim() || '',
-      { enableH4: outlineHasAnyH4(outline) }
+      {
+        enableH4: outlineHasAnyH4(outline),
+        mode: rewrite ? 'rewrite' : 'create',
+        rewriteSourceUrl: rewriteUrl,
+      }
     );
 
-    setLoading(articleSubmit, true, '確定した見出しで記事を生成', '生成中...');
+    const submitLabel = rewrite ? 'リライト本文を生成' : '確定した見出しで記事を生成';
+    setLoading(articleSubmit, true, submitLabel, '生成中...');
     try {
-      const data = await postJson('/api/article/generate', {
+      const payload = {
         keyword,
         title: document.getElementById('article-title').value.trim(),
         sections,
-        competitorUrl1: document.getElementById('article-url1').value.trim(),
-        competitorUrl2: document.getElementById('article-url2').value.trim(),
-        competitorUrl3: document.getElementById('article-url3').value.trim(),
-        referenceUrl: document.getElementById('article-ref-url').value.trim(),
-        skipScrape: true,
         generateIntroduction: Boolean(document.getElementById('article-gen-intro')?.checked),
         generateSummary: Boolean(document.getElementById('article-gen-summary')?.checked),
         generateAeoPack: Boolean(document.getElementById('article-gen-aeo')?.checked),
         generateFaq: Boolean(document.getElementById('article-gen-faq')?.checked),
-      });
+      };
+      if (rewrite) {
+        payload.mode = 'rewrite';
+        payload.rewriteSourceUrl = rewriteUrl;
+        payload.referenceUrl = rewriteUrl;
+        payload.skipScrape = false;
+        payload.useArticleContext = true;
+      } else {
+        payload.mode = 'outline';
+        payload.competitorUrl1 = document.getElementById('article-url1').value.trim();
+        payload.competitorUrl2 = document.getElementById('article-url2').value.trim();
+        payload.competitorUrl3 = document.getElementById('article-url3').value.trim();
+        payload.referenceUrl = document.getElementById('article-ref-url').value.trim();
+        payload.skipScrape = true;
+      }
+
+      const data = await postJson('/api/article/generate', payload);
 
       lastArticleData = data;
       renderWarnings(articleWarnings, data.warnings);
@@ -2696,7 +2873,7 @@
       articleResult.hidden = true;
       lastArticleData = null;
     } finally {
-      setLoading(articleSubmit, false, '確定した見出しで記事を生成', '生成中...');
+      setLoading(articleSubmit, false, submitLabel, '生成中...');
     }
   });
 
@@ -2749,6 +2926,13 @@
     clearArticleImagesList();
     clearArticleCmsOutput();
     lastArticleData = null;
+    articleOutlineFlexible = false;
+    const rewriteMsg = document.getElementById('article-rewrite-msg');
+    if (rewriteMsg) rewriteMsg.textContent = '';
+    if (document.getElementById('article-mode-create')) {
+      document.getElementById('article-mode-create').checked = true;
+    }
+    syncArticleModeUi();
     const editor = document.getElementById('article-outline-editor');
     if (editor) {
       editor.innerHTML =

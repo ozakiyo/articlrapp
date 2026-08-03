@@ -46,7 +46,7 @@
             <li><strong>週次レポート</strong> … 毎週の変化確認（売れ筋・競合見出し差分・改修）</li>
             <li><strong>個別商品ページ</strong> … 売れる1商品の記事型ページ（通常／新製品発売）。構成は特集記事と同じ</li>
             <li><strong>見出し生成</strong> … H2×2＋各H3×3を作成。必要なら H4 もここで提案・確定。検索意図タグ付き</li>
-            <li><strong>用途別おすすめ</strong> … 掲載商品の用途別3選と説明・機能表（結論／向いている人）</li>
+            <li><strong>用途別おすすめ</strong> … 掲載商品の用途別3選と説明・機能表（冒頭に答えの1文）</li>
             <li><strong>記事生成</strong> … 確定済み見出しの本文＋AEO/GEO/SEO補助ブロック</li>
           </ul>
         </section>
@@ -104,7 +104,7 @@
               <strong>見出し生成</strong> … 意図タグ（選び方／メーカーなど）＝SEO/AEO/GEO の切り口固定
             </li>
             <li>
-              <strong>用途別おすすめ</strong> … 結論1文（AEO）＋向いている人（GEO）＋機能表の判断軸
+              <strong>用途別おすすめ</strong> … 冒頭の答え1文（AEO）＋向いている人を本文に自然埋め込み＋機能表
             </li>
             <li>
               <strong>記事生成</strong> … 本文冒頭に答えの1文（AEO・ラベルなし）＋補助オプションで直接回答・FAQ・title/meta・内部リンク・出典メモ
@@ -595,11 +595,11 @@
             <ul class="aeo-intent-list">
               <li>
                 <span class="pillar-tag pillar-aeo">AEO</span>
-                「誰向けか」が明確な結論1文 → 質問への直接回答になりやすい
+                「誰向けか」が明確な答えの1文を説明文の冒頭に置く（「結論:」ラベルは付けない）
               </li>
               <li>
                 <span class="pillar-tag pillar-geo">GEO</span>
-                「向いている人」＋機能表の判断軸 → 比較・引用しやすい
+                向いている人の情報も本文に自然に含め、機能表で判断軸を示す
               </li>
               <li>
                 <span class="pillar-tag pillar-seo">SEO</span>
@@ -645,6 +645,9 @@
           <div class="actions">
             <button type="button" id="usecase-generate-all" disabled>説明文・機能表を一括生成</button>
           </div>
+          <p class="field-hint">
+            コジマ商品ページが完売・取扱終了の場合、人気商品ランキング上位の在庫あり商品に差し替えて本文を生成します。差し替え候補が無い完売商品は掲載しません。
+          </p>
           <p class="field-hint" id="usecase-generate-msg"></p>
         </section>
 
@@ -977,8 +980,11 @@
       <section id="panel-article" class="tab-panel" hidden>
         <header>
           <h1>記事生成</h1>
-          <p>
+          <p id="article-mode-desc-create">
             見出し生成で確定した H2／H3（と任意の H4）を引き継ぎ、本文だけを作成します。見出しの追加・変更は見出し生成タブで行ってください。
+          </p>
+          <p id="article-mode-desc-rewrite" hidden>
+            リライト元URLから構成を取り込み、見出しはより良い案があれば改善します。元記事を根拠に本文を書き直します。構成は確認・微修正できます。
           </p>
           <div class="aeo-intent-panel" aria-label="AEO GEO SEO の組み立て意図">
             <p class="aeo-intent-lead">このタブの出力は、次の3つを同時に満たす組み立てです。</p>
@@ -999,7 +1005,21 @@
           </div>
         </header>
         <section class="panel">
-          <div class="actions">
+          <div class="field">
+            <span>モード</span>
+            <div class="article-mode-toggle" role="radiogroup" aria-label="記事生成モード">
+              <label class="radio-field">
+                <input type="radio" name="article-mode" id="article-mode-create" value="create" checked />
+                <span>新規作成</span>
+              </label>
+              <label class="radio-field">
+                <input type="radio" name="article-mode" id="article-mode-rewrite" value="rewrite" />
+                <span>リライト</span>
+              </label>
+            </div>
+          </div>
+
+          <div id="article-create-actions" class="actions">
             <button type="button" class="secondary" id="article-import-sources">
               週次・競合のURLを取り込む
             </button>
@@ -1009,6 +1029,19 @@
           </div>
           <p class="field-hint" id="article-bridge-msg"></p>
           <form id="form-article" class="form">
+            <div id="article-rewrite-fields" class="article-rewrite-fields" hidden>
+              <label class="field">
+                <span>リライト元URL *</span>
+                <input type="url" id="article-rewrite-url" placeholder="https://www.kojima.net/ec/Special/..." />
+              </label>
+              <div class="actions">
+                <button type="button" class="secondary" id="article-extract-outline">
+                  構成を取り込み（見出し改善）
+                </button>
+              </div>
+              <p class="field-hint" id="article-rewrite-msg"></p>
+            </div>
+
             <label class="field">
               <span>キーワード *</span>
               <input type="text" id="article-keyword" required placeholder="例: 掃除機" />
@@ -1017,22 +1050,24 @@
               <span>タイトル（任意）</span>
               <input type="text" id="article-title" placeholder="見出し生成のタイトル案が入ります" />
             </label>
-            <label class="field">
-              <span>他社URL 1</span>
-              <input type="url" id="article-url1" />
-            </label>
-            <label class="field">
-              <span>他社URL 2</span>
-              <input type="url" id="article-url2" />
-            </label>
-            <label class="field">
-              <span>他社URL 3</span>
-              <input type="url" id="article-url3" />
-            </label>
-            <label class="field">
-              <span>参考URL</span>
-              <input type="url" id="article-ref-url" />
-            </label>
+            <div id="article-create-urls">
+              <label class="field">
+                <span>他社URL 1</span>
+                <input type="url" id="article-url1" />
+              </label>
+              <label class="field">
+                <span>他社URL 2</span>
+                <input type="url" id="article-url2" />
+              </label>
+              <label class="field">
+                <span>他社URL 3</span>
+                <input type="url" id="article-url3" />
+              </label>
+              <label class="field">
+                <span>参考URL</span>
+                <input type="url" id="article-ref-url" />
+              </label>
+            </div>
             <div class="field">
               <span>生成オプション</span>
               <label class="checkbox-field">
@@ -1069,7 +1104,7 @@
 
             <div class="field">
               <span>確定済み見出し（確認・微修正可）</span>
-              <p class="field-hint">
+              <p class="field-hint" id="article-outline-hint">
                 H4 の有無は見出し生成タブで指定済みです。ここでは誤字などの微修正のみ行い、本文を生成します。
               </p>
               <div id="article-outline-editor" class="outline-editor">
