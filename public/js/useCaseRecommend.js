@@ -72,7 +72,7 @@
       source = stored.source || 'session';
     }
 
-    // 2) 週次API
+    // 2) 週次API（composite を優先: hrefKojima 付き。bestsellers は旧データでURL欠落しうる）
     if (!items.length) {
       try {
         const res = await fetch(
@@ -80,8 +80,34 @@
         );
         const data = await res.json();
         if (res.ok) {
-          items = data.bestsellers || data.compositeRanking?.items || [];
-          if (items.length) source = 'weekly';
+          const composite = data.compositeRanking?.items || [];
+          const bestsellers = data.bestsellers || data.report?.bestsellers || [];
+          const preferComposite =
+            composite.length &&
+            composite.some((p) => p?.hrefKojima || p?.rankKojima != null);
+          items = preferComposite ? composite : bestsellers;
+          // bestsellers に URL が無い場合は composite から型番キーで補完
+          if (items === bestsellers && composite.length) {
+            const byKey = new Map(
+              composite
+                .filter((p) => p?.modelKey || p?.modelCode)
+                .map((p) => [String(p.modelKey || p.modelCode), p])
+            );
+            items = bestsellers.map((b) => {
+              const hit = byKey.get(String(b.modelKey || b.modelCode || ''));
+              if (!hit) return b;
+              return {
+                ...b,
+                hrefKojima: b.hrefKojima || hit.hrefKojima || '',
+                hrefAmazon: b.hrefAmazon || hit.hrefAmazon || '',
+                hrefRakuten: b.hrefRakuten || hit.hrefRakuten || '',
+                hrefYahoo: b.hrefYahoo || hit.hrefYahoo || '',
+                hrefBic: b.hrefBic || hit.hrefBic || '',
+                rankKojima: b.rankKojima ?? hit.rankKojima ?? null,
+              };
+            });
+          }
+          if (items.length) source = preferComposite ? 'weekly-composite' : 'weekly';
         }
       } catch {
         /* ignore */

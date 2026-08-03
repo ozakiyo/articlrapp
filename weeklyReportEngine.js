@@ -1393,6 +1393,12 @@ function buildWeeklyReport({
       rankKojima: row.rankKojima,
       rankBic: row.rankBic,
       siteCount: row.siteCount,
+      // 用途別おすすめの完売判定・差し替えに必須
+      hrefAmazon: row.hrefAmazon || '',
+      hrefRakuten: row.hrefRakuten || '',
+      hrefYahoo: row.hrefYahoo || '',
+      hrefKojima: row.hrefKojima || '',
+      hrefBic: row.hrefBic || '',
       reason: reasonBestseller(row, i + 1),
     };
   });

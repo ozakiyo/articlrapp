@@ -285,12 +285,23 @@ function compactProductForPrompt(p) {
 
 async function runGeminiJson(getGeminiModel, prompt, label) {
   const model = await getGeminiModel();
-  console.log(`🧠 [${label}] Gemini generateContent`);
+  const provider = model?.provider || 'unknown';
+  console.log(`🧠 [${label}] ${provider} generateContent`);
   const result = await model.generateContent({
     contents: [{ role: 'user', parts: [{ text: prompt }] }],
   });
   const raw = result.response?.text?.() || '';
-  return parseJsonFromModelOutput(raw);
+  try {
+    return parseJsonFromModelOutput(raw);
+  } catch (err) {
+    const preview = String(raw || '')
+      .replace(/\s+/g, ' ')
+      .trim()
+      .slice(0, 180);
+    throw new Error(
+      `${provider} JSON抽出失敗 (${label}): ${err.message}${preview ? ` / 出力先頭: ${preview}` : ' / 出力空'}`
+    );
+  }
 }
 
 /**
@@ -931,11 +942,12 @@ async function generateCopyForProduct({
     '（不明）';
 
   productHtml = await fetchKojimaProductHtml(product, fetchHtml);
-  const originalSoldOut = productHtml
-    ? isKojimaProductPageSoldOut(productHtml)
-    : !String(product?.hrefKojima || '').trim();
+  const hasDetailUrl = Boolean(String(product?.hrefKojima || '').trim());
+  const originalSoldOut = Boolean(productHtml) && isKojimaProductPageSoldOut(productHtml);
+  // コジマURL欠落（週次 bestsellers など）も差し替え対象。ページ未取得だけで切らない。
+  const needsSwap = originalSoldOut || !hasDetailUrl;
 
-  if (originalSoldOut) {
+  if (needsSwap) {
     const swap = await pickAvailableRankingReplacement({
       original: product,
       rankingProducts,
@@ -954,7 +966,9 @@ async function generateCopyForProduct({
       if (originalKey) usedKeys.delete(originalKey);
       return {
         skipped: true,
-        skipReason: 'sold_out_no_replacement',
+        skipReason: originalSoldOut
+          ? 'sold_out_no_replacement'
+          : 'missing_kojima_url_no_replacement',
         product,
         productLabel: originalLabel,
         productReplaced: false,

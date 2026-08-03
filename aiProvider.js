@@ -170,14 +170,40 @@ const CURSOR_MODEL_ID = process.env.CURSOR_MODEL || 'auto';
 let cursorModelWrapper;
 let cursorSdkReady;
 
+function assertCursorNodeVersion() {
+  const parts = String(process.versions.node || '')
+    .split('.')
+    .map((n) => Number(n));
+  const major = parts[0] || 0;
+  const minor = parts[1] || 0;
+  if (major < 22 || (major === 22 && minor < 13)) {
+    throw new Error(
+      `Cursor SDK は Node.js 22.13 以上が必要です（現在: ${process.version}）。` +
+        ` Docker は node:22、本番サーバも Node 22 に上げてから再実行してください。`
+    );
+  }
+}
+
+function resolveCursorWorkspaceDir() {
+  const path = require('path');
+  const fs = require('fs');
+  // アプリ本体を触らせないよう、空に近い専用 cwd を使う（テキスト応答専用）
+  const cwd =
+    String(process.env.CURSOR_CWD || '').trim() ||
+    path.join(process.cwd(), 'data', 'cursor-workspace');
+  fs.mkdirSync(cwd, { recursive: true });
+  return cwd;
+}
+
 function buildCursorPrompt(userPrompt) {
   return `あなたは家電量販店向けの日本語コンテンツ生成アシスタントです。
 次の指示に従い、結果だけを返してください。
 
 # 厳守
-- ファイルの作成・編集・削除・シェル実行はしない（テキスト応答のみ）
-- 出力形式の指示がある場合はそれに厳密に従う（JSON 指定なら JSON のみ）
-- 前置き・後書き・コードフェンスは付けない（指定がなければ本文のみ）
+- ファイルの作成・編集・削除・シェル実行・検索・ツール呼び出しは一切しない（テキスト応答のみ）
+- 出力形式の指示がある場合はそれに厳密に従う（JSON 指定なら JSON オブジェクトのみ）
+- 前置き・後書き・コードフェンス・思考過程は付けない
+- 作業ディレクトリの内容は無視してよい（コード調査不要）
 
 # 依頼
 ${userPrompt}`;
@@ -190,6 +216,7 @@ ${userPrompt}`;
 async function ensureCursorSdkConfigured() {
   if (cursorSdkReady) return cursorSdkReady;
   cursorSdkReady = (async () => {
+    assertCursorNodeVersion();
     const path = require('path');
     const fs = require('fs');
     const { Cursor, JsonlLocalAgentStore } = await import('@cursor/sdk');
@@ -206,16 +233,32 @@ async function ensureCursorSdkConfigured() {
   return cursorSdkReady;
 }
 
+function formatCursorRunError(result, fallback) {
+  const parts = [
+    result?.error?.message,
+    result?.error?.code ? `code=${result.error.code}` : '',
+    result?.result,
+    fallback,
+  ]
+    .map((s) => String(s || '').trim())
+    .filter(Boolean);
+  return parts[0] || 'unknown error';
+}
+
 async function createCursorModel() {
   if (cursorModelWrapper) return cursorModelWrapper;
 
-  const apiKey = process.env.CURSOR_API_KEY;
+  assertCursorNodeVersion();
+
+  const apiKey = String(process.env.CURSOR_API_KEY || '').trim();
   if (!apiKey) {
-    throw new Error('CURSOR_API_KEY is not set');
+    throw new Error(
+      'CURSOR_API_KEY が未設定です。.env に Cursor Dashboard の API キーを設定してください（Gemini とは別キー）。'
+    );
   }
 
-  const cwd = process.env.CURSOR_CWD || process.cwd();
-  console.log(`⚙️ Initializing Cursor SDK model: ${CURSOR_MODEL_ID}`);
+  const cwd = resolveCursorWorkspaceDir();
+  console.log(`⚙️ Initializing Cursor SDK model: ${CURSOR_MODEL_ID} (cwd=${cwd})`);
 
   cursorModelWrapper = {
     provider: 'cursor',
@@ -224,17 +267,38 @@ async function createCursorModel() {
       const { Agent } = await import('@cursor/sdk');
       const userPrompt = extractUserTextFromContents(request?.contents);
       const prompt = buildCursorPrompt(userPrompt);
-      const result = await Agent.prompt(prompt, {
-        apiKey,
-        model: { id: CURSOR_MODEL_ID },
-        local: { cwd },
-      });
-      if (result?.status === 'error') {
+      let result;
+      try {
+        result = await Agent.prompt(prompt, {
+          apiKey,
+          model: { id: CURSOR_MODEL_ID },
+          local: {
+            cwd,
+            // プロジェクト／ユーザー設定を混ぜない（テキスト生成専用）
+            settingSources: [],
+          },
+        });
+      } catch (err) {
+        const msg = String(err?.message || err);
+        const hint = /api.?key|401|unauthorized/i.test(msg)
+          ? ' CURSOR_API_KEY を確認してください。'
+          : /node|22\.13|unsupported/i.test(msg)
+            ? ' Node.js 22.13 以上が必要です。'
+            : '';
+        throw new Error(`Cursor 起動失敗: ${msg.slice(0, 240)}${hint}`);
+      }
+
+      if (result?.status === 'error' || result?.status === 'cancelled') {
         throw new Error(
-          `Cursor agent failed: ${String(result?.result || result?.status || 'unknown error').slice(0, 200)}`
+          `Cursor agent failed (${result.status}): ${formatCursorRunError(result).slice(0, 280)}`
         );
       }
-      const text = String(result?.result || '');
+      const text = String(result?.result || '').trim();
+      if (!text) {
+        throw new Error(
+          'Cursor の応答が空です（ツール実行のみで終了した可能性）。JSON指定の依頼はテキストのみで返るよう再試行してください。'
+        );
+      }
       return {
         response: {
           text: () => text,

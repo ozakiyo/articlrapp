@@ -1,5 +1,6 @@
 # articleappNode — ルート app.js 用（ローカル Docker）
-FROM node:20-slim
+# @cursor/sdk は Node.js >= 22.13 が必須
+FROM node:22-slim
 
 WORKDIR /app
 

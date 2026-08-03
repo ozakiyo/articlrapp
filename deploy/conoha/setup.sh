@@ -12,11 +12,18 @@ fi
 
 echo "Node: $(node -v)  npm: $(npm -v)"
 
+NODE_MAJOR="$(node -p "process.versions.node.split('.')[0]")"
+NODE_MINOR="$(node -p "process.versions.node.split('.')[1]")"
+if [ "${NODE_MAJOR}" -lt 22 ] || { [ "${NODE_MAJOR}" -eq 22 ] && [ "${NODE_MINOR}" -lt 13 ]; }; then
+  echo "WARNING: @cursor/sdk は Node.js 22.13 以上が必要です（現在: $(node -v)）。"
+  echo "         Cursor プロバイダを使う場合は Node を上げてください。Gemini のみなら動作します。"
+fi
+
 APP_ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
 cd "$APP_ROOT"
 
 echo "作業ディレクトリ: ${APP_ROOT}"
-mkdir -p data exports logs
+mkdir -p data exports logs data/cursor-workspace data/cursor-agents
 
 echo "依存関係インストール..."
 npm ci --omit=dev
