@@ -13,22 +13,24 @@
         <div class="app-main-nav-inner">
           <span class="app-main-nav-label">利用するアプリ</span>
           <div class="app-main-nav-buttons">
-            <button type="button" data-tab="guide" class="tab-btn secondary">使い方</button>
             <button type="button" data-tab="weekly" class="tab-btn">週次レポート</button>
-            <button type="button" data-tab="kyoso" class="tab-btn secondary">競合調査（ランキング抽出）</button>
-            <button type="button" data-tab="productlp" class="tab-btn secondary">個別商品ページ</button>
+            <button type="button" data-tab="ranking" class="tab-btn secondary">ランキング</button>
             <button type="button" data-tab="usecase" class="tab-btn secondary">用途別おすすめ</button>
-            <button type="button" data-tab="headings" class="tab-btn secondary">見出し生成</button>
-            <button type="button" data-tab="article" class="tab-btn secondary">記事生成</button>
+            <button type="button" data-tab="pillar-new" class="tab-btn secondary">記事コンテンツ（新規）</button>
+            <button type="button" data-tab="pillar-rewrite" class="tab-btn secondary">記事コンテンツ（リライト）</button>
+            <button type="button" data-tab="productlp" class="tab-btn secondary">個別商品ページ</button>
           </div>
-          <label class="ai-provider-switch" title="AIエンジン（Gemini / ChatGPT / Cursor）">
-            <span class="ai-provider-switch-label">AI</span>
-            <select id="ai-provider" name="aiProvider" aria-label="AIエンジン">
-              <option value="gemini" selected>Gemini</option>
-              <option value="chatgpt">ChatGPT</option>
-              <option value="cursor">Cursor</option>
-            </select>
-          </label>
+          <div class="app-main-nav-aside">
+            <button type="button" data-tab="guide" class="tab-btn tab-btn-guide secondary">使い方</button>
+            <label class="ai-provider-switch" title="AIエンジン（Gemini / ChatGPT / Cursor）">
+              <span class="ai-provider-switch-label">AI</span>
+              <select id="ai-provider" name="aiProvider" aria-label="AIエンジン">
+                <option value="gemini" selected>Gemini</option>
+                <option value="chatgpt">ChatGPT</option>
+                <option value="cursor">Cursor</option>
+              </select>
+            </label>
+          </div>
         </div>
       </nav>
 
@@ -42,19 +44,19 @@
         <section class="panel guide-panel">
           <h2>役割の分担</h2>
           <ul class="guide-list">
-            <li><strong>競合調査</strong> … ランキングURL・競合記事URLの準備と詳細取得（セットアップの本拠）</li>
-            <li><strong>週次レポート</strong> … 毎週の変化確認（売れ筋・競合見出し差分・改修）</li>
-            <li><strong>個別商品ページ</strong> … 売れる1商品の記事型ページ（通常／新製品発売）。構成は特集記事と同じ</li>
-            <li><strong>見出し生成</strong> … H2×2＋各H3×3を作成。必要なら H4 もここで提案・確定。検索意図タグ付き</li>
+            <li><strong>週次レポート</strong> … 競合記事URL・見出し差分・改修登録・KPI・確定（データ更新はランキング側）</li>
+            <li><strong>ランキング</strong> … ランキングURLの設定、横断取得、「取得して、週次レポート用に保存する」</li>
             <li><strong>用途別おすすめ</strong> … 掲載商品の用途別3選と説明・機能表（冒頭に答えの1文）</li>
-            <li><strong>記事生成</strong> … 確定済み見出しの本文＋AEO/GEO/SEO補助ブロック</li>
+            <li><strong>記事コンテンツ（新規）</strong> … 見出し（H2×2＋各H3×3、必要ならH4）→ 本文＋AEO/GEO/SEO補助</li>
+            <li><strong>記事コンテンツ（リライト）</strong> … 既存記事URLから見出しを取り込み、本文をリライト</li>
+            <li><strong>個別商品ページ</strong> … 売れる1商品の記事型ページ（通常／新製品発売）</li>
           </ul>
         </section>
 
         <section class="panel guide-panel">
           <h2>売れる製品 → 個別商品ページ → CV</h2>
           <p class="field-hint">
-            柱記事（カテゴリ特集）とは別に、1商品に特化したページ原稿を作れます。見た目・見出し階層は
+            記事コンテンツ（カテゴリ特集）とは別に、1商品に特化したページ原稿を作れます。見た目・見出し階層は
             <a href="https://www.kojima.net/ec/Special/feature/reading/season/spot_cooler.html" target="_blank" rel="noopener">コジマ特集記事</a>
             と同じ記事コンテンツ型です。
           </p>
@@ -101,13 +103,13 @@
               <strong>個別商品ページ</strong> … 1商品の記事型原稿（結論・スペック表・FAQ・CTA）＝CV向け
             </li>
             <li>
-              <strong>見出し生成</strong> … 意図タグ（選び方／メーカーなど）＝SEO/AEO/GEO の切り口固定
+              <strong>記事コンテンツ（新規）— 見出し</strong> … 意図タグ（選び方／メーカーなど）＝SEO/AEO/GEO の切り口固定
             </li>
             <li>
               <strong>用途別おすすめ</strong> … 冒頭の答え1文（AEO）＋向いている人を本文に自然埋め込み＋機能表
             </li>
             <li>
-              <strong>記事生成</strong> … 本文冒頭に答えの1文（AEO・ラベルなし）＋補助オプションで直接回答・FAQ・title/meta・内部リンク・出典メモ
+              <strong>記事コンテンツ（新規／リライト）— 本文</strong> … 冒頭に答えの1文（AEO）＋補助オプションで直接回答・FAQ・title/meta・内部リンク・出典メモ
             </li>
           </ul>
           <p class="field-hint">
@@ -119,27 +121,20 @@
           <h2>初めてのカテゴリ</h2>
           <ol class="guide-steps">
             <li>
-              <strong>競合調査</strong>
-              <p>ランキングURLを解決・保存して取得する。競合記事URLも登録・保存する（比較できると尚可）。</p>
+              <strong>ランキング</strong>
+              <p>ランキングURLを解決・保存し、「取得して、週次レポート用に保存する」を実行する。</p>
             </li>
             <li>
               <strong>週次レポート</strong>
-              <p>同じカテゴリでランキング取得・競合記事比較を行い、必要なら改修登録・確定する。</p>
+              <p>競合記事URLの登録・比較、改修登録・KPI確認・確定を行う。</p>
             </li>
             <li>
-              <strong>見出し生成</strong>
-              <p>参考URLで H2／H3 を作成。H4 が必要なら「H4見出しを作成する」をオンにして提案・編集し、見出しを確定する。</p>
+              <strong>記事コンテンツ（新規）</strong>
+              <p>参考URLで H2／H3 を作成。H4 が必要ならオンにして提案・編集し、見出し確定後に本文を生成する。</p>
             </li>
             <li>
               <strong>用途別おすすめ</strong>（商品ブロックが必要なとき）
               <p>取得済みランキングから用途3つ→商品割当→説明文・機能表を生成する。</p>
-            </li>
-            <li>
-              <strong>記事生成</strong>
-              <p>
-                確定した見出しを引き継ぎ本文を生成。導入文・まとめは任意。
-                AEO/GEO/SEO補助とFAQは既定オン（直接回答・メタ候補・内部リンク・出典メモ）。
-              </p>
             </li>
           </ol>
         </section>
@@ -148,15 +143,16 @@
           <h2>2回目以降のカテゴリ（毎週）</h2>
           <ol class="guide-steps">
             <li>
+              <strong>ランキング</strong>
+              <p>必要なら「取得して、週次レポート用に保存する」。URLが変わったときだけ編集・保存する。</p>
+            </li>
+            <li>
               <strong>週次レポート</strong>
-              <p>ランキング取得・競合記事比較・改修確認・確定。URLが変わったときだけ競合調査で編集・保存する。</p>
+              <p>競合記事比較・改修確認・確定。</p>
             </li>
             <li>
-              <strong>見出し生成</strong>
-              <p>参考URLで H2／H3 を作成。H4 が必要ならここで提案・確定してから記事へ。</p>
-            </li>
-            <li>
-              必要に応じて<strong>用途別おすすめ</strong> → <strong>記事生成</strong>（本文のみ）
+              <strong>記事コンテンツ（新規）</strong> または <strong>記事コンテンツ（リライト）</strong>
+              <p>新規は見出し→本文。リライトは既存URLから取り込み。必要に応じて用途別おすすめも。</p>
             </li>
           </ol>
         </section>
@@ -164,23 +160,176 @@
         <section class="panel guide-panel">
           <h2>品質を上げるポイント</h2>
           <ul class="guide-list">
-            <li>見出し生成は<strong>参考URL</strong>がいちばん効きます（選びのポイント／人気メーカー構成の手本）。</li>
+            <li>記事コンテンツ（新規）の見出しは<strong>参考URL</strong>がいちばん効きます（選びのポイント／人気メーカー構成の手本）。</li>
             <li>他社URLは空欄でも可。生成時にSEO上位の家電量販店記事を自動取得します。</li>
-            <li>H4 を作るかは見出しタブで指定。先に見出しを決め、記事生成は本文専用にします。</li>
+            <li>H4 を作るかは見出し欄で指定。先に見出しを決め、本文は下の欄で生成します。</li>
             <li>商品のおすすめ見出し・説明は<strong>用途別おすすめ</strong>側で作ります。</li>
-            <li>競合調査は初回セットアップとURL変更時。毎週の本体は週次レポートです。</li>
-            <li>月が変わっただけでは競合調査のやり直しは不要です（URL変更時のみ）。</li>
+            <li>ランキングでURL設定と「取得して、週次レポート用に保存する」。毎週の確認・確定は週次レポートです。</li>
+            <li>月が変わっただけではURL設定のやり直しは不要です（URL変更時のみ）。</li>
             <li>AIは上部ナビ右端で <strong>Gemini / ChatGPT / Cursor</strong> を選択できます（用途別も含む）。ChatGPT は <code>OPENAI_API_KEY</code>、Cursor は <code>CURSOR_API_KEY</code> が必要です。</li>
             <li>AEO/GEO/SEO の詳細は上の専用セクションを参照。各作業タブ上部の意図パネルと結果のチェックリストも併用してください。</li>
           </ul>
           <div class="actions">
             <button type="button" class="secondary" data-guide-go="weekly">週次レポートへ</button>
-            <button type="button" class="secondary" data-guide-go="kyoso">競合調査へ</button>
+            <button type="button" class="secondary" data-guide-go="ranking">ランキングへ</button>
+            <button type="button" class="secondary" data-guide-go="usecase">用途別おすすめへ</button>
+            <button type="button" class="secondary" data-guide-go="pillar-new">記事コンテンツ（新規）へ</button>
+            <button type="button" class="secondary" data-guide-go="pillar-rewrite">記事コンテンツ（リライト）へ</button>
             <button type="button" class="secondary" data-guide-go="productlp">個別商品ページへ</button>
-            <button type="button" class="secondary" data-guide-go="headings">見出し生成へ</button>
-            <button type="button" class="secondary" data-guide-go="article">記事生成へ</button>
           </div>
         </section>
+      </section>
+
+
+      <!-- ランキング（URL設定・取得・競合記事） -->
+      <section id="panel-ranking" class="tab-panel" hidden>
+        <header>
+          <h1>ランキング</h1>
+          <p>
+            各モールのランキングURLを設定・保存し、横断比較します。
+            「取得して、週次レポート用に保存する」で週次レポート用のスナップショットも更新できます。
+            競合記事URLの管理は週次レポート側です。
+          </p>
+        </header>
+        <div id="panel-kyoso-setup" class="weekly-kyoso-setup">
+        <header>
+          <h2>カテゴリ別ランキング取得</h2>
+          <p>
+            カテゴリを指定し、各サイトのランキング URL を自動取得・保存します。
+            表示された URL を確認し、必要なら修正してから詳細取得もできます。
+          </p>
+        </header>
+        <section class="panel">
+          <form id="form-kyoso" class="form">
+            <label class="field">
+              <span>カテゴリ *</span>
+              <select id="kyoso-category" required></select>
+              <input
+                type="text"
+                id="kyoso-category-other"
+                class="category-other-input"
+                placeholder="例: 空気清浄機"
+                hidden
+              />
+              <p class="field-hint">
+                ① 各モールのランキング URL を調べて入力（または Gemini で自動取得）。②「URLを保存」で <code>data/ranking-urls.json</code> にカテゴリ名ごとに記録。③ 「取得して、週次レポート用に保存する」や詳細取得で利用されます。「その他」で新規カテゴリを追加できます。
+              </p>
+            </label>
+            <div class="actions">
+              <button type="button" class="secondary" id="kyoso-resolve-urls">ランキング URL を自動取得（Gemini）</button>
+              <button type="button" class="secondary" id="kyoso-save-urls">URLを保存</button>
+            </div>
+            <div id="kyoso-url-panel" class="field" hidden>
+              <span>ランキング一覧 URL（確認・修正可）</span>
+              <p class="field-hint" id="kyoso-url-notes"></p>
+              <p class="field-hint" id="kyoso-url-saved-hint"></p>
+              <label class="field nested-field">
+                <span class="field-sub">Amazon</span>
+                <input type="url" id="kyoso-url-amazon" placeholder="https://www.amazon.co.jp/gp/bestsellers/..." />
+              </label>
+              <label class="field nested-field">
+                <span class="field-sub">楽天</span>
+                <input type="url" id="kyoso-url-rakuten" placeholder="https://ranking.rakuten.co.jp/daily/..." />
+              </label>
+              <label class="field nested-field">
+                <span class="field-sub">Yahoo!</span>
+                <input type="url" id="kyoso-url-yahoo" placeholder="https://shopping.yahoo.co.jp/searchranking?..." />
+              </label>
+              <label class="field nested-field">
+                <span class="field-sub">コジマネット</span>
+                <input type="url" id="kyoso-url-kojima" placeholder="https://www.kojima.net/ec/ranking.html?..." />
+              </label>
+              <label class="field nested-field">
+                <span class="field-sub">ビックカメラ</span>
+                <input type="url" id="kyoso-url-bic" placeholder="https://www.biccamera.com/bc/ranking/..." />
+              </label>
+            </div>
+            <div class="actions">
+              <button type="submit" id="kyoso-submit" disabled>① ランキング取得・横断比較</button>
+              <button type="button" id="weekly-fetch">取得して、週次レポート用に保存する</button>
+              <button type="button" class="secondary" id="kyoso-reset">リセット</button>
+            </div>
+            <p class="field-hint" id="weekly-fetch-msg"></p>
+          </form>
+          <p id="kyoso-error" class="error" hidden></p>
+        </section>
+
+        <section id="kyoso-result" class="panel" hidden>
+          <h2>取得結果</h2>
+          <div class="result-actions">
+            <button type="button" class="secondary" id="kyoso-clear">クリア</button>
+          </div>
+          <p class="note" id="kyoso-meta"></p>
+          <div class="generated-block">
+            <div class="ranking-table-wrap">
+              <table class="ranking-table">
+                <thead>
+                  <tr>
+                    <th>取得元種別</th>
+                    <th>取得元</th>
+                    <th>順位</th>
+                    <th>メーカー</th>
+                    <th>商品名</th>
+                    <th>URL</th>
+                  </tr>
+                </thead>
+                <tbody id="kyoso-tbody"></tbody>
+              </table>
+            </div>
+          </div>
+          <div class="generated-block">
+            <h3>横断比較（型番ベース）</h3>
+            <p class="note" id="kyoso-composite-meta"></p>
+            <div class="ranking-table-wrap">
+              <table class="ranking-table">
+                <thead>
+                  <tr>
+                    <th>型番</th>
+                    <th>メーカー</th>
+                    <th>Amazon</th>
+                    <th>楽天</th>
+                    <th>Yahoo!</th>
+                    <th>コジマ</th>
+                    <th>ビック</th>
+                    <th>掲載数</th>
+                    <th>平均順位</th>
+                    <th>代表商品名</th>
+                  </tr>
+                </thead>
+                <tbody id="kyoso-composite-tbody"></tbody>
+              </table>
+            </div>
+          </div>
+          <div id="kyoso-features-block" class="generated-block" hidden>
+            <h3>③ 見出し候補（総合ランキングから需要分析）</h3>
+            <p class="note" id="kyoso-features-meta"></p>
+            <ul id="kyoso-features-list" class="feature-candidate-list"></ul>
+            <div class="actions">
+              <button type="button" class="secondary" id="kyoso-to-headings">記事コンテンツ（新規）へ（候補を引き継ぐ）</button>
+            </div>
+          </div>
+          <div id="kyoso-theme-select-panel" class="generated-block" hidden>
+            <h3>④ 見出し別ランキングのテーマ選択</h3>
+            <p class="field-hint">
+              テーマ1「総合おすすめ」は確定済みです。需要候補からテーマ2・3を選び、下の「見出し別ランキングを作成」でテーマごとのトップ5を表示します。
+            </p>
+            <label class="field nested-field">
+              <span class="field-sub">テーマ2（見出し用）</span>
+              <select id="kyoso-theme-2" required></select>
+            </label>
+            <label class="field nested-field">
+              <span class="field-sub">テーマ3（見出し用）</span>
+              <select id="kyoso-theme-3" required></select>
+            </label>
+            <div class="actions">
+              <button type="button" id="kyoso-build-themed">見出し別ランキングを作成（テーマ2・3）</button>
+            </div>
+            <p class="field-hint" id="kyoso-themed-msg"></p>
+            <p id="kyoso-themed-error" class="error" hidden></p>
+          </div>
+          <div id="kyoso-themed-blocks" class="generated-block"></div>
+        </section>
+      </div>
       </section>
 
       <!-- 週次レポート（②-A） -->
@@ -223,48 +372,57 @@
           <p class="note weekly-status">
             <span class="weekly-status-dot" id="weekly-status-dot" aria-hidden="true"></span>
             <span id="weekly-status-text">読み込み中…</span>
-            <span id="weekly-fetch-msg"></span>
           </p>
           <div class="actions">
-            <button type="button" id="weekly-fetch">今週のランキングを取得</button>
-            <button type="button" class="secondary" id="weekly-to-kyoso">競合調査で詳細を見る</button>
             <a id="weekly-csv-link" class="button-link secondary" href="#" hidden>CSVダウンロード</a>
           </div>
+          <p class="field-hint">
+            データの更新（横断ランキング取得）は<strong>ランキング</strong>メニューの「取得して、週次レポート用に保存する」から行います。
+          </p>
           <p class="field-hint" id="weekly-compare-note" hidden></p>
           <p id="weekly-error" class="error" hidden></p>
         </section>
 
-        <section class="panel weekly-q-panel" id="weekly-q1-panel">
-          <h2>商品 — 売れ筋ランキング</h2>
-          <div class="ranking-table-wrap">
-            <table class="ranking-table weekly-table">
-              <thead>
-                <tr>
-                  <th>順位</th>
-                  <th>メーカー名</th>
-                  <th>商品名</th>
-                  <th>型式</th>
-                  <th>Amazon</th>
-                  <th>楽天</th>
-                  <th>Yahoo</th>
-                  <th>コジマ</th>
-                  <th>ビック</th>
-                </tr>
-              </thead>
-              <tbody id="weekly-products-tbody">
-                <tr><td colspan="9" class="weekly-empty-cell">ランキング未取得</td></tr>
-              </tbody>
-            </table>
+        <section class="panel" id="kyoso-article-panel">
+          <h2>競合記事 URL（記事改修用）</h2>
+          <p class="field-hint">
+            各サイトのおすすめ記事 URL をカテゴリごとに保存します（<code>data/competitor-articles.json</code>）。
+            保存後「競合記事を取得・比較」で見出し構成を自社記事コンテンツと比較できます。
+          </p>
+          <div id="kyoso-article-url-list" class="competitor-article-list"></div>
+          <div class="actions">
+            <button type="button" class="secondary" id="kyoso-article-add">行を追加</button>
+            <button type="button" class="secondary" id="kyoso-article-save">記事URLを保存</button>
+            <button type="button" id="kyoso-article-analyze">競合記事を取得・比較</button>
+          </div>
+          <p class="field-hint" id="kyoso-article-saved-hint"></p>
+          <p id="kyoso-article-error" class="error" hidden></p>
+          <div id="kyoso-article-result" class="generated-block" hidden>
+            <h3>競合記事 見出し比較</h3>
+            <p class="note" id="kyoso-article-meta"></p>
+            <div class="ranking-table-wrap">
+              <table class="ranking-table">
+                <thead>
+                  <tr>
+                    <th>優先</th>
+                    <th>競合サイト</th>
+                    <th>見出し</th>
+                    <th>レベル</th>
+                    <th>理由</th>
+                    <th>参考URL</th>
+                  </tr>
+                </thead>
+                <tbody id="kyoso-article-tbody"></tbody>
+              </table>
+            </div>
           </div>
         </section>
-
         <section class="panel weekly-q-panel weekly-competitor-panel" id="weekly-competitor-panel">
           <h2>各社記事の確認 <span class="weekly-q-hint">（更新見出し）</span></h2>
           <div class="weekly-competitor-actions">
-            <button type="button" class="secondary" id="weekly-competitor-analyze">競合記事を取得・比較</button>
-            <button type="button" class="secondary" id="weekly-competitor-setup">競合記事URLを編集</button>
+            <button type="button" class="secondary" id="weekly-competitor-analyze">競合記事を取得・比較（更新見出し）</button>
           </div>
-          <p class="field-hint" id="weekly-competitor-msg">競合調査タブで記事 URL を保存後、比較を実行してください。</p>
+          <p class="field-hint" id="weekly-competitor-msg">上で記事 URL を保存後、比較を実行してください。</p>
           <p class="field-hint" id="weekly-heading-updates-hint">初回取得後、次回の比較から追加・削除された見出しを表示します。</p>
           <div class="ranking-table-wrap">
             <table class="ranking-table weekly-table">
@@ -296,7 +454,7 @@
             <label class="field weekly-field-inline">
               <span>対象</span>
               <select id="weekly-change-target">
-                <option value="hub|柱記事全体">柱記事全体</option>
+                <option value="hub|記事コンテンツ全体">記事コンテンツ全体</option>
               </select>
             </label>
             <label class="field weekly-field-grow">
@@ -433,7 +591,7 @@
         <section class="panel weekly-footer-panel">
           <div class="actions">
             <button type="button" id="weekly-confirm">週次レポートを確定</button>
-            <button type="button" class="secondary" id="weekly-to-headings-main">見出し生成へ進む</button>
+            <button type="button" class="secondary" id="weekly-to-headings-main">記事コンテンツ（新規）へ進む</button>
           </div>
           <p class="field-hint" id="weekly-confirm-msg">
             確定すると今週のスナップショットを保存し、来週の前週比に使います。
@@ -448,6 +606,10 @@
           <p>
             売れる1商品に特化した記事型ページを作成します。構成・デザインはコジマ特集記事と同じ（H1→導入→H2/H3→スペック表→FAQ→まとめ＋CTA）。
           </p>
+          <p class="field-hint draft-restore-hint" id="productlp-draft-hint" hidden></p>
+          <div class="actions draft-discard-actions">
+            <button type="button" class="secondary" id="productlp-draft-discard">下書きを破棄</button>
+          </div>
           <div class="aeo-intent-panel" aria-label="個別商品ページの AEO GEO SEO 意図">
             <p class="aeo-intent-lead">個別商品ページの意図</p>
             <ul class="aeo-intent-list">
@@ -588,7 +750,7 @@
         <header>
           <h1>用途別おすすめ</h1>
           <p>
-            商品ランキングから用途を3つに分け、コジマ取扱品で担当者おすすめ3選を作り、メーカー公式情報をもとに説明文と機能表を生成します。
+            商品ランキングから用途を3つに分け、コジマ取扱品で担当者おすすめ3選を作り、各メーカー公式サイトのみを根拠に説明文と機能表を生成します。
           </p>
           <div class="aeo-intent-panel" aria-label="用途別の AEO GEO SEO 意図">
             <p class="aeo-intent-lead">用途別ブロックの意図</p>
@@ -611,7 +773,7 @@
 
         <section class="panel">
           <h2>1. ランキングを読み込む</h2>
-          <p class="field-hint">週次レポートまたは競合調査で取得済みのランキングを使います（新規取得はしません）。</p>
+          <p class="field-hint">ランキングで取得済みのデータを使います（ここでは新規取得しません）。</p>
           <div class="weekly-header-grid">
             <label class="field weekly-field-inline">
               <span>カテゴリ</span>
@@ -653,7 +815,7 @@
 
         <section class="panel">
           <h2>4. 出力HTML</h2>
-          <p class="field-hint">コジマ記事の用途別おすすめブロック向け。コピーしてCMSに貼れます。</p>
+          <p class="field-hint">コジマ特集（refrigerator / mixer）と同型。zzb_special4.css ＋記事用CSSを含みます。コピーしてCMSに貼れます。</p>
           <div class="actions">
             <button type="button" class="secondary" id="usecase-copy-html" disabled>HTMLをコピー</button>
           </div>
@@ -664,184 +826,17 @@
         <p id="usecase-error" class="error" hidden></p>
       </section>
 
-      <!-- 競合調査 -->
-      <section id="panel-kyoso" class="tab-panel" hidden>
+      <!-- 記事コンテンツ（新規）— 見出し -->
+      <section id="panel-headings" class="tab-panel" hidden data-pillar="new">
         <header>
-          <h1>カテゴリ別ランキング取得</h1>
-          <p>
-            カテゴリ（例: 窓用エアコン）を指定し、まず Gemini で各サイトのランキング URL を自動取得します。
-            表示された URL を確認し、必要なら修正してから TOP15 を取得して CSV に出力します。
-          </p>
-        </header>
-        <section class="panel">
-          <form id="form-kyoso" class="form">
-            <label class="field">
-              <span>カテゴリ *</span>
-              <select id="kyoso-category" required></select>
-              <input
-                type="text"
-                id="kyoso-category-other"
-                class="category-other-input"
-                placeholder="例: 空気清浄機"
-                hidden
-              />
-              <p class="field-hint">
-                ① 各モールのランキング URL を調べて入力（または Gemini で自動取得）。②「URLを保存」で <code>data/ranking-urls.json</code> にカテゴリ名ごとに記録。③ 以降は週次レポート取得でも自動使用されます。「その他」で新規カテゴリを追加できます。
-              </p>
-            </label>
-            <div class="actions">
-              <button type="button" class="secondary" id="kyoso-resolve-urls">ランキング URL を自動取得（Gemini）</button>
-              <button type="button" class="secondary" id="kyoso-save-urls">URLを保存</button>
-            </div>
-            <div id="kyoso-url-panel" class="field" hidden>
-              <span>ランキング一覧 URL（確認・修正可）</span>
-              <p class="field-hint" id="kyoso-url-notes"></p>
-              <p class="field-hint" id="kyoso-url-saved-hint"></p>
-              <label class="field nested-field">
-                <span class="field-sub">Amazon</span>
-                <input type="url" id="kyoso-url-amazon" placeholder="https://www.amazon.co.jp/gp/bestsellers/..." />
-              </label>
-              <label class="field nested-field">
-                <span class="field-sub">楽天</span>
-                <input type="url" id="kyoso-url-rakuten" placeholder="https://ranking.rakuten.co.jp/daily/..." />
-              </label>
-              <label class="field nested-field">
-                <span class="field-sub">Yahoo!</span>
-                <input type="url" id="kyoso-url-yahoo" placeholder="https://shopping.yahoo.co.jp/searchranking?..." />
-              </label>
-              <label class="field nested-field">
-                <span class="field-sub">コジマネット</span>
-                <input type="url" id="kyoso-url-kojima" placeholder="https://www.kojima.net/ec/ranking.html?..." />
-              </label>
-              <label class="field nested-field">
-                <span class="field-sub">ビックカメラ</span>
-                <input type="url" id="kyoso-url-bic" placeholder="https://www.biccamera.com/bc/ranking/..." />
-              </label>
-            </div>
-            <div class="actions">
-              <button type="submit" id="kyoso-submit" disabled>① ランキング取得・横断比較</button>
-              <button type="button" class="secondary" id="kyoso-reset">リセット</button>
-            </div>
-          </form>
-          <p id="kyoso-error" class="error" hidden></p>
-        </section>
-
-        <section class="panel" id="kyoso-article-panel">
-          <h2>競合記事 URL（記事改修用）</h2>
-          <p class="field-hint">
-            各サイトのおすすめ記事 URL をカテゴリごとに保存します（<code>data/competitor-articles.json</code>）。
-            保存後「競合記事を取得・比較」で見出し構成を自社柱記事と比較できます。
-          </p>
-          <div id="kyoso-article-url-list" class="competitor-article-list"></div>
-          <div class="actions">
-            <button type="button" class="secondary" id="kyoso-article-add">行を追加</button>
-            <button type="button" class="secondary" id="kyoso-article-save">記事URLを保存</button>
-            <button type="button" id="kyoso-article-analyze">競合記事を取得・比較</button>
-          </div>
-          <p class="field-hint" id="kyoso-article-saved-hint"></p>
-          <p id="kyoso-article-error" class="error" hidden></p>
-          <div id="kyoso-article-result" class="generated-block" hidden>
-            <h3>競合記事 見出し比較</h3>
-            <p class="note" id="kyoso-article-meta"></p>
-            <div class="ranking-table-wrap">
-              <table class="ranking-table">
-                <thead>
-                  <tr>
-                    <th>優先</th>
-                    <th>競合サイト</th>
-                    <th>見出し</th>
-                    <th>レベル</th>
-                    <th>理由</th>
-                    <th>参考URL</th>
-                  </tr>
-                </thead>
-                <tbody id="kyoso-article-tbody"></tbody>
-              </table>
-            </div>
-          </div>
-        </section>
-        <section id="kyoso-result" class="panel" hidden>
-          <h2>取得結果</h2>
-          <div class="result-actions">
-            <button type="button" class="secondary" id="kyoso-clear">クリア</button>
-          </div>
-          <p class="note" id="kyoso-meta"></p>
-          <div class="generated-block">
-            <div class="ranking-table-wrap">
-              <table class="ranking-table">
-                <thead>
-                  <tr>
-                    <th>取得元種別</th>
-                    <th>取得元</th>
-                    <th>順位</th>
-                    <th>メーカー</th>
-                    <th>商品名</th>
-                    <th>URL</th>
-                  </tr>
-                </thead>
-                <tbody id="kyoso-tbody"></tbody>
-              </table>
-            </div>
-          </div>
-          <div class="generated-block">
-            <h3>横断比較（型番ベース）</h3>
-            <p class="note" id="kyoso-composite-meta"></p>
-            <div class="ranking-table-wrap">
-              <table class="ranking-table">
-                <thead>
-                  <tr>
-                    <th>型番</th>
-                    <th>メーカー</th>
-                    <th>Amazon</th>
-                    <th>楽天</th>
-                    <th>Yahoo!</th>
-                    <th>コジマ</th>
-                    <th>ビック</th>
-                    <th>掲載数</th>
-                    <th>平均順位</th>
-                    <th>代表商品名</th>
-                  </tr>
-                </thead>
-                <tbody id="kyoso-composite-tbody"></tbody>
-              </table>
-            </div>
-          </div>
-          <div id="kyoso-themed-blocks" class="generated-block"></div>
-          <div id="kyoso-features-block" class="generated-block" hidden>
-            <h3>③ 見出し候補（総合ランキングから需要分析）</h3>
-            <p class="note" id="kyoso-features-meta"></p>
-            <ul id="kyoso-features-list" class="feature-candidate-list"></ul>
-            <div class="actions">
-              <button type="button" class="secondary" id="kyoso-to-headings">見出し生成タブへ（候補を引き継ぐ）</button>
-            </div>
-          </div>
-          <div id="kyoso-theme-select-panel" class="generated-block" hidden>
-            <h3>④ 見出し別ランキングのテーマ選択</h3>
-            <p class="field-hint">
-              テーマ1「総合おすすめ」は②で確定済みです。下記の需要候補からテーマ2・3を選び、見出しごと最大5件のランキングを作成します。
-            </p>
-            <label class="field nested-field">
-              <span class="field-sub">テーマ2（見出し用）</span>
-              <select id="kyoso-theme-2" required></select>
-            </label>
-            <label class="field nested-field">
-              <span class="field-sub">テーマ3（見出し用）</span>
-              <select id="kyoso-theme-3" required></select>
-            </label>
-            <div class="actions">
-              <button type="button" id="kyoso-build-themed">見出し別ランキングを作成（テーマ2・3）</button>
-            </div>
-          </div>
-        </section>
-      </section>
-
-      <!-- 見出し生成 -->
-      <section id="panel-headings" class="tab-panel" hidden>
-        <header>
-          <h1>見出し生成</h1>
+          <h1>記事コンテンツ（新規）— 見出し</h1>
           <p>
             参考URL（例: コジマ掃除機特集）を踏まえ、<strong>「◯◯選びのポイント」</strong>と<strong>「◯◯の人気メーカー」</strong>のH2を各1つ、配下H3を各3つ作成します。商品おすすめは用途別おすすめタブで作成します。
           </p>
+          <p class="field-hint draft-restore-hint" id="pillar-new-draft-hint" hidden></p>
+          <div class="actions draft-discard-actions">
+            <button type="button" class="secondary" id="pillar-new-draft-discard">下書きを破棄</button>
+          </div>
           <div class="aeo-intent-panel" aria-label="見出しの検索意図">
             <p class="aeo-intent-lead">見出しに付く意図タグ（選び方／メーカーなど）の意味</p>
             <ul class="aeo-intent-list">
@@ -870,7 +865,7 @@
               週次・競合の結果を取り込む
             </button>
             <button type="button" class="secondary" id="headings-to-article">
-              見出し確定 → 記事生成へ
+              見出し確定 → 本文へ
             </button>
           </div>
           <p class="field-hint" id="headings-bridge-msg"></p>
@@ -947,7 +942,7 @@
         <section id="headings-result" class="panel" hidden>
           <h2>見出し案（編集可）</h2>
           <p class="field-hint">
-            ① H2・H3を確定 → ② 必要なら「H4見出しを作成する」でH4を提案・編集 → ③「記事生成へ引き継ぐ」
+            ① H2・H3を確定 → ② 必要なら「H4見出しを作成する」でH4を提案・編集 → ③「本文へ」で下の欄へ進む
           </p>
           <div class="field">
             <label class="checkbox-field">
@@ -955,7 +950,7 @@
               <span>H4見出しを作成する（各H3あたり最大3つ）</span>
             </label>
             <p class="field-hint">
-              オフのままなら H3 本文のみの記事になります。オンにすると H4 を先に決めてから記事生成へ進めます。
+              オフのままなら H3 本文のみの記事になります。オンにすると H4 を先に決めてから本文へ進めます。
             </p>
             <div id="headings-h4-actions" class="actions" hidden>
               <button type="button" class="secondary" id="headings-suggest-all-h4">
@@ -966,7 +961,7 @@
           </div>
           <div class="result-actions">
             <button type="button" class="secondary" id="headings-copy">テキストコピー</button>
-            <button type="button" id="headings-to-article-bottom">見出し確定 → 記事生成へ</button>
+            <button type="button" id="headings-to-article-bottom">見出し確定 → 本文へ</button>
             <button type="button" class="secondary" id="headings-clear">クリア</button>
           </div>
           <p id="headings-copy-msg" class="field-hint" hidden></p>
@@ -976,16 +971,20 @@
         </section>
       </section>
 
-      <!-- 記事生成 -->
-      <section id="panel-article" class="tab-panel" hidden>
+      <!-- 記事コンテンツ — 本文（新規／リライトで切替） -->
+      <section id="panel-article" class="tab-panel" hidden data-pillar="both" data-article-mode="create">
         <header>
-          <h1>記事生成</h1>
+          <h1 id="article-panel-title">記事コンテンツ — 本文</h1>
           <p id="article-mode-desc-create">
-            見出し生成で確定した H2／H3（と任意の H4）を引き継ぎ、本文だけを作成します。見出しの追加・変更は見出し生成タブで行ってください。
+            上で確定した H2／H3（と任意の H4）を引き継ぎ、本文だけを作成します。見出しの追加・変更は上の見出し欄で行ってください。
           </p>
           <p id="article-mode-desc-rewrite" hidden>
             リライト元URLから構成を取り込み、見出しはより良い案があれば改善します。元記事を根拠に本文を書き直します。構成は確認・微修正できます。
           </p>
+          <p class="field-hint draft-restore-hint" id="article-draft-hint" hidden></p>
+          <div class="actions draft-discard-actions">
+            <button type="button" class="secondary" id="article-draft-discard">下書きを破棄</button>
+          </div>
           <div class="aeo-intent-panel" aria-label="AEO GEO SEO の組み立て意図">
             <p class="aeo-intent-lead">このタブの出力は、次の3つを同時に満たす組み立てです。</p>
             <ul class="aeo-intent-list">
@@ -1005,7 +1004,7 @@
           </div>
         </header>
         <section class="panel">
-          <div class="field">
+          <div class="field article-create-only" id="article-mode-field" hidden>
             <span>モード</span>
             <div class="article-mode-toggle" role="radiogroup" aria-label="記事生成モード">
               <label class="radio-field">
@@ -1019,7 +1018,7 @@
             </div>
           </div>
 
-          <div id="article-create-actions" class="actions">
+          <div id="article-create-actions" class="actions article-create-only" hidden>
             <button type="button" class="secondary" id="article-import-sources">
               週次・競合のURLを取り込む
             </button>
@@ -1027,9 +1026,9 @@
               見出し結果を取り込む
             </button>
           </div>
-          <p class="field-hint" id="article-bridge-msg"></p>
+          <p class="field-hint article-create-only" id="article-bridge-msg" hidden></p>
           <form id="form-article" class="form">
-            <div id="article-rewrite-fields" class="article-rewrite-fields" hidden>
+            <div id="article-rewrite-fields" class="article-rewrite-fields article-rewrite-only" hidden>
               <label class="field">
                 <span>リライト元URL *</span>
                 <input type="url" id="article-rewrite-url" placeholder="https://www.kojima.net/ec/Special/..." />
@@ -1050,7 +1049,7 @@
               <span>タイトル（任意）</span>
               <input type="text" id="article-title" placeholder="見出し生成のタイトル案が入ります" />
             </label>
-            <div id="article-create-urls">
+            <div id="article-create-urls" class="article-create-only" hidden>
               <label class="field">
                 <span>他社URL 1</span>
                 <input type="url" id="article-url1" />
@@ -1105,10 +1104,10 @@
             <div class="field">
               <span>確定済み見出し（確認・微修正可）</span>
               <p class="field-hint" id="article-outline-hint">
-                H4 の有無は見出し生成タブで指定済みです。ここでは誤字などの微修正のみ行い、本文を生成します。
+                H4 の有無は上の見出し欄で指定済みです。ここでは誤字などの微修正のみ行い、本文を生成します。
               </p>
               <div id="article-outline-editor" class="outline-editor">
-                <p class="field-hint">見出し生成タブで見出しを確定し、「記事生成へ」を押してください。</p>
+                <p class="field-hint">上の見出し欄で見出しを確定し、「本文へ」を押してください。</p>
               </div>
             </div>
 
@@ -1136,6 +1135,7 @@
       </section>
     </div>
     <script src="/js/aiProvider.js"></script>
+    <script src="/js/draftStore.js"></script>
     <script src="/js/main.js"></script>
     <script src="/js/weeklyReport.js"></script>
     <script src="/js/useCaseRecommend.js"></script>

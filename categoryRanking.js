@@ -2361,7 +2361,7 @@ async function fetchCategoryRankings(category, deps, options = {}) {
       console.warn(
         '⚠️ No saved ranking URLs for category:',
         trimmedCategory,
-        '— add URLs in 競合調査 tab or data/ranking-urls.json'
+        '— add URLs in ランキング menu or data/ranking-urls.json'
       );
     }
   }
@@ -2670,7 +2670,7 @@ async function fetchCategoryRankings(category, deps, options = {}) {
   if (totalSourceItems === 0) {
     emptyReason =
       fallbackUrlKeys.length >= 3
-        ? '検索フォールバックURL中心で商品を抽出できませんでした。競合調査で公式ランキングURLを自動取得→保存してください。'
+        ? '検索フォールバックURL中心で商品を抽出できませんでした。ランキングで公式ランキングURLを自動取得→保存してください。'
         : '各モールから商品を抽出できませんでした。URL・スクレイピング可否を確認してください。';
   } else if ((compositeRanking.items || []).length === 0) {
     emptyReason =
@@ -2678,7 +2678,7 @@ async function fetchCategoryRankings(category, deps, options = {}) {
   }
   if (unfilteredFallbackSources.length > 0 && !emptyReason) {
     urlNotes.push(
-      '新規カテゴリでは公式ランキングURLの保存を推奨します（競合調査タブ → URL自動取得 → 保存）。'
+      '新規カテゴリでは公式ランキングURLの保存を推奨します（ランキング → URL自動取得 → 保存）。'
     );
   }
   if (totalSourceItems === 0 && knownOrBetterCount === 0) {

@@ -62,7 +62,7 @@
     let items = [];
     let source = '';
 
-    // 1) sessionStorage（競合調査 / 週次）
+    // 1) sessionStorage（ランキング / 週次）
     const stored = loadStoredRanking();
     if (
       stored?.compositeItems?.length &&
@@ -117,11 +117,12 @@
     rankingItems = items;
     rankingSource = source;
     const kojimaCount = items.filter(hasKojima).length;
+    const kojimaUrlCount = items.filter((p) => Boolean(p?.hrefKojima)).length;
 
     if (!items.length) {
       if (msg) {
         msg.textContent =
-          'ランキングがありません。先に週次レポートまたは競合調査でランキングを取得してください。';
+          'ランキングがありません。先にランキングメニューで「取得して、週次レポート用に保存する」を実行してください。';
       }
       if (proposeBtn) proposeBtn.disabled = true;
       showError('ランキング未取得です。');
@@ -129,7 +130,11 @@
     }
 
     if (msg) {
-      msg.textContent = `${category}: 全${items.length}件 / コジマ取扱 ${kojimaCount}件（取得元: ${source || '—'}）`;
+      msg.textContent = `${category}: 全${items.length}件 / コジマ取扱 ${kojimaCount}件（URL付き ${kojimaUrlCount}件・取得元: ${source || '—'}）`;
+      if (kojimaCount > 0 && kojimaUrlCount === 0) {
+        msg.textContent +=
+          ' ※コジマURLが0件です。ランキングメニューで「取得して、週次レポート用に保存する」を再実行してから読み直してください。';
+      }
     }
     if (proposeBtn) proposeBtn.disabled = false;
     document.getElementById('usecase-confirm-use-cases').disabled = true;
@@ -344,7 +349,7 @@
       btn.disabled = true;
       btn.textContent = '生成中…（数分かかることがあります）';
     }
-    if (msg) msg.textContent = 'メーカー情報を取得し、説明文・機能表を生成しています…';
+    if (msg) msg.textContent = '各メーカー公式サイトから機能表を抽出し、説明文を生成しています…';
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 15 * 60 * 1000);
     try {
@@ -407,9 +412,14 @@
           parts.push(`完売 ${productReplaced} 件を人気ランキング上位商品に差し替え`);
         }
         if (soldOutOmitted > 0) {
-          parts.push(`差し替え候補なし ${soldOutOmitted} 件は掲載カット`);
+          parts.push(`完売で差し替え不可 ${soldOutOmitted} 件は掲載カット`);
         }
         msg.textContent = parts.join('。');
+        if (soldOutOmitted > 0 && allProducts.length === 0) {
+          showError(
+            '全商品が掲載カットになりました。ランキング読込で「URL付き」が0件なら、週次レポートを再取得してから用途別をお試しください。'
+          );
+        }
       }
     } catch (err) {
       const message =

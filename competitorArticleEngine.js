@@ -203,7 +203,7 @@ function buildGapProposals(competitors, ownHeadings) {
         heading: h.text,
         reason:
           h.level === 'h2'
-            ? '競合の主要見出し。自社柱記事に未掲載のテーマ'
+            ? '競合の主要見出し。自社記事コンテンツに未掲載のテーマ'
             : '競合の小見出し。自社にない切り口の可能性',
         priority: h.level === 'h2' ? 'high' : 'medium',
       });
@@ -235,7 +235,7 @@ async function analyzeCompetitorArticles(category, options = {}, deps = {}) {
     : saved?.articles || [];
   if (!articles.length) {
     throw new Error(
-      '競合記事 URL が未登録です。競合調査タブで記事 URL を保存してください。'
+      '競合記事 URL が未登録です。週次レポートで記事 URL を保存してください。'
     );
   }
 

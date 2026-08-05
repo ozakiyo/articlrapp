@@ -9,6 +9,19 @@ body {
   margin: 0;
 }
 
+/* .field / .actions の display が [hidden] を上書きしないようにする */
+[hidden] {
+  display: none !important;
+}
+
+#panel-article[data-article-mode='rewrite'] .article-create-only {
+  display: none !important;
+}
+
+#panel-article[data-article-mode='create'] .article-rewrite-only {
+  display: none !important;
+}
+
 .app {
   max-width: 960px;
   margin: 0 auto;
@@ -197,7 +210,58 @@ header p {
   font-size: 20px;
   margin: 30px 0 16px;
 }
-/* 埋め込みCSS（mixer記事内style）を優先。ここは補助のみ */
+/* 用途別プレビュー専用（CMS出力HTMLには<style>を埋め込まない。サイトは zzb_special4.css） */
+.usecase-html-preview #mainblock006479 .pickup {
+  border: 1px solid #e7e7e7;
+  border-radius: 3px;
+  box-shadow: none;
+  margin: 0 0 20px;
+  padding: 10px;
+}
+.usecase-html-preview .pickup .commentblock {
+  border-bottom: 1px #666 dotted;
+  overflow: hidden;
+}
+.usecase-html-preview .pickup_spec,
+.usecase-html-preview table.pickup_spec {
+  width: 100%;
+  table-layout: fixed;
+  word-break: break-all;
+  border-collapse: collapse;
+  margin: 20px auto;
+}
+.usecase-html-preview .pickup_spec th {
+  background: #8a8a8a;
+  border: solid 1px #ccc;
+  color: #fff;
+  padding: 10px;
+  width: 30%;
+}
+.usecase-html-preview .pickup_spec td {
+  padding: 10px;
+  border: solid 1px #ccc;
+  width: 70%;
+}
+@media screen and (min-width: 701px) {
+  .usecase-html-preview #mainblock006479 .pickup {
+    padding: 30px;
+  }
+}
+@media screen and (max-width: 700px) {
+  .usecase-html-preview .pickup_spec th,
+  .usecase-html-preview .pickup_spec td {
+    display: block;
+    width: 100%;
+    box-sizing: border-box;
+  }
+  .usecase-html-preview .pickup_spec th {
+    padding: 5px 0;
+  }
+  .usecase-html-preview .pickup_spec td {
+    padding: 10px 0;
+    border-bottom: none;
+  }
+}
 .usecase-html-preview .commentblock {
   overflow: hidden;
 }
@@ -475,6 +539,19 @@ input[type='url']:focus {
   display: flex;
   gap: 0.75rem;
   flex-wrap: wrap;
+}
+
+#kyoso-theme-select-panel .actions {
+  margin-top: 1.25rem;
+}
+
+.draft-restore-hint:not([hidden]) {
+  margin: 0.5rem 0 0;
+  color: #2f5d3a;
+}
+
+.draft-discard-actions {
+  margin: 0.5rem 0 0.75rem;
 }
 
 button {
@@ -1130,11 +1207,41 @@ button.secondary {
   gap: 0.5rem;
 }
 
+.app-main-nav-aside {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.65rem;
+  margin-left: auto;
+}
+
+.tab-btn-guide {
+  font-size: 0.75rem;
+  padding: 0.28rem 0.65rem;
+  font-weight: 500;
+  color: #7b8794;
+  background: transparent;
+  border: 1px solid #e4e7eb;
+  box-shadow: none;
+}
+
+.tab-btn-guide:hover,
+.tab-btn-guide:focus-visible {
+  color: #52606d;
+  border-color: #cbd2d9;
+  background: #f5f7fa;
+}
+
+.tab-btn-guide:not(.secondary) {
+  color: #1e3a8a;
+  border-color: #93c5fd;
+  background: #eff6ff;
+}
+
 .ai-provider-switch {
   display: inline-flex;
   align-items: center;
   gap: 0.35rem;
-  margin-left: auto;
+  margin-left: 0;
   font-size: 0.75rem;
   color: #9aa5b1;
   font-weight: 400;
@@ -1832,4 +1939,40 @@ button.secondary {
   .weekly-two-col {
     grid-template-columns: 1fr;
   }
+}
+
+.weekly-setup-details {
+  margin: 0 0 1.25rem;
+  padding: 0.85rem 1rem 1rem;
+}
+
+.weekly-setup-details > summary {
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 1.05rem;
+  color: #1e3a8a;
+  list-style-position: outside;
+}
+
+.weekly-setup-details > summary:hover {
+  color: #1d4ed8;
+}
+
+.weekly-setup-details[open] > summary {
+  margin-bottom: 0.75rem;
+}
+
+.weekly-kyoso-setup > header {
+  margin-bottom: 0.75rem;
+}
+
+.weekly-kyoso-setup > header h2 {
+  margin: 0 0 0.35rem;
+  font-size: 1.1rem;
+}
+
+.weekly-kyoso-setup > header p {
+  margin: 0;
+  color: #52606d;
+  font-size: 0.9rem;
 }

@@ -179,7 +179,7 @@
     if (!currentReport) return;
     saveWeeklyContextToStorage(currentReport, { headings });
     applyToHeadingsTab(headings || collectHeadings(currentReport));
-    document.querySelector('.tab-btn[data-tab="headings"]')?.click();
+    document.querySelector('.tab-btn[data-tab="pillar-new"]')?.click();
     if (window.ArticleAppBridge?.syncHeadingsTabFromSources) {
       window.ArticleAppBridge.syncHeadingsTabFromSources({ force: true });
     }
@@ -430,7 +430,7 @@
       const phase = report.config?.articlePerformancePhase || 'phase1';
       phaseBadge.textContent =
         phase === 'hub-clicks'
-          ? '柱記事PV + クリック'
+          ? '記事コンテンツPV + クリック'
           : phase === 'phase1.5'
             ? 'Phase 1.5（PV・クリック + ランキング）'
             : phase === 'phase1'
@@ -440,22 +440,22 @@
 
     const meta = report.comparisonMeta || report.summary || {};
     if (report.status === 'empty') {
-      if (statusText) statusText.textContent = 'ランキング未取得';
+      if (statusText) statusText.textContent = 'データ未取得（ランキングで「取得して、週次レポート用に保存する」）';
       if (dot) dot.style.background = '#f59e0b';
-      if (fetchMsg) fetchMsg.textContent = '｜「今週のランキングを取得」を実行してください';
+      if (fetchMsg) fetchMsg.textContent = '未取得です。「取得して、週次レポート用に保存する」を実行してください。';
     } else if (!report.bestsellers?.length && report.fetchedAt) {
-      if (statusText) statusText.textContent = `最終取得: ${fmtDate(report.fetchedAt)}　｜　ランキング0件`;
+      if (statusText) statusText.textContent = `最終取得: ${fmtDate(report.fetchedAt)}　｜　データ0件`;
       if (dot) dot.style.background = '#ef4444';
       const diag = report.rankingDiagnostics || {};
       let warn =
         diag.emptyReason ||
         (report.warnings?.length > 0
-          ? `｜取得失敗（${report.warnings.length}件の警告 — サーバーログを確認）`
-          : '｜ランキングデータが空です');
+          ? `取得失敗（${report.warnings.length}件の警告 — サーバーログを確認）`
+          : 'データが空です');
       if (diag.recommendSaveOfficialUrls || (diag.fallbackUrlSources || []).length >= 2) {
-        warn += '｜競合調査で公式ランキングURLを保存してください';
+        warn += ' — 公式ランキングURLを保存してください';
       }
-      if (fetchMsg) fetchMsg.textContent = warn.startsWith('｜') ? warn : `｜${warn}`;
+      if (fetchMsg) fetchMsg.textContent = warn;
     } else {
       if (statusText) {
         const compareLabel = meta.compareLabel || (meta.hasPrevious ? 'あり' : 'なし');
@@ -638,11 +638,11 @@
   }
 
   function parseTargetOptionValue(value) {
-    const raw = String(value || 'hub|柱記事全体');
+    const raw = String(value || 'hub|記事コンテンツ全体');
     const [meta, ...labelParts] = raw.split('|');
-    const label = labelParts.join('|') || '柱記事全体';
+    const label = labelParts.join('|') || '記事コンテンツ全体';
     if (meta === 'hub' || !meta) {
-      return { targetType: 'hub', targetLabel: label || '柱記事全体' };
+      return { targetType: 'hub', targetLabel: label || '記事コンテンツ全体' };
     }
     const [kind, id] = meta.split(':');
     if (kind === 'section') {
@@ -662,7 +662,7 @@
     if (!select) return;
     const targets = report?.changeTargets?.length
       ? report.changeTargets
-      : [{ value: 'hub', label: '柱記事全体', targetType: 'hub' }];
+      : [{ value: 'hub', label: '記事コンテンツ全体', targetType: 'hub' }];
     select.innerHTML = targets
       .map((t) => {
         const value = `${t.value}|${t.label}`;
@@ -1263,7 +1263,7 @@
     if (!data) {
       if (msg) {
         msg.textContent =
-          '競合調査タブで記事 URL を保存後、「競合記事を取得・比較」を実行してください。';
+          '上で記事 URL を保存後、「競合記事を取得・比較」を実行してください。';
       }
       return;
     }
@@ -1317,14 +1317,19 @@
   }
 
   function showError(msg) {
-    const el = document.getElementById('weekly-error');
-    if (!el) return;
-    if (msg) {
-      el.textContent = msg;
-      el.hidden = false;
-    } else {
-      el.hidden = true;
-      el.textContent = '';
+    const weeklyEl = document.getElementById('weekly-error');
+    const fetchMsg = document.getElementById('weekly-fetch-msg');
+    if (weeklyEl) {
+      if (msg) {
+        weeklyEl.textContent = msg;
+        weeklyEl.hidden = false;
+      } else {
+        weeklyEl.hidden = true;
+        weeklyEl.textContent = '';
+      }
+    }
+    if (msg && fetchMsg && document.getElementById('panel-ranking') && !document.getElementById('panel-ranking').hidden) {
+      fetchMsg.textContent = msg;
     }
   }
 
@@ -1356,17 +1361,29 @@
   }
 
   async function fetchRankings() {
-    const category = getWeeklyCategory();
+    const kyosoCat =
+      typeof window.CategorySelect?.get === 'function'
+        ? window.CategorySelect.get('kyoso-category', 'kyoso-category-other')
+        : '';
+    if (kyosoCat && window.CategorySelect) {
+      window.CategorySelect.set('weekly-category', 'weekly-category-other', kyosoCat);
+    }
+    const category = getWeeklyCategory() || kyosoCat;
     const compare = getCompareMode();
     const btn = document.getElementById('weekly-fetch');
     const msg = document.getElementById('weekly-fetch-msg');
     showError('');
 
+    if (!category) {
+      showError('カテゴリを選択してください。');
+      return;
+    }
+
     if (btn) {
       btn.disabled = true;
       btn.textContent = '取得中…（数分かかることがあります）';
     }
-    if (msg) msg.textContent = '｜ランキング取得中…';
+    if (msg) msg.textContent = '取得して保存中…';
 
     try {
       const res = await fetch('/api/weekly/fetch', {
@@ -1383,27 +1400,27 @@
         const diag = data.rankingDiagnostics || {};
         if (!data.bestsellers?.length) {
           msg.textContent = diag.emptyReason
-            ? `｜${diag.emptyReason}`
-            : '｜ランキング0件。競合調査で公式URLを保存してください';
+            ? diag.emptyReason
+            : 'ランキング0件。上で公式URLを保存してから再実行してください。';
         } else if (diag.recommendSaveOfficialUrls) {
           msg.textContent =
-            '｜取得完了（検索フォールバックあり — 競合調査で公式URL保存を推奨）';
+            '取得完了（検索フォールバックあり — 公式URL保存を推奨）';
         } else {
-          msg.textContent = '｜取得完了';
+          msg.textContent = '取得完了。週次レポートで内容を確認できます。';
         }
       }
     } catch (err) {
       const raw = String(err?.message || err || '');
       const friendly =
         /failed to fetch|networkerror|load failed|aborted/i.test(raw)
-          ? '通信が切れました。取得中にサーバーが再起動したか、時間がかかりすぎた可能性があります。もう一度「今週のランキングを取得」を実行してください。'
+          ? '通信が切れました。取得中にサーバーが再起動したか、時間がかかりすぎた可能性があります。もう一度「取得して、週次レポート用に保存する」を実行してください。'
           : raw;
       showError(friendly);
-      if (msg) msg.textContent = '｜取得失敗';
+      if (msg) msg.textContent = '取得失敗';
     } finally {
       if (btn) {
         btn.disabled = false;
-        btn.textContent = '今週のランキングを取得';
+        btn.textContent = '取得して、週次レポート用に保存する';
       }
     }
   }
@@ -1446,11 +1463,11 @@
   });
 
   document.getElementById('weekly-to-kyoso')?.addEventListener('click', () => {
-    const weeklyCat = getWeeklyCategory();
-    if (window.CategorySelect) {
-      window.CategorySelect.set('kyoso-category', 'kyoso-category-other', weeklyCat);
+    if (typeof window.openRankingTab === 'function') {
+      window.openRankingTab();
+      return;
     }
-    document.querySelector('.tab-btn[data-tab="kyoso"]')?.click();
+    document.querySelector('.tab-btn[data-tab="ranking"]')?.click();
   });
 
   async function analyzeCompetitorFromWeekly() {
@@ -1499,13 +1516,15 @@
   document.getElementById('weekly-competitor-analyze')?.addEventListener('click', analyzeCompetitorFromWeekly);
 
   document.getElementById('weekly-competitor-setup')?.addEventListener('click', () => {
-    const weeklyCat = getWeeklyCategory();
-    if (window.CategorySelect) {
-      window.CategorySelect.set('kyoso-category', 'kyoso-category-other', weeklyCat);
-    }
-    document.querySelector('.tab-btn[data-tab="kyoso"]')?.click();
-    document.getElementById('kyoso-article-panel')?.scrollIntoView({ behavior: 'smooth' });
+    showTabOrScrollToCompetitorUrls();
   });
+
+  function showTabOrScrollToCompetitorUrls() {
+    document.querySelector('.tab-btn[data-tab="weekly"]')?.click();
+    requestAnimationFrame(() => {
+      document.getElementById('kyoso-article-panel')?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    });
+  }
 
   window.addEventListener('competitor-analysis-updated', (ev) => {
     const category = getWeeklyCategory();

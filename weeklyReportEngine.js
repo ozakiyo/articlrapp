@@ -67,7 +67,7 @@ function saveArticleMaster(category, articleMaster) {
 }
 
 /**
- * 柱記事の今週KPIを更新（旧値は prev へ退避）
+ * 記事コンテンツの今週KPIを更新（旧値は prev へ退避）
  * @param {object} articleMaster
  * @param {{ weeklyPv?: number|null, weeklyProductDetailClicks?: number|null, weeklyCv?: number|null }} kpi
  */
@@ -512,7 +512,7 @@ function buildReplacements(comparison, currentItems, articleMaster) {
     replacements.push({
       sectionId: section?.id || null,
       articleId: section?.id || null,
-      articleTitle: prod.section || section?.title || '柱記事',
+      articleTitle: prod.section || section?.title || '記事コンテンツ',
       productId: prod.id,
       fromLabel: prod.label,
       fromPosition: prod.position,
@@ -578,7 +578,7 @@ function clickRatePercent(clicks, pv) {
   return Math.round((Number(clicks) / p) * 1000) / 10;
 }
 
-/** 問い6: 柱記事PV + 見出し別・商品別クリック */
+/** 問い6: 記事コンテンツPV + 見出し別・商品別クリック */
 function buildHubPerformance(articleMaster) {
   const perfCfg = config.performance || {};
   const hub = articleMaster.hubPage || {};
@@ -592,12 +592,12 @@ function buildHubPerformance(articleMaster) {
     else if (pvChg <= (perfCfg.hubPvDeclineAlertPercent ?? -10)) hubTrend = 'down';
   }
 
-  const hubReasons = [`柱記事PV ${formatPv(pv)}`];
+  const hubReasons = [`記事コンテンツPV ${formatPv(pv)}`];
   if (pvChg != null) hubReasons.push(`先週比 ${pvChg > 0 ? '+' : ''}${pvChg}%`);
   if (hubTrend === 'down') hubReasons.push('流入減少 — 全体の訴求・ランキング差し替えを優先');
 
   const hubPv = {
-    title: hub.title || '柱記事',
+    title: hub.title || '記事コンテンツ',
     url: hub.url || '',
     weeklyPv: pv,
     prevWeeklyPv: prevPv,
@@ -638,7 +638,7 @@ function buildHubPerformance(articleMaster) {
       const reasons = [`掲載${prod.position}位・${prod.section}`];
       reasons.push(`クリック ${clicks}件`);
       if (clickChg != null) reasons.push(`先週比 ${clickChg > 0 ? '+' : ''}${clickChg}%`);
-      if (isHighClick) reasons.push('柱記事内で高クリック商品');
+      if (isHighClick) reasons.push('記事コンテンツ内で高クリック商品');
       return {
         id: prod.id,
         label: prod.label,
@@ -780,7 +780,7 @@ function buildPriorityReason(task, score, level, hubPerformance) {
   if (task.detail) parts.push(task.detail);
   const hubPv = hubPerformance?.hubPv;
   if (hubPv?.pvChangePercent != null && !task.performanceHint) {
-    parts.push(`柱記事PV ${formatPv(hubPv.weeklyPv)}（${hubPv.pvChangePercent > 0 ? '+' : ''}${hubPv.pvChangePercent}%）`);
+    parts.push(`記事コンテンツPV ${formatPv(hubPv.weeklyPv)}（${hubPv.pvChangePercent > 0 ? '+' : ''}${hubPv.pvChangePercent}%）`);
   }
   return parts.join(' — ');
 }
@@ -937,7 +937,7 @@ function buildChangeEffectItem(log, articleMaster, context) {
     effectType: isProduct ? 'product' : 'article',
     sectionId: log.sectionId || log.articleId || section?.id || null,
     articleId: log.sectionId || log.articleId || section?.id || null,
-    articleTitle: log.sectionTitle || log.articleTitle || section?.title || product?.section || '柱記事',
+    articleTitle: log.sectionTitle || log.articleTitle || section?.title || product?.section || '記事コンテンツ',
     productId: log.productId || null,
     productLabel: log.productLabel || product?.label || null,
     menuHeadingId: log.menuHeadingId || null,
@@ -1063,7 +1063,7 @@ function buildChangeLogFromEntries(entries, weekId, confirmedAt) {
     .filter((e) => e && (e.description || e.targetLabel))
     .map((e) => {
       const targetType = String(e.targetType || 'hub');
-      const targetLabel = String(e.targetLabel || e.sectionTitle || e.articleTitle || '柱記事全体').trim();
+      const targetLabel = String(e.targetLabel || e.sectionTitle || e.articleTitle || '記事コンテンツ全体').trim();
       const description = String(e.description || '').trim() || targetLabel;
       const expectedEffect = String(e.expectedEffect || '').trim() || null;
       return {
@@ -1084,7 +1084,7 @@ function buildChangeLogFromEntries(entries, weekId, confirmedAt) {
 
 /** 改修登録フォーム用の対象候補 */
 function buildChangeTargets(articleMaster) {
-  const targets = [{ value: 'hub', label: '柱記事全体', targetType: 'hub' }];
+  const targets = [{ value: 'hub', label: '記事コンテンツ全体', targetType: 'hub' }];
   for (const s of getSections(articleMaster)) {
     if (!s?.id && !s?.title) continue;
     targets.push({
@@ -1220,8 +1220,8 @@ function buildSectionChanges(comparison, articleMaster, replacements, newProposa
       status === 'ok'
     ) {
       status = 'info';
-      recommendation = '柱記事流入減 — 見出し・商品の見直し';
-      reasons.push(`柱記事PV ${hubPvChg}%`);
+      recommendation = '記事コンテンツ流入減 — 見出し・商品の見直し';
+      reasons.push(`記事コンテンツPV ${hubPvChg}%`);
     }
 
     changes.push({
@@ -1513,7 +1513,7 @@ function buildEmptyReport(category, articleMaster, previousSnapshot) {
       changeType: 'pending',
       status: 'info',
       recommendation: 'ランキング取得後に判定',
-      reason: '「今週のランキングを取得」を実行してください。',
+      reason: 'ランキングで「取得して、週次レポート用に保存する」を実行してください。',
       headingCandidate: section.headingCandidate,
     };
   });

@@ -17,7 +17,7 @@ module.exports = {
     minMallCountForHighlight: 2,
   },
 
-  /** 柱記事1ページPV + 商品別・見出し別クリック */
+  /** 記事コンテンツ1ページPV + 商品別・見出し別クリック */
   articlePerformancePhase: 'hub-clicks',
 
   reasonMode: 'rule',
@@ -41,7 +41,7 @@ module.exports = {
     highProductClickThreshold: 200,
   },
 
-  /** 優先度 = 商品クリック + 見出しクリック + 掲載順位 + 柱記事PV変化 */
+  /** 優先度 = 商品クリック + 見出しクリック + 掲載順位 + 記事コンテンツPV変化 */
   priorityScoring: {
     productClickWeight: 0.8,
     menuClickWeight: 0.3,

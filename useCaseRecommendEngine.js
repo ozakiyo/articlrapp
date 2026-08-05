@@ -1,9 +1,27 @@
 'use strict';
 
+const fs = require('fs');
+const path = require('path');
 const cheerio = require('cheerio');
 const { parseJsonFromModelOutput } = require('./parseModelJson');
 
 const KOJIMA_ORIGIN = 'https://www.kojima.net';
+
+/** refrigerator.html / mixer.html と同型の記事用CSS（出力HTMLにインライン） */
+let kojimaFeatureArticleCssCache = null;
+function getKojimaFeatureArticleStyleTag() {
+  if (kojimaFeatureArticleCssCache == null) {
+    const cssPath = path.join(__dirname, 'public', 'css', 'kojima-feature-article.css');
+    try {
+      kojimaFeatureArticleCssCache = fs.readFileSync(cssPath, 'utf8').trim();
+    } catch (err) {
+      console.warn('⚠️ kojima-feature-article.css を読めません:', err.message);
+      kojimaFeatureArticleCssCache = '';
+    }
+  }
+  if (!kojimaFeatureArticleCssCache) return '';
+  return `<style type="text/css">\n${kojimaFeatureArticleCssCache}\n</style>`;
+}
 
 function productKey(p) {
   return String(p?.modelKey || p?.modelCode || p?.id || `${p?.manufacturer || ''}|${p?.productName || ''}`).trim();
@@ -95,6 +113,57 @@ function sortKojimaRankingProducts(items) {
         'ja'
       );
     });
+}
+
+function productLookupKeys(p) {
+  return [
+    String(p?.modelKey || '').trim(),
+    String(p?.modelCode || '').trim(),
+    String(p?.modelCode || p?.modelKey || '').trim().toUpperCase(),
+    productCacheKey(p),
+    productKey(p),
+    String(p?.hrefKojima || '').trim(),
+  ].filter(Boolean);
+}
+
+/**
+ * 週次 composite 等のカタログから hrefKojima などを補完する。
+ */
+function enrichProductsWithKojimaUrls(products, catalog = []) {
+  const byKey = new Map();
+  for (const c of catalog || []) {
+    for (const k of productLookupKeys(c)) {
+      if (!byKey.has(k)) byKey.set(k, c);
+    }
+  }
+  return (products || []).map((p) => {
+    if (String(p?.hrefKojima || '').trim()) return p;
+    let hit = null;
+    for (const k of productLookupKeys(p)) {
+      hit = byKey.get(k);
+      if (hit) break;
+    }
+    if (!hit) return p;
+    return {
+      ...p,
+      hrefKojima: p.hrefKojima || hit.hrefKojima || '',
+      hrefAmazon: p.hrefAmazon || hit.hrefAmazon || '',
+      hrefRakuten: p.hrefRakuten || hit.hrefRakuten || '',
+      hrefYahoo: p.hrefYahoo || hit.hrefYahoo || '',
+      hrefBic: p.hrefBic || hit.hrefBic || '',
+      rankKojima: p.rankKojima ?? hit.rankKojima ?? null,
+      label:
+        p.label ||
+        hit.label ||
+        [hit.manufacturer, hit.productName || hit.representativeModel, hit.modelCode]
+          .filter(Boolean)
+          .join(' '),
+    };
+  });
+}
+
+function countKojimaUrls(products) {
+  return (products || []).filter((p) => String(p?.hrefKojima || '').trim()).length;
 }
 
 function productIdentityKey(p) {
@@ -261,11 +330,7 @@ function filterKojimaProducts(items) {
   return (items || []).filter(hasKojimaStock).map((p, i) => ({
     ...p,
     _key: productKey(p) || `p-${i}`,
-    label:
-      p.label ||
-      [p.manufacturer, p.productName || p.representativeModel, p.modelCode]
-        .filter(Boolean)
-        .join(' '),
+    label: formatProductTitle(p) || p.label || '',
   }));
 }
 
@@ -281,6 +346,63 @@ function compactProductForPrompt(p) {
     compositeRank: p.compositeRank ?? p.rank ?? null,
     hrefKojima: p.hrefKojima || null,
   };
+}
+
+/** 商品タイトル: メーカー （あれば「シリーズ名」） 型式 */
+function resolveProductModel(product) {
+  const code = String(
+    product?.modelCode || product?.modelKey || product?.model || ''
+  )
+    .replace(/\s+/g, ' ')
+    .trim();
+  if (code) return code;
+  const rep = String(product?.representativeModel || '').replace(/\s+/g, ' ').trim();
+  // 長い商品名は型式として使わない
+  if (rep && rep.length <= 36 && !/\s/.test(rep)) return rep;
+  return '';
+}
+
+function normalizeSeriesName(raw, manufacturer, model) {
+  let s = String(raw || '')
+    .trim()
+    .replace(/^[「『"'“”]+|[」』"'“”]+$/g, '')
+    .trim();
+  if (!s) return '';
+  const maker = String(manufacturer || '').trim();
+  const modelCode = String(model || '').trim();
+  if (maker) {
+    s = s.replace(new RegExp(maker.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'gi'), '').trim();
+  }
+  if (modelCode) {
+    s = s
+      .replace(new RegExp(modelCode.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'gi'), '')
+      .trim();
+  }
+  s = s
+    .replace(/[（(][^）)]*[）)]/g, '')
+    .replace(/[【\[][^】\]]*[】\]]/g, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+  if (s.length < 2 || s.length > 28) return '';
+  if (/^\d+$/.test(s)) return '';
+  if (/おすすめ|限定|特価|レビュー/.test(s)) return '';
+  return s;
+}
+
+function formatProductTitle(product, seriesName) {
+  const manufacturer = String(product?.manufacturer || '').trim();
+  const model = resolveProductModel(product);
+  const series = normalizeSeriesName(
+    seriesName != null ? seriesName : product?.seriesName || product?.series || '',
+    manufacturer,
+    model
+  );
+  const parts = [];
+  if (manufacturer) parts.push(manufacturer);
+  if (series) parts.push(`「${series}」`);
+  if (model) parts.push(model);
+  if (parts.length) return parts.join(' ');
+  return String(product?.label || product?.productName || '').trim();
 }
 
 async function runGeminiJson(getGeminiModel, prompt, label) {
@@ -448,31 +570,412 @@ ${JSON.stringify(kojima.map(compactProductForPrompt), null, 2)}
   return { assignments, kojimaCount: kojima.length };
 }
 
+/** メーカー公式以外（販売店・価格比較）を除外 */
+function isRetailerOrMarketplaceUrl(url) {
+  return /amazon\.|rakuten\.|yahoo\.co\.jp|shopping\.yahoo|kojima\.net|biccamera\.|yodobashi\.|kakaku\.com|joshin\.|edion\.|yamada|bestbuy|mercari/i.test(
+    String(url || '')
+  );
+}
+
+function manufacturerDomainHint(manufacturer) {
+  const m = String(manufacturer || '').trim();
+  if (!m) return '';
+  const map = [
+    [/パナソニック|Panasonic/i, 'panasonic.jp'],
+    [/シャープ|Sharp/i, 'jp.sharp / sharp.co.jp'],
+    [/日立|HITACHI|Hitachi/i, 'hitachi.co.jp / hitachi-gls.co.jp'],
+    [/東芝|TOSHIBA|Toshiba/i, 'toshiba / toshiba-lifestyle'],
+    [/三菱電機|三菱|Mitsubishi/i, 'mitsubishielectric.co.jp'],
+    [/アイリスオーヤマ|IRIS/i, 'irisohyama.co.jp'],
+    [/ダイキン|Daikin/i, 'daikin.co.jp'],
+    [/ソニー|Sony/i, 'sony.jp'],
+    [/サムスン|Samsung/i, 'samsung.com/jp'],
+    [/LG/i, 'lg.com/jp'],
+    [/バルミューダ|BALMUDA/i, 'balmuda.com'],
+    [/ダイソン|Dyson/i, 'dyson.co.jp'],
+    [/エレクトロラックス|Electrolux/i, 'electrolux.jp / electrolux.co.jp'],
+    [/ハイアール|Haier/i, 'haier.com'],
+    [/アクア|AQUA/i, 'aqua-washer / hisense'],
+    [/ハイセンス|Hisense/i, 'hisense'],
+    [/富士通|Fujitsu/i, 'fujitsu-general.com'],
+    [/コロナ|CORONA/i, 'corona.co.jp'],
+    [/象印|ZOJIRUSHI/i, 'zojirushi.co.jp'],
+    [/タイガー|TIGER/i, 'tiger.jp'],
+    [/シロカ|siroca/i, 'siroca.co.jp'],
+    [/レコルト|recolte/i, 'recolte.jp'],
+    [/タニタ|TANITA/i, 'tanita.co.jp'],
+    [/オムロン|OMRON/i, 'omronconnectivity / healthcare.omron / omron.co.jp'],
+    [/エレコム|ELECOM/i, 'elecom.co.jp'],
+    [/ドリテック|dretec/i, 'dretec.co.jp'],
+    [/エー・アンド・デイ|A&D|AND /i, 'aandd.co.jp'],
+    [/Withings/i, 'withings.com'],
+    [/Eufy|Anker/i, 'eufy / ankerjapan'],
+    [/シチズン|CITIZEN/i, 'citizen.co.jp'],
+    [/山善|YAMAZEN/i, 'yamazen.co.jp'],
+  ];
+  for (const [re, hint] of map) {
+    if (re.test(m)) return hint;
+  }
+  return '';
+}
+
+/** ドメインヒントから site: 用のホスト候補を抜く */
+function manufacturerSiteHosts(manufacturer) {
+  const hint = manufacturerDomainHint(manufacturer);
+  if (!hint) return [];
+  return hint
+    .split(/[\s/]+/)
+    .map((s) => s.trim())
+    .filter((s) => s.includes('.') && !s.includes(' '));
+}
+
+function extractSerpUrls(html) {
+  const $ = cheerio.load(String(html || ''));
+  const urls = [];
+  const seen = new Set();
+  const push = (raw) => {
+    let target = String(raw || '').trim();
+    if (!target) return;
+    try {
+      if (target.includes('uddg=')) {
+        const abs = target.startsWith('http')
+          ? target
+          : `https://duckduckgo.com${target.startsWith('/') ? '' : '/'}${target}`;
+        target = decodeURIComponent(new URL(abs).searchParams.get('uddg') || '');
+      }
+      if (!/^https?:\/\//i.test(target)) return;
+      const u = new URL(target);
+      const normalized = `${u.origin}${u.pathname}`.replace(/\/$/, '');
+      if (seen.has(normalized) || isRetailerOrMarketplaceUrl(normalized)) return;
+      if (/duckduckgo|bing\.com|google\./i.test(u.hostname)) return;
+      seen.add(normalized);
+      urls.push(normalized);
+    } catch {
+      /* ignore */
+    }
+  };
+  $('a.result__a').each((_, el) => push($(el).attr('href') || ''));
+  if (!urls.length) {
+    const re = /uddg=(https?%3A%2F%2F[^&"']+)/gi;
+    let m;
+    while ((m = re.exec(String(html || '')))) {
+      try {
+        push(decodeURIComponent(m[1]));
+      } catch {
+        /* ignore */
+      }
+    }
+  }
+  return urls;
+}
+
+/**
+ * DuckDuckGo でメーカー公式製品ページ候補を探す
+ */
+async function searchManufacturerPageUrls({ product, fetchHtml }) {
+  if (typeof fetchHtml !== 'function') return [];
+  const manufacturer = String(product?.manufacturer || '').trim();
+  const model = String(product?.modelCode || product?.modelKey || '').trim();
+  const name = String(product?.productName || product?.label || '').trim();
+  const hosts = manufacturerSiteHosts(manufacturer);
+  const queries = [];
+  if (hosts[0] && model) queries.push(`site:${hosts[0]} ${model}`);
+  if (manufacturer && model) queries.push(`${manufacturer} ${model} 仕様 公式`);
+  if (manufacturer && model) queries.push(`${manufacturer} ${model} 製品`);
+  if (manufacturer && name) queries.push(`${manufacturer} ${name} 公式`);
+  if (!queries.length && name) queries.push(`${name} メーカー 公式 仕様`);
+
+  const found = [];
+  const seen = new Set();
+  for (const q of queries.slice(0, 3)) {
+    try {
+      const serpUrl = `https://html.duckduckgo.com/html/?q=${encodeURIComponent(q)}`;
+      console.log('🔎 maker SERP:', q);
+      // eslint-disable-next-line no-await-in-loop
+      const html = await fetchHtml(serpUrl);
+      for (const url of extractSerpUrls(html)) {
+        if (seen.has(url)) continue;
+        // ドメインヒントがある場合は優先フィルタ（緩く）
+        if (hosts.length) {
+          const hostOk = hosts.some((h) => url.includes(h.replace(/^www\./, '')));
+          if (!hostOk && found.length >= 2) continue;
+        }
+        seen.add(url);
+        found.push(url);
+      }
+      if (found.length >= 4) break;
+    } catch (err) {
+      console.warn('maker SERP failed:', q, err.message);
+    }
+  }
+  return found.slice(0, 5);
+}
+
+function isBlankFeatureValue(value) {
+  const v = String(value || '')
+    .trim()
+    .replace(/\s+/g, '');
+  return !v || v === '—' || v === '-' || v === 'ー' || v === '−' || v === 'なし' || v === '不明';
+}
+
+function featureFillScore(rows) {
+  return (rows || []).filter((r) => !isBlankFeatureValue(r?.value)).length;
+}
+
+function pickBetterFeatureRows(primary, secondary, labels) {
+  const a = normalizeFeatureRows(primary || [], labels);
+  const b = normalizeFeatureRows(secondary || [], labels);
+  const scoreA = featureFillScore(a);
+  const scoreB = featureFillScore(b);
+  if (scoreA === 0 && scoreB === 0) return a;
+  if (scoreA >= scoreB) {
+    // primary の空欄だけ secondary で補完
+    return a.map((row, i) =>
+      isBlankFeatureValue(row.value) && b[i] && !isBlankFeatureValue(b[i].value)
+        ? { label: row.label, value: b[i].value }
+        : row
+    );
+  }
+  return b.map((row, i) =>
+    isBlankFeatureValue(row.value) && a[i] && !isBlankFeatureValue(a[i].value)
+      ? { label: row.label, value: a[i].value }
+      : row
+  );
+}
+
+function looksLikeLowQualityScrape(text) {
+  const t = String(text || '').replace(/\s+/g, ' ').trim();
+  if (t.length < 250) return true;
+  const lower = t.toLowerCase();
+  const junkHits = [
+    'cookie',
+    'クッキー',
+    '同意する',
+    'access denied',
+    'just a moment',
+    'captcha',
+    'ロボット',
+    'enable javascript',
+  ].filter((w) => lower.includes(w)).length;
+  const uniqueRatio = new Set(t.split(' ').filter(Boolean)).size / Math.max(t.split(' ').length, 1);
+  return junkHits >= 2 || uniqueRatio < 0.12;
+}
+
 async function resolveManufacturerPageUrl({ product, getGeminiModel }) {
+  const domainHint = manufacturerDomainHint(product?.manufacturer);
   const prompt = `
-家電メーカーの公式サイト上の、次の商品の製品情報ページURLを1つ推定してください。
-存在が不確かな場合は null。
+家電メーカーの公式サイト上の、次の商品の製品仕様・製品情報ページURLを最大3つ候補で挙げてください。
+コジマ・Amazon・楽天・Yahoo・ビック・ヨドバシ・価格.com など販売店・価格比較サイトのURLは禁止です。
+確からしい順に並べ、不確かな場合は urls を空配列に。
 
 # 商品
 ${JSON.stringify(compactProductForPrompt(product), null, 2)}
 
+# メーカー公式ドメインのヒント（あればこの系統を優先）
+${domainHint || '（特になし。メーカー公式ドメインを推定）'}
+
 # 出力（厳密にJSONのみ）
 {
-  "url": "https://...",
+  "urls": ["https://...", "https://..."],
+  "url": "https://...（最有力1件。urls[0]と同じで可）",
   "confidence": "high|medium|low",
   "note": "短い補足"
 }
 `;
   const data = await runGeminiJson(getGeminiModel, prompt, 'resolveMakerUrl');
-  const url = String(data?.url || '').trim();
-  if (!/^https?:\/\//i.test(url)) {
-    return { url: null, confidence: 'low', note: data?.note || 'URLを特定できませんでした' };
-  }
-  return {
-    url,
-    confidence: data?.confidence || 'medium',
-    note: data?.note || '',
+  const urls = [];
+  const pushUrl = (u) => {
+    const url = String(u || '').trim();
+    if (!/^https?:\/\//i.test(url) || isRetailerOrMarketplaceUrl(url)) return;
+    if (!urls.includes(url)) urls.push(url);
   };
+  if (Array.isArray(data?.urls)) data.urls.forEach(pushUrl);
+  pushUrl(data?.url);
+  return {
+    url: urls[0] || null,
+    urls,
+    confidence: data?.confidence || (urls.length ? 'medium' : 'low'),
+    note: data?.note || (urls.length ? '' : 'メーカー公式URLを特定できませんでした'),
+  };
+}
+
+/**
+ * メーカー公式ページを複数候補からスクレイプして本文を集める
+ */
+async function gatherManufacturerFacts({
+  product,
+  forcedUrl,
+  scrape,
+  fetchHtml,
+  getGeminiModel,
+}) {
+  const tried = [];
+  const candidates = [];
+  const forced = String(forcedUrl || product?.manufacturerUrl || '').trim();
+  if (forced && !isRetailerOrMarketplaceUrl(forced)) candidates.push(forced);
+
+  // 検索で公式ページを先に拾う（Geminiの幻覚URLより実在しやすい）
+  try {
+    const searched = await searchManufacturerPageUrls({ product, fetchHtml });
+    for (const u of searched) candidates.push(u);
+  } catch (err) {
+    console.warn('searchManufacturerPageUrls:', err.message);
+  }
+
+  let urlMeta = null;
+  try {
+    urlMeta = await resolveManufacturerPageUrl({ product, getGeminiModel });
+    for (const u of urlMeta.urls || []) candidates.push(u);
+    if (urlMeta.url) candidates.push(urlMeta.url);
+  } catch (err) {
+    urlMeta = { url: null, urls: [], confidence: 'low', note: String(err?.message || err) };
+  }
+
+  const uniqueCandidates = [...new Set(candidates.filter(Boolean))];
+  let best = {
+    text: '',
+    error: uniqueCandidates.length ? null : 'メーカーURL未設定',
+    charCount: 0,
+    url: null,
+  };
+
+  for (const url of uniqueCandidates.slice(0, 5)) {
+    tried.push(url);
+    try {
+      // eslint-disable-next-line no-await-in-loop
+      const scraped = await scrapeManufacturerFacts({ url, scrape, maxChars: 14000 });
+      const text = String(scraped.text || '').trim();
+      const charCount = text.length;
+      const low = looksLikeLowQualityScrape(text);
+      console.log(
+        `📄 maker scrape ${charCount} chars quality=${low ? 'low' : 'ok'} ${url}`
+      );
+      if (charCount > best.charCount && !low) {
+        best = { text, error: null, charCount, url };
+        if (charCount >= 800) break;
+      } else if (charCount > best.charCount) {
+        best = { text, error: scraped.error || '本文品質が低い', charCount, url };
+      }
+    } catch (err) {
+      console.warn('maker scrape failed:', url, err.message);
+    }
+  }
+
+  return {
+    ...best,
+    manufacturerUrl: best.url || uniqueCandidates[0] || null,
+    urlMeta,
+    triedUrls: tried,
+  };
+}
+
+/**
+ * 商品名・型番から埋められる項目をヒューリスティックに補完（体重計など）
+ */
+function heuristicFeatureRowsFromProduct(category, product, featureLabels) {
+  const labels =
+    Array.isArray(featureLabels) && featureLabels.length
+      ? featureLabels
+      : defaultFeatureLabelsForCategory(category);
+  const blob = [
+    product?.label,
+    product?.productName,
+    product?.representativeModel,
+    product?.modelCode,
+    product?.manufacturer,
+  ]
+    .filter(Boolean)
+    .join(' ');
+  const rows = labels.map((label) => ({ label, value: '—' }));
+  const setIf = (pred, labelSubstr, value) => {
+    const idx = rows.findIndex((r) => r.label.includes(labelSubstr));
+    if (idx >= 0 && isBlankFeatureValue(rows[idx].value) && pred) {
+      rows[idx].value = value;
+    }
+  };
+
+  if (/体重計|体組成|体脂肪|ヘルスメーター/i.test(String(category || '')) || /体組成|体脂肪|体重計/i.test(blob)) {
+    const measures = [];
+    if (/体重/.test(blob) || /体組成|体脂肪|体重計/.test(blob) || /体重計|体組成/.test(String(category || ''))) {
+      measures.push('体重');
+    }
+    if (/体脂肪/.test(blob) || /体組成/.test(String(category || ''))) measures.push('体脂肪率');
+    if (/筋肉/.test(blob)) measures.push('筋肉量');
+    if (/骨量|骨/.test(blob)) measures.push('骨量');
+    if (/水分/.test(blob)) measures.push('体水分率');
+    if (/BMI/i.test(blob)) measures.push('BMI');
+    if (/内臓脂肪/.test(blob)) measures.push('内臓脂肪レベル');
+    if (/基礎代謝/.test(blob)) measures.push('基礎代謝量');
+    // カテゴリが体組成計なら最低限
+    if (!measures.length && /体組成/.test(String(category || ''))) {
+      measures.push('体重', '体脂肪率');
+    }
+    if (measures.length) {
+      setIf(true, '測定', [...new Set(measures)].join('・'));
+    }
+    if (/Bluetooth|ブルートゥース|アプリ|スマホ|スマートフォン|Wi-?Fi/i.test(blob)) {
+      setIf(true, 'スマホ', 'あり（アプリ連携）');
+    }
+  }
+  return rows;
+}
+
+/**
+ * 公式ページ本文が取れないときのフォールバック。
+ * 型番が特定できる場合、メーカー公式として一般公開されている仕様で埋める。
+ */
+async function fillFeatureRowsFromOfficialModelKnowledge({
+  category,
+  product,
+  featureLabels,
+  getGeminiModel,
+}) {
+  const labels =
+    Array.isArray(featureLabels) && featureLabels.length
+      ? featureLabels
+      : defaultFeatureLabelsForCategory(category);
+  const modelCode = String(product?.modelCode || product?.modelKey || '').trim();
+  const manufacturer = String(product?.manufacturer || '').trim();
+  if (!modelCode && !manufacturer) {
+    return heuristicFeatureRowsFromProduct(category, product, labels);
+  }
+
+  const prompt = `
+あなたはメーカー公式スペック記入係です。
+次の商品について、メーカー公式サイト／公式カタログで公開されている仕様として一般に知られている内容で機能表を埋めてください。
+販売店（コジマ・Amazon・楽天等）の独自表記は使わないでください。
+
+重要:
+- 型番が分かる場合、その型番の公式仕様を優先して具体値を書く（全部「—」にしない）
+- 体重計・体組成計なら測定項目・スマホ連携・サイズ・最小表示・登録人数をできるだけ埋める
+- 本当に分からない項目だけ「—」
+- 値は短く（例: 「体重・体脂肪率・筋肉量」「Bluetooth」「約300×300×28mm」「100g単位」「5人」）
+
+# カテゴリ
+${category}
+
+# 商品
+${JSON.stringify(compactProductForPrompt(product), null, 2)}
+
+# 機能表ラベル（この順序で values）
+${JSON.stringify(labels, null, 2)}
+
+# 出力（厳密にJSONのみ）
+{ "values": ["値1", "値2", "値3", "値4", "値5"], "note": "短い補足" }
+`;
+  try {
+    const data = await runGeminiJson(
+      getGeminiModel,
+      prompt,
+      'fillFeatureRowsFromOfficialModelKnowledge'
+    );
+    const fromAi = normalizeFeatureRowsFromValues(data?.values, labels);
+    const heur = heuristicFeatureRowsFromProduct(category, product, labels);
+    return pickBetterFeatureRows(fromAi, heur, labels);
+  } catch (err) {
+    console.warn('fillFeatureRowsFromOfficialModelKnowledge:', err.message);
+    return heuristicFeatureRowsFromProduct(category, product, labels);
+  }
 }
 
 async function scrapeManufacturerFacts({ url, scrape, maxChars = 12000 }) {
@@ -551,10 +1054,21 @@ async function resolveFeatureLabels({ category, getGeminiModel }) {
 
 /**
  * 分類共通ラベルに合わせて機能表を揃える（不明は —）
+ * ラベルの完全一致に加え、正規化／部分一致でも値を拾う
  */
+function normalizeLabelKey(s) {
+  return String(s || '')
+    .trim()
+    .replace(/\s+/g, '')
+    .replace(/[（(].*?[）)]/g, '')
+    .replace(/[・･./／]/g, '')
+    .toLowerCase();
+}
+
 function normalizeFeatureRows(rows, labels) {
   const list = Array.isArray(labels) && labels.length ? labels : [];
   const byLabel = new Map();
+  const byKey = new Map();
   for (const r of rows || []) {
     const label = String(r?.label || '')
       .trim()
@@ -562,7 +1076,9 @@ function normalizeFeatureRows(rows, labels) {
     const value = String(r?.value || '')
       .trim()
       .replace(/\s+/g, ' ');
-    if (label) byLabel.set(label, value || '—');
+    if (!label) continue;
+    byLabel.set(label, value || '—');
+    byKey.set(normalizeLabelKey(label), value || '—');
   }
   if (!list.length) {
     return (rows || [])
@@ -572,10 +1088,97 @@ function normalizeFeatureRows(rows, labels) {
       }))
       .filter((r) => r.label);
   }
-  return list.map((label) => ({
+  return list.map((label) => {
+    if (byLabel.has(label)) return { label, value: byLabel.get(label) || '—' };
+    const key = normalizeLabelKey(label);
+    if (byKey.has(key)) return { label, value: byKey.get(key) || '—' };
+    for (const [k, v] of byKey.entries()) {
+      if (k && key && (k.includes(key) || key.includes(k))) {
+        return { label, value: v || '—' };
+      }
+    }
+    return { label, value: '—' };
+  });
+}
+
+function normalizeFeatureRowsFromValues(values, labels) {
+  const list = Array.isArray(labels) && labels.length ? labels : [];
+  const vals = Array.isArray(values) ? values : [];
+  return list.map((label, i) => ({
     label,
-    value: byLabel.get(label) || '—',
+    value: String(vals[i] ?? '')
+      .trim()
+      .replace(/\s+/g, ' ') || '—',
   }));
+}
+
+/**
+ * メーカー公式テキストのみを根拠に機能表を埋める（販売店ページは使わない）
+ */
+async function extractFeatureRowsFromManufacturerFacts({
+  category,
+  product,
+  featureLabels,
+  factsText,
+  manufacturerUrl,
+  getGeminiModel,
+}) {
+  const labels =
+    Array.isArray(featureLabels) && featureLabels.length
+      ? featureLabels
+      : defaultFeatureLabelsForCategory(category);
+  const text = String(factsText || '').trim();
+  if (text.length < 80) {
+    return labels.map((label) => ({ label, value: '—' }));
+  }
+
+  const prompt = `
+あなたは家電スペック抽出係です。
+次の「メーカー公式ページ本文」だけを根拠に、機能表の値を埋めてください。
+コジマ・Amazon・楽天・Yahoo・ビックなど販売店の情報は使いません。
+
+重要:
+- 本文に書かれている測定項目・連携・サイズ・表示単位・登録人数などは必ず拾って具体値にする
+- 全部を「—」にしない（本文にスペックらしき記述があるなら最低2項目は埋める）
+- 本文に本当にない項目だけ「—」
+
+# カテゴリ
+${category}
+
+# 商品
+${JSON.stringify(compactProductForPrompt(product), null, 2)}
+
+# メーカー公式URL
+${manufacturerUrl || '（なし）'}
+
+# メーカー公式ページ本文
+${text.slice(0, 12000)}
+
+# 機能表ラベル（この順序・この件数で values を返す）
+${JSON.stringify(labels, null, 2)}
+
+# 出力（厳密にJSONのみ）
+{
+  "values": ["値1", "値2", "値3", "値4", "値5"]
+}
+
+# 制約
+- values の件数はラベル数と完全一致
+- 値は短く具体的に（単位があれば残す）
+- ラベル名は返さない（values のみ）
+`;
+
+  try {
+    const data = await runGeminiJson(
+      getGeminiModel,
+      prompt,
+      'extractFeatureRowsFromManufacturerFacts'
+    );
+    return normalizeFeatureRowsFromValues(data?.values, labels);
+  } catch (err) {
+    console.warn('extractFeatureRowsFromManufacturerFacts:', err.message);
+    return labels.map((label) => ({ label, value: '—' }));
+  }
 }
 
 function productCacheKey(product) {
@@ -589,7 +1192,7 @@ function productCacheKey(product) {
 }
 
 /**
- * 説明文・機能表・見出しを生成（機能表項目はカテゴリ共通）
+ * 説明文・見出しを生成（機能表はメーカー公式抽出結果を渡す）
  */
 async function generateProductCopy({
   category,
@@ -599,16 +1202,25 @@ async function generateProductCopy({
   manufacturerUrl,
   getGeminiModel,
   featureLabels,
+  featureRows: presetFeatureRows,
 }) {
   const labels =
     Array.isArray(featureLabels) && featureLabels.length
       ? featureLabels
       : defaultFeatureLabelsForCategory(category);
   const labelsJson = JSON.stringify(labels, null, 2);
+  const presetNormalized =
+    Array.isArray(presetFeatureRows) && presetFeatureRows.length
+      ? normalizeFeatureRows(presetFeatureRows, labels)
+      : null;
+  const usablePreset =
+    presetNormalized && featureFillScore(presetNormalized) > 0 ? presetNormalized : null;
+  const hasFacts = Boolean(factsText && String(factsText).trim().length >= 80);
 
   const prompt = `
 あなたはコジマネットの家電特集記事ライターです。
 参考形式（冷蔵庫記事）に合わせ、用途別おすすめ1商品の原稿を作ってください。
+スペック・機能の根拠はメーカー公式テキスト（またはメーカー公式として公開されている仕様）です。販売店ページの情報は使いません。
 
 # カテゴリ
 ${category}
@@ -619,46 +1231,67 @@ ${JSON.stringify(useCase || {}, null, 2)}
 # 商品
 ${JSON.stringify(compactProductForPrompt(product), null, 2)}
 
-# メーカー公式から取得したテキスト（根拠。無い場合は商品メタのみで慎重に）
+# メーカー公式から取得したテキスト（根拠）
 ${factsText ? factsText.slice(0, 10000) : '（取得なし）'}
 
 # メーカー公式URL
 ${manufacturerUrl || '（なし）'}
 
-# 機能表の項目（このカテゴリ共通。全商品で同じラベル・同じ順序）
-${labelsJson}
+${
+  usablePreset
+    ? `# 機能表（メーカー公式から抽出済み。説明文と矛盾させない）\n${JSON.stringify(usablePreset, null, 2)}\n`
+    : `# 機能表ラベル（featureValues をこの順序で埋める。本文や公式仕様から具体値を書く）\n${labelsJson}\n`
+}
 
 # 出力（厳密にJSONのみ）
 {
-  "heading": "メーカー「シリーズ」型番（主要スペック要約）",
-  "conclusion": "この商品の答えになる1文（40字前後・句点で終える。ラベルは書かない）",
+  "seriesName": "シリーズ名のみ（不明なら空文字。メーカー名・型式・スペックは書かない）",
+  "heading": "（サーバ側で組み立てるため空でよい）",
+  "conclusion": "この商品の答えになる1文（35〜45字・句点で終える。ラベルは書かない）",
   "suitableFor": "向いている人を自然な一文で（例: 一人暮らしで静音を重視する方に向いています。ラベルは書かない）",
-  "description": "先頭段落に conclusion と同じ文 → 空行 → 続きの説明。suitableFor の内容も本文に自然に含める。機能名は「」で示す。",
-  "featureRows": [
-    { "label": "上記の項目名と完全一致", "value": "値。不明なら —" }
-  ],
+  "description": "先頭段落に conclusion と同じ文 → 空行 → 続き1〜2文。suitableFor の内容も本文に自然に含める。機能名は「」で示す。全体で120〜160字（答えの1文を含む）。",
+  "featureValues": ["機能表と同じ順序の値"],
   "linkLabel": "商品詳細はこちら"
 }
 
 # 制約
+- seriesName は公式のシリーズ名があるときだけ（例: パワーコードレス）。無ければ ""
+- 商品タイトルはサーバ側で「メーカー 「シリーズ名」 型式」形式に組み立てる（シリーズが無ければ「メーカー 型式」）
 - conclusion / suitableFor / description は必須（空にしない）
 - description の先頭は答えの1文（conclusion）とし、「結論:」「向いている人:」などのラベルは一切書かない
-- featureRows は上記ラベルをすべて、同じ順序で出力する（件数はラベル数と一致）
-- ラベル名を言い換えない・追加しない・省略しない
-- 取得テキストにないスペック・数値は捏造しない。不明な項目の value は「—」
+- description は冗長にせず、答え1文＋続き1〜2文で全体120〜160字に収める（スペックの羅列や宣伝口調は避ける）
+- featureValues は機能表ラベルと同じ件数・同じ順序
+- ${hasFacts ? 'メーカー公式テキストにあるスペックは必ず featureValues に反映する（全部「—」禁止）' : '型番が分かる場合はメーカー公式仕様として知られている値をできるだけ埋め、全部「—」にしない'}
 - 説明文に書いたスペックと機能表の値は矛盾させない
 - 誇大広告・最上級表現は避ける
 - 家電販売店向けの丁寧な文体
 `;
 
   const data = await runGeminiJson(getGeminiModel, prompt, 'generateProductCopy');
-  const rawRows = Array.isArray(data?.featureRows)
-    ? data.featureRows.map((r) => ({
+  let featureRows;
+  if (usablePreset) {
+    featureRows = usablePreset;
+  } else if (Array.isArray(data?.featureValues) && data.featureValues.length) {
+    featureRows = normalizeFeatureRowsFromValues(data.featureValues, labels);
+  } else if (Array.isArray(data?.featureRows)) {
+    featureRows = normalizeFeatureRows(
+      data.featureRows.map((r) => ({
         label: String(r.label || '').trim(),
         value: String(r.value || '').trim(),
-      }))
-    : [];
-  const featureRows = normalizeFeatureRows(rawRows, labels);
+      })),
+      labels
+    );
+  } else {
+    featureRows = labels.map((label) => ({ label, value: '—' }));
+  }
+  // 生成結果が空ならヒューリスティックで最低限埋める
+  if (featureFillScore(featureRows) === 0) {
+    featureRows = pickBetterFeatureRows(
+      featureRows,
+      heuristicFeatureRowsFromProduct(category, product, labels),
+      labels
+    );
+  }
   const conclusion = stripUseCaseLabel(data?.conclusion);
   const suitableFor = stripUseCaseLabel(data?.suitableFor);
   let description = ensureUseCaseDescriptionPrefix(
@@ -668,7 +1301,9 @@ ${labelsJson}
   );
 
   return {
-    heading: String(data?.heading || product.label || product.productName || '').trim(),
+    heading:
+      formatProductTitle(product, data?.seriesName) ||
+      String(data?.heading || '').trim(),
     conclusion,
     suitableFor,
     description,
@@ -804,80 +1439,6 @@ ${rows}
 }
 
 /**
- * mixer.html 記事内 style と同系（pickup_spec は zzb_special4 外）
- */
-function buildUseCaseEmbeddedCss() {
-  return `<style type="text/css">
-#mainblock006479 .pickup{
-    border: 1px solid #e7e7e7;
-    border-radius: 3px;
-    -webkit-box-shadow: none;
-    box-shadow: none;
-    margin: 0 0 20px;
-    padding: 10px;
-}
-.pickup .commentblock{
-  border-bottom: 1px #666666 dotted;
-}
-/*レスポンシブtable*/
-#mainblock006479 table {
-  width: 100%;
-  table-layout: fixed;
-  word-break: break-all;
-  word-wrap: break-word;
-}
-.pickup_spec th, .recycling th {
-  background: #8a8a8a;
-  border: solid 1px #ccc;
-  color: #fff;
-  width: 100%;
-}
-.pickup_spec td, .recycling td {
-  width: 100%;
-}
-@media screen and (min-width:701px){
-#mainblock006479 {
-    width: 960px;
-    margin: 0 auto 100px !important;
-}
-#mainblock006479 .pickup{
-    padding: 30px;
-}
-#mainblock006479 table {
-  margin: 20px auto;
-  border-collapse: collapse;
-}
-.pickup_spec td, .recycling td{
-  padding: 10px;
-  border: solid 1px #ccc;
-  width: 70%;
-}
-.pickup_spec th, .recycling th{
-  padding: 10px;
-  width: 30%;
-}
-}
-@media screen and (max-width:700px){
-.pickup_spec {
-    width: 100%;
-}
-.pickup_spec th,
-.pickup_spec td {
-  border-bottom: none;
-  display: inline-block;
-  width: 100%;
-}
-.pickup_spec td {
-  padding: 10px 0;
-}
-.pickup_spec th {
-  padding: 5px 0;
-}
-}
-</style>`;
-}
-
-/**
  * @param {{ label: string, products: object[] }[]} sections
  *   products[].copy に generateProductCopy 結果
  * @param {{ category?: string, title?: string }} [meta]
@@ -898,9 +1459,10 @@ function renderUseCaseHtml(sections, meta = {}) {
                 ${productsHtml}`.trim();
   });
 
-  // mixer.html と同系: zzb_special4.css ＋ 記事内 pickup_spec CSS
-  return `<!-- Requires zzb_special4.css (#fwCms_wrapper / #mainblock006479 / .pickup / .linkbtn) -->
-${buildUseCaseEmbeddedCss()}
+  // refrigerator.html / mixer.html と同型: zzb_special4.css + 記事用インラインCSS
+  const articleStyle = getKojimaFeatureArticleStyleTag();
+  return `<!-- zzb_special4.css + 特集記事用CSS（refrigerator/mixer と同型） -->
+${articleStyle}
 <div id="fwCms_wrapper">
 <div id="mainblock006479">
 <h1 class="top_title">${escapeHtml(title)}</h1>
@@ -944,10 +1506,9 @@ async function generateCopyForProduct({
   productHtml = await fetchKojimaProductHtml(product, fetchHtml);
   const hasDetailUrl = Boolean(String(product?.hrefKojima || '').trim());
   const originalSoldOut = Boolean(productHtml) && isKojimaProductPageSoldOut(productHtml);
-  // コジマURL欠落（週次 bestsellers など）も差し替え対象。ページ未取得だけで切らない。
-  const needsSwap = originalSoldOut || !hasDetailUrl;
 
-  if (needsSwap) {
+  // 完売確定時のみ必須差し替え。URL欠落は差し替えを試みるが、失敗しても生成は続行する。
+  if (originalSoldOut || !hasDetailUrl) {
     const swap = await pickAvailableRankingReplacement({
       original: product,
       rankingProducts,
@@ -962,13 +1523,11 @@ async function generateCopyForProduct({
       if (originalKey) usedKeys.delete(originalKey);
       if (swap.key) usedKeys.add(swap.key);
       forcedUrl = null; // 差し替え商品では元のメーカーURLを使わない
-    } else {
+    } else if (originalSoldOut) {
       if (originalKey) usedKeys.delete(originalKey);
       return {
         skipped: true,
-        skipReason: originalSoldOut
-          ? 'sold_out_no_replacement'
-          : 'missing_kojima_url_no_replacement',
+        skipReason: 'sold_out_no_replacement',
         product,
         productLabel: originalLabel,
         productReplaced: false,
@@ -976,29 +1535,57 @@ async function generateCopyForProduct({
         copy: null,
       };
     }
+    // URL欠落のみで差し替え不可 → メーカー情報ベースで生成継続（掲載カットしない）
   }
 
   let manufacturerUrl = String(forcedUrl || effectiveProduct?.manufacturerUrl || '').trim() || null;
-  let urlMeta = null;
-  if (!manufacturerUrl) {
-    try {
-      urlMeta = await resolveManufacturerPageUrl({
-        product: effectiveProduct,
-        getGeminiModel,
-      });
-      manufacturerUrl = urlMeta.url;
-    } catch (err) {
-      urlMeta = {
-        url: null,
-        confidence: 'low',
-        note: String(err?.message || err),
-      };
-      manufacturerUrl = null;
-    }
+  if (manufacturerUrl && isRetailerOrMarketplaceUrl(manufacturerUrl)) {
+    manufacturerUrl = null;
   }
-  const scraped = manufacturerUrl
-    ? await scrapeManufacturerFacts({ url: manufacturerUrl, scrape })
-    : { text: '', error: 'メーカーURL未設定', charCount: 0 };
+
+  const gathered = await gatherManufacturerFacts({
+    product: effectiveProduct,
+    forcedUrl: manufacturerUrl,
+    scrape,
+    fetchHtml,
+    getGeminiModel,
+  });
+  let scraped = {
+    text: gathered.text || '',
+    error: gathered.error,
+    charCount: gathered.charCount || 0,
+  };
+  manufacturerUrl = gathered.manufacturerUrl || manufacturerUrl;
+  const urlMeta = gathered.urlMeta;
+
+  console.log(
+    `📋 usecase maker facts: url=${manufacturerUrl || '—'} chars=${scraped.charCount} tried=${(gathered.triedUrls || []).length}`
+  );
+
+  // 機能表はメーカー公式テキストから抽出
+  let featureRowsFromMaker = await extractFeatureRowsFromManufacturerFacts({
+    category,
+    product: effectiveProduct,
+    featureLabels,
+    factsText: scraped.text,
+    manufacturerUrl,
+    getGeminiModel,
+  });
+
+  // 空なら公式知識フォールバック＋商品名ヒューリスティック
+  if (featureFillScore(featureRowsFromMaker) < 2) {
+    const knowledgeRows = await fillFeatureRowsFromOfficialModelKnowledge({
+      category,
+      product: effectiveProduct,
+      featureLabels,
+      getGeminiModel,
+    });
+    featureRowsFromMaker = pickBetterFeatureRows(
+      featureRowsFromMaker,
+      knowledgeRows,
+      featureLabels
+    );
+  }
 
   const imageMeta = await resolveKojimaProductImage({
     product: effectiveProduct,
@@ -1014,7 +1601,13 @@ async function generateCopyForProduct({
     manufacturerUrl,
     getGeminiModel,
     featureLabels,
+    featureRows: featureRowsFromMaker,
   });
+  // 空の抽出結果で生成結果を潰さない
+  copy.featureRows = pickBetterFeatureRows(featureRowsFromMaker, copy.featureRows, featureLabels);
+  console.log(
+    `📋 usecase feature fill: ${featureFillScore(copy.featureRows)}/${(featureLabels || []).length} for ${effectiveProduct?.modelCode || effectiveProduct?.label || ''}`
+  );
 
   const detailUrl = String(effectiveProduct.hrefKojima || '').trim();
   const ctaUrl = detailUrl || manufacturerUrl || '';
@@ -1053,8 +1646,14 @@ module.exports = {
   assignProductsToUseCases,
   resolveManufacturerPageUrl,
   scrapeManufacturerFacts,
+  gatherManufacturerFacts,
   resolveFeatureLabels,
   normalizeFeatureRows,
+  normalizeFeatureRowsFromValues,
+  extractFeatureRowsFromManufacturerFacts,
+  fillFeatureRowsFromOfficialModelKnowledge,
+  pickBetterFeatureRows,
+  featureFillScore,
   defaultFeatureLabelsForCategory,
   productCacheKey,
   generateProductCopy,
@@ -1064,7 +1663,10 @@ module.exports = {
   resolveKojimaRankingUrl,
   resolveProductCtaLink,
   pickAvailableRankingReplacement,
+  enrichProductsWithKojimaUrls,
+  countKojimaUrls,
   isKojimaProductPageSoldOut,
   hasKojimaStock,
   productKey,
+  isRetailerOrMarketplaceUrl,
 };

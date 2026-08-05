@@ -5,6 +5,8 @@
   let lastHtml = '';
   let optionRowSeq = 0;
   let imageRowSeq = 0;
+  const DS = window.DraftStore;
+  let restoringDraft = false;
 
   const SAMPLE_MAIN_IMAGE =
     'https://picsum.photos/seed/articleapp-product-main/1200/675';
@@ -271,16 +273,6 @@
     );
   }
 
-  function resetForm() {
-    document.getElementById('form-productlp')?.reset();
-    const tone = document.getElementById('productlp-tone');
-    if (tone) tone.value = 'new_release';
-    clearOptionRows();
-    clearImageRows();
-    showError('');
-    setStatus('');
-  }
-
   function renderCtaPreview(cta, heading) {
     if (!cta?.label) return '';
     let html = `<div class="generated-block"><h3>${esc(heading)}</h3>
@@ -407,12 +399,124 @@
       setStatus(
         `完了（AI: ${data.aiProviderUsed || '—'} / 取得ソース: ${data.scrapedCount ?? 0}）`
       );
+      saveProductLpDraftNow();
     } catch (err) {
       showError(err.message || String(err));
       setStatus('');
     } finally {
       if (submit) submit.disabled = false;
     }
+  }
+
+  function collectProductLpDraft() {
+    return {
+      category: getCategory(),
+      tone: document.getElementById('productlp-tone')?.value || 'new_release',
+      manufacturer: document.getElementById('productlp-manufacturer')?.value || '',
+      productName: document.getElementById('productlp-name')?.value || '',
+      modelCode: document.getElementById('productlp-model')?.value || '',
+      releaseDate: document.getElementById('productlp-release-date')?.value || '',
+      reservationOpen: Boolean(document.getElementById('productlp-reservation')?.checked),
+      officialUrl: document.getElementById('productlp-official-url')?.value || '',
+      referenceUrl: document.getElementById('productlp-reference-url')?.value || '',
+      purchaseUrl: document.getElementById('productlp-purchase-url')?.value || '',
+      ctaLabel: document.getElementById('productlp-cta-label')?.value || '',
+      featureNotes: document.getElementById('productlp-notes')?.value || '',
+      mainImageUrl: document.getElementById('productlp-main-image-url')?.value || '',
+      mainImageAlt: document.getElementById('productlp-main-image-alt')?.value || '',
+      skipScrape: Boolean(document.getElementById('productlp-skip-scrape')?.checked),
+      images: collectImages(),
+      options: collectOptions(),
+      lastHtml: lastHtml || document.getElementById('productlp-html-output')?.value || '',
+      resultVisible: Boolean(
+        document.getElementById('productlp-result') &&
+          !document.getElementById('productlp-result').hidden
+      ),
+      warningsHtml: document.getElementById('productlp-warnings')?.innerHTML || '',
+    };
+  }
+
+  function applyProductLpDraft(draft) {
+    if (!draft || typeof draft !== 'object') return;
+    restoringDraft = true;
+    try {
+      if (draft.category && window.CategorySelect) {
+        window.CategorySelect.set(
+          'productlp-category',
+          'productlp-category-other',
+          draft.category
+        );
+      }
+      const set = (id, v) => {
+        const el = document.getElementById(id);
+        if (el && v != null) el.value = String(v);
+      };
+      set('productlp-tone', draft.tone || 'new_release');
+      set('productlp-manufacturer', draft.manufacturer || '');
+      set('productlp-name', draft.productName || '');
+      set('productlp-model', draft.modelCode || '');
+      set('productlp-release-date', draft.releaseDate || '');
+      const reservation = document.getElementById('productlp-reservation');
+      if (reservation) reservation.checked = Boolean(draft.reservationOpen);
+      set('productlp-official-url', draft.officialUrl || '');
+      set('productlp-reference-url', draft.referenceUrl || '');
+      set('productlp-purchase-url', draft.purchaseUrl || '');
+      set('productlp-cta-label', draft.ctaLabel || '');
+      set('productlp-notes', draft.featureNotes || '');
+      set('productlp-main-image-url', draft.mainImageUrl || '');
+      set('productlp-main-image-alt', draft.mainImageAlt || '');
+      const skip = document.getElementById('productlp-skip-scrape');
+      if (skip) skip.checked = Boolean(draft.skipScrape);
+
+      clearImageRows();
+      (draft.images || []).forEach((img) => addImageRow(img));
+      clearOptionRows();
+      (draft.options || []).forEach((opt) => addOptionRow(opt));
+
+      lastHtml = draft.lastHtml || '';
+      const htmlOut = document.getElementById('productlp-html-output');
+      if (htmlOut) htmlOut.value = lastHtml;
+      const result = document.getElementById('productlp-result');
+      const body = document.getElementById('productlp-body');
+      if (lastHtml && result && body) {
+        body.innerHTML = `<div class="generated-block"><h3>プレビュー（CMS用HTML）</h3>
+          <div class="generated-article productlp-html-preview">${lastHtml}</div></div>`;
+        result.hidden = !draft.resultVisible;
+      }
+      const warnEl = document.getElementById('productlp-warnings');
+      if (warnEl && draft.warningsHtml) {
+        warnEl.innerHTML = draft.warningsHtml;
+        warnEl.hidden = false;
+      }
+    } finally {
+      restoringDraft = false;
+    }
+  }
+
+  function saveProductLpDraftNow() {
+    if (!DS || restoringDraft) return;
+    DS.save(DS.KEYS.productLp, collectProductLpDraft());
+  }
+
+  const scheduleProductLpDraftSave = DS
+    ? DS.debounce(saveProductLpDraftNow, 500)
+    : function () {};
+
+  function restoreProductLpDraft() {
+    if (!DS) return;
+    const draft = DS.load(DS.KEYS.productLp);
+    if (!draft) return;
+    applyProductLpDraft(draft);
+    DS.setHint('productlp-draft-hint', draft.savedAt);
+  }
+
+  function discardProductLpDraft() {
+    if (!DS) return;
+    if (!confirm('個別商品ページの下書きを破棄しますか？（画面の内容はそのまま残ります）')) {
+      return;
+    }
+    DS.clear(DS.KEYS.productLp);
+    DS.clearHint('productlp-draft-hint');
   }
 
   async function copyHtml() {
@@ -448,21 +552,45 @@
     if (body) body.innerHTML = '';
     if (htmlOut) htmlOut.value = '';
     lastHtml = '';
+    saveProductLpDraftNow();
+  }
+
+  function resetForm() {
+    document.getElementById('form-productlp')?.reset();
+    const tone = document.getElementById('productlp-tone');
+    if (tone) tone.value = 'new_release';
+    clearOptionRows();
+    clearImageRows();
+    showError('');
+    setStatus('');
+    if (DS) {
+      DS.clear(DS.KEYS.productLp);
+      DS.clearHint('productlp-draft-hint');
+    }
   }
 
   function init() {
     document
       .getElementById('productlp-add-option')
-      ?.addEventListener('click', () => addOptionRow());
+      ?.addEventListener('click', () => {
+        addOptionRow();
+        scheduleProductLpDraftSave();
+      });
     document
       .getElementById('productlp-add-image')
-      ?.addEventListener('click', () => addImageRow());
+      ?.addEventListener('click', () => {
+        addImageRow();
+        scheduleProductLpDraftSave();
+      });
     document
       .getElementById('form-productlp')
       ?.addEventListener('submit', (e) => generate(e));
     document
       .getElementById('productlp-fill-sample')
-      ?.addEventListener('click', () => fillSampleBimPa26a());
+      ?.addEventListener('click', () => {
+        fillSampleBimPa26a();
+        scheduleProductLpDraftSave();
+      });
     document
       .getElementById('productlp-reset')
       ?.addEventListener('click', () => resetForm());
@@ -472,6 +600,29 @@
     document
       .getElementById('productlp-clear')
       ?.addEventListener('click', () => clearResult());
+    document
+      .getElementById('productlp-draft-discard')
+      ?.addEventListener('click', () => discardProductLpDraft());
+
+    const panel = document.getElementById('panel-productlp');
+    panel?.addEventListener('input', () => {
+      if (!restoringDraft) scheduleProductLpDraftSave();
+    });
+    panel?.addEventListener('change', () => {
+      if (!restoringDraft) scheduleProductLpDraftSave();
+    });
+
+    window.addEventListener('beforeunload', () => {
+      if (typeof scheduleProductLpDraftSave.flush === 'function') {
+        scheduleProductLpDraftSave.flush();
+      } else {
+        saveProductLpDraftNow();
+      }
+    });
+
+    const restore = () => restoreProductLpDraft();
+    window.addEventListener('categories-ready', restore, { once: true });
+    setTimeout(restore, 300);
   }
 
   if (document.readyState === 'loading') {

@@ -2,14 +2,31 @@
   const TAB_KEY = 'articleappNode-tab';
   const RANKING_CONTEXT_KEY = 'articleappNode.rankingContext';
   const COMPETITOR_ANALYSIS_KEY = 'articleappNode.competitorAnalysis';
+  const KYOSO_PHASE1_KEY = 'articleappNode.kyosoPhase1';
   const panels = {
     guide: document.getElementById('panel-guide'),
+    ranking: document.getElementById('panel-ranking'),
     weekly: document.getElementById('panel-weekly'),
-    kyoso: document.getElementById('panel-kyoso'),
     productlp: document.getElementById('panel-productlp'),
     usecase: document.getElementById('panel-usecase'),
     headings: document.getElementById('panel-headings'),
     article: document.getElementById('panel-article'),
+  };
+  /** ナビ tab 名 → 表示する panel キー */
+  const TAB_VISIBLE = {
+    guide: ['guide'],
+    ranking: ['ranking'],
+    weekly: ['weekly'],
+    productlp: ['productlp'],
+    usecase: ['usecase'],
+    'pillar-new': ['headings', 'article'],
+    'pillar-rewrite': ['article'],
+  };
+  /** 旧タブ名（localStorage / リンク互換） */
+  const TAB_ALIASES = {
+    kyoso: 'ranking',
+    headings: 'pillar-new',
+    article: 'pillar-new',
   };
   const tabButtons = document.querySelectorAll('.tab-btn');
 
@@ -100,6 +117,7 @@
 
     async refresh(options = {}) {
       const preferLabel = String(options.preferLabel || '').trim();
+      const preferSelectId = String(options.preferSelectId || '').trim();
       const res = await fetch('/api/categories');
       const data = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(data.error || 'カテゴリ一覧の取得に失敗しました');
@@ -110,8 +128,10 @@
       for (const pair of this.pairs) {
         const select = document.getElementById(pair.selectId);
         const previous = this.get(pair.selectId, pair.otherId);
-        this.fillSelect(select, categories, preferLabel || previous);
-        if (preferLabel) {
+        const preferThis =
+          !!preferLabel && (!preferSelectId || preferSelectId === pair.selectId);
+        this.fillSelect(select, categories, preferThis ? preferLabel : previous);
+        if (preferThis) {
           this.set(pair.selectId, pair.otherId, preferLabel);
         } else if (previous) {
           this.set(pair.selectId, pair.otherId, previous);
@@ -131,31 +151,88 @@
     return CategorySelect.get('weekly-category', 'weekly-category-other');
   }
 
+  function resolveTabName(name) {
+    const raw = String(name || '').trim();
+    if (TAB_VISIBLE[raw]) return raw;
+    if (TAB_ALIASES[raw]) return TAB_ALIASES[raw];
+    return 'weekly';
+  }
+
+  function setArticleMode(mode) {
+    const create = document.getElementById('article-mode-create');
+    const rewrite = document.getElementById('article-mode-rewrite');
+    const panel = document.getElementById('panel-article');
+    if (mode === 'rewrite') {
+      if (rewrite) rewrite.checked = true;
+      if (create) create.checked = false;
+    } else {
+      if (create) create.checked = true;
+      if (rewrite) rewrite.checked = false;
+    }
+    if (panel) panel.dataset.articleMode = mode === 'rewrite' ? 'rewrite' : 'create';
+    if (typeof syncArticleModeUi === 'function') syncArticleModeUi();
+    const title = document.getElementById('article-panel-title');
+    if (title) {
+      title.textContent =
+        mode === 'rewrite' ? '記事コンテンツ（リライト）' : '記事コンテンツ（新規）— 本文';
+    }
+  }
+
+  function openRankingTab(options = {}) {
+    const weeklyCat = getWeeklyCategory();
+    if (weeklyCat) {
+      CategorySelect.set('kyoso-category', 'kyoso-category-other', weeklyCat);
+    }
+    showTab('ranking');
+    loadKyosoSavedRankingUrls();
+  }
+  window.openRankingTab = openRankingTab;
+  /** @deprecated 互換用 */
+  window.openWeeklyUrlSetup = openRankingTab;
+
   function showTab(name) {
+    const resolved = resolveTabName(name);
+    const prevTab = resolveTabName(localStorage.getItem(TAB_KEY));
+    // タブ切替前に記事下書きをフラッシュ
+    if (typeof flushArticleDraftForCurrentMode === 'function') {
+      flushArticleDraftForCurrentMode();
+    }
+    if (prevTab === 'pillar-new' && typeof savePillarNewDraftNow === 'function') {
+      savePillarNewDraftNow();
+    }
+    const visibleKeys = new Set(TAB_VISIBLE[resolved] || ['weekly']);
     Object.keys(panels).forEach((key) => {
       const el = panels[key];
-      if (el) el.hidden = key !== name;
+      if (el) el.hidden = !visibleKeys.has(key);
     });
     tabButtons.forEach((btn) => {
-      const active = btn.dataset.tab === name;
+      const active = btn.dataset.tab === resolved;
       btn.classList.toggle('secondary', !active);
     });
     try {
-      localStorage.setItem(TAB_KEY, name);
+      localStorage.setItem(TAB_KEY, resolved);
     } catch {
       /* ignore */
     }
-    if (name === 'kyoso') {
+    if (resolved === 'ranking') {
       loadKyosoSavedRankingUrls();
+    }
+    if (resolved === 'weekly') {
       loadKyosoSavedCompetitorArticles();
     }
-    if (name === 'headings') {
+    if (resolved === 'pillar-new') {
+      setArticleMode('create');
+      if (typeof applyArticleDraftForMode === 'function') applyArticleDraftForMode('create');
       syncHeadingsTabFromSources({ force: false });
+      syncArticleTabFromSources({ force: false }).then(() => syncArticleModeUi());
     }
-    if (name === 'article') {
-      syncArticleTabFromSources({ force: false });
+    if (resolved === 'pillar-rewrite') {
+      setArticleMode('rewrite');
+      if (typeof applyArticleDraftForMode === 'function') applyArticleDraftForMode('rewrite');
+      // リライトは元URLから構成取得するため、新規用のURL／見出し取込はしない
     }
   }
+  window.showTab = showTab;
 
   tabButtons.forEach((btn) => {
     btn.addEventListener('click', () => {
@@ -166,14 +243,19 @@
   document.querySelectorAll('[data-guide-go]').forEach((btn) => {
     btn.addEventListener('click', () => {
       const name = btn.getAttribute('data-guide-go');
-      if (name && panels[name]) showTab(name);
+      if (!name) return;
+      if (name === 'kyoso') {
+        openRankingTab();
+        return;
+      }
+      showTab(name);
     });
   });
 
   let initialTab = 'weekly';
   try {
     const saved = localStorage.getItem(TAB_KEY);
-    if (saved && panels[saved]) initialTab = saved;
+    if (saved) initialTab = resolveTabName(saved);
   } catch {
     /* ignore */
   }
@@ -181,9 +263,8 @@
   CategorySelect.refresh()
     .catch((err) => console.warn('CategorySelect.refresh:', err.message))
     .finally(() => {
+      if (typeof restorePillarDraftsOnLoad === 'function') restorePillarDraftsOnLoad();
       showTab(initialTab);
-      if (initialTab === 'headings') syncHeadingsTabFromSources({ force: false });
-      if (initialTab === 'article') syncArticleTabFromSources({ force: false });
       window.dispatchEvent(new CustomEvent('categories-ready'));
     });
 
@@ -192,18 +273,18 @@
       CategorySelect.syncOtherVisibility(pair.selectId, pair.otherId);
       if (pair.selectId === 'kyoso-category') {
         loadKyosoSavedRankingUrls();
-        loadKyosoSavedCompetitorArticles();
       }
       if (pair.selectId === 'weekly-category') {
+        loadKyosoSavedCompetitorArticles();
         window.dispatchEvent(new CustomEvent('weekly-category-changed'));
       }
     });
     document.getElementById(pair.otherId)?.addEventListener('change', () => {
       if (pair.selectId === 'kyoso-category') {
         loadKyosoSavedRankingUrls();
-        loadKyosoSavedCompetitorArticles();
       }
       if (pair.selectId === 'weekly-category') {
+        loadKyosoSavedCompetitorArticles();
         window.dispatchEvent(new CustomEvent('weekly-category-changed'));
       }
     });
@@ -300,7 +381,7 @@
     container.hidden = false;
   }
 
-  // --- 競合調査 ---
+  // --- ランキング ---
   const formKyoso = document.getElementById('form-kyoso');
   const kyosoError = document.getElementById('kyoso-error');
   const kyosoResult = document.getElementById('kyoso-result');
@@ -311,12 +392,57 @@
   const kyosoThemedBlocks = document.getElementById('kyoso-themed-blocks');
   const kyosoThemeSelectPanel = document.getElementById('kyoso-theme-select-panel');
   const kyosoBuildThemed = document.getElementById('kyoso-build-themed');
+  const kyosoThemedMsg = document.getElementById('kyoso-themed-msg');
+  const kyosoThemedError = document.getElementById('kyoso-themed-error');
   const kyosoThemeSelects = [
     document.getElementById('kyoso-theme-2'),
     document.getElementById('kyoso-theme-3'),
   ];
   let kyosoThemePresets = [];
   let kyosoPhase1Cache = null;
+
+  function setKyosoThemedMsg(message) {
+    if (kyosoThemedMsg) kyosoThemedMsg.textContent = message || '';
+  }
+
+  function showKyosoThemedError(message) {
+    showError(kyosoThemedError, message);
+    showError(kyosoError, message);
+  }
+
+  function saveKyosoPhase1Cache(cache) {
+    kyosoPhase1Cache = cache;
+    try {
+      sessionStorage.setItem(KYOSO_PHASE1_KEY, JSON.stringify(cache));
+    } catch {
+      /* ignore quota */
+    }
+  }
+
+  function loadKyosoPhase1Cache() {
+    if (kyosoPhase1Cache?.compositeItems?.length) return kyosoPhase1Cache;
+    try {
+      const raw = sessionStorage.getItem(KYOSO_PHASE1_KEY);
+      const parsed = raw ? JSON.parse(raw) : null;
+      if (parsed?.compositeItems?.length) {
+        kyosoPhase1Cache = parsed;
+        kyosoThemePresets = Array.isArray(parsed.themePresets) ? parsed.themePresets : [];
+        return kyosoPhase1Cache;
+      }
+    } catch {
+      /* ignore */
+    }
+    return null;
+  }
+
+  function clearKyosoPhase1Cache() {
+    kyosoPhase1Cache = null;
+    try {
+      sessionStorage.removeItem(KYOSO_PHASE1_KEY);
+    } catch {
+      /* ignore */
+    }
+  }
 
   const kyosoSubmit = document.getElementById('kyoso-submit');
   const kyosoResolveUrls = document.getElementById('kyoso-resolve-urls');
@@ -670,9 +796,25 @@
     } catch {
       /* ignore */
     }
+    if (typeof schedulePillarDraftSave === 'function') {
+      schedulePillarDraftSave();
+    }
   }
 
   function loadOutlineFromStorage() {
+    const DS = window.DraftStore;
+    if (DS) {
+      const draft = DS.load(DS.KEYS.pillarNew);
+      if (draft?.headingsOutline?.length || draft?.articleOutline?.length) {
+        return {
+          keyword: draft.headingsKeyword || draft.articleKeyword || '',
+          title: draft.articleTitle || '',
+          outline: draft.headingsOutline || draft.articleOutline,
+          enableH4: Boolean(draft.enableH4),
+          savedAt: draft.savedAt,
+        };
+      }
+    }
     try {
       const raw = sessionStorage.getItem(OUTLINE_STORAGE_KEY);
       if (!raw) return null;
@@ -696,7 +838,7 @@
       : normalizeClientOutline('', outline);
     if (!sections.length) {
       root.innerHTML =
-        '<p class="field-hint">見出しがありません。構成を取り込むか、見出し生成タブから引き継いでください。</p>';
+        '<p class="field-hint">見出しがありません。構成を取り込むか、記事コンテンツ（新規）から引き継いでください。</p>';
       return;
     }
     root.innerHTML = sections
@@ -1071,11 +1213,22 @@
     }
   }
 
-  /** 需要分析候補（pickedFeatures）だけをテーマ2・3の選択肢にする */
+  /** テーマ2・3の選択肢を埋める。需要候補を優先し、不足時はプリセット全体から選べる */
   function fillKyosoThemeSelectsFromFeatures(pickedFeatures, themePresets, suggestedIds) {
     kyosoThemePresets = Array.isArray(themePresets) ? themePresets : [];
     const presetById = new Map(kyosoThemePresets.map((p) => [p.id, p]));
-    const candidates = (pickedFeatures || []).filter((f) => f.id && presetById.has(f.id));
+    const featureById = new Map(
+      (pickedFeatures || []).filter((f) => f.id).map((f) => [f.id, f])
+    );
+    const demandCandidates = (pickedFeatures || []).filter(
+      (f) => f.id && f.id !== 'overall' && presetById.has(f.id)
+    );
+    const secondaryPresets = kyosoThemePresets.filter((p) => p.id && p.id !== 'overall');
+    // 需要候補が少ない場合でもプリセットから選択できるようにする
+    const optionPresets =
+      demandCandidates.length >= 2
+        ? demandCandidates.map((f) => presetById.get(f.id)).filter(Boolean)
+        : secondaryPresets;
 
     for (let i = 0; i < 2; i++) {
       const sel = kyosoThemeSelects[i];
@@ -1085,23 +1238,40 @@
       placeholder.value = '';
       placeholder.textContent = '候補から選択';
       sel.appendChild(placeholder);
-      for (const f of candidates) {
-        const p = presetById.get(f.id);
+      for (const p of optionPresets) {
+        const feat = featureById.get(p.id);
         const opt = document.createElement('option');
-        opt.value = f.id;
-        opt.textContent = `${p.label}（該当 ${f.matchCount ?? '—'}件）`;
+        opt.value = p.id;
+        opt.textContent = feat
+          ? `${p.label}（該当 ${feat.matchCount ?? '—'}件）`
+          : p.label;
         sel.appendChild(opt);
       }
       const suggested = suggestedIds?.[i];
-      if (suggested && presetById.has(suggested)) sel.value = suggested;
-      else if (candidates[i]) sel.value = candidates[i].id;
+      if (suggested && optionPresets.some((p) => p.id === suggested)) {
+        sel.value = suggested;
+      } else if (demandCandidates[i]) {
+        sel.value = demandCandidates[i].id;
+      } else if (optionPresets[i]) {
+        sel.value = optionPresets[i].id;
+      }
     }
 
+    const canSelect = optionPresets.length >= 2;
     if (kyosoThemeSelectPanel) {
-      kyosoThemeSelectPanel.hidden = candidates.length < 2;
+      kyosoThemeSelectPanel.hidden = !canSelect;
     }
     if (kyosoBuildThemed) {
-      kyosoBuildThemed.disabled = candidates.length < 2;
+      kyosoBuildThemed.disabled = !canSelect;
+    }
+    if (canSelect) {
+      setKyosoThemedMsg(
+        demandCandidates.length >= 2
+          ? '需要候補からテーマ2・3を選んで作成できます。'
+          : '需要候補が少ないため、カテゴリのテーマ一覧から選んでください。'
+      );
+    } else {
+      setKyosoThemedMsg('このカテゴリでは選択できるテーマが不足しています。');
     }
   }
 
@@ -1269,9 +1439,12 @@
       if (kyosoUrlPanel) kyosoUrlPanel.hidden = false;
       const savedDate = data.savedAt ? data.savedAt.slice(0, 10) : '—';
       setKyosoSavedHint(
-        `URL を保存しました（${savedDate} / data/ranking-urls.json）。週次レポートの「今週のランキングを取得」でも自動使用されます。`
+        `URL を保存しました（${savedDate} / data/ranking-urls.json）。ランキングの「取得して、週次レポート用に保存する」でも自動使用されます。`
       );
-      await CategorySelect.refresh({ preferLabel: category });
+      await CategorySelect.refresh({
+        preferLabel: category,
+        preferSelectId: 'kyoso-category',
+      });
       CategorySelect.set('weekly-category', 'weekly-category-other', category);
     } catch (err) {
       showError(kyosoError, err.message);
@@ -1300,6 +1473,7 @@
   function competitorArticleRowHtml(article = {}, index = 0) {
     const category =
       article.category ||
+      (typeof getWeeklyCategory === 'function' ? getWeeklyCategory() : '') ||
       (typeof getKyosoCategory === 'function' ? getKyosoCategory() : '') ||
       '';
     return `<div class="competitor-article-row" data-index="${index}">
@@ -1321,7 +1495,7 @@
 
   function renderCompetitorArticleRows(articles = []) {
     if (!kyosoArticleList) return;
-    const category = getKyosoCategory();
+    const category = getWeeklyCategory() || getKyosoCategory();
     const rows = articles.length
       ? articles
       : [
@@ -1433,7 +1607,9 @@
   }
 
   async function loadKyosoSavedCompetitorArticles() {
-    const category = getKyosoCategory();
+    const category =
+      (typeof getWeeklyCategory === 'function' ? getWeeklyCategory() : '') ||
+      getKyosoCategory();
     if (!category) {
       renderCompetitorArticleRows([]);
       setKyosoArticleSavedHint('');
@@ -1478,7 +1654,7 @@
 
   kyosoArticleSave?.addEventListener('click', async () => {
     showError(kyosoArticleError, '');
-    const category = getKyosoCategory();
+    const category = getWeeklyCategory() || getKyosoCategory();
     if (!category) {
       showError(kyosoArticleError, 'カテゴリを入力してください。');
       return;
@@ -1497,7 +1673,10 @@
       setKyosoArticleSavedHint(
         `競合記事 URL を保存しました（${savedDate} / data/competitor-articles.json）`
       );
-      await CategorySelect.refresh({ preferLabel: category });
+      await CategorySelect.refresh({
+        preferLabel: category,
+        preferSelectId: 'weekly-category',
+      });
       CategorySelect.set('weekly-category', 'weekly-category-other', category);
     } catch (err) {
       showError(kyosoArticleError, err.message);
@@ -1508,7 +1687,7 @@
 
   kyosoArticleAnalyze?.addEventListener('click', async () => {
     showError(kyosoArticleError, '');
-    const category = getKyosoCategory();
+    const category = getWeeklyCategory() || getKyosoCategory();
     if (!category) {
       showError(kyosoArticleError, 'カテゴリを入力してください。');
       return;
@@ -1635,7 +1814,7 @@
       }
       if (diag.recommendSaveOfficialUrls) {
         meta +=
-          '<br><strong>推奨:</strong> 競合調査で「ランキング URL を自動取得」→「URLを保存」すると、次回から安定して取得できます。';
+          '<br><strong>推奨:</strong> ランキングで「ランキング URL を自動取得」→「URLを保存」すると、次回から安定して取得できます。';
       }
       if (diag.emptyReason) {
         meta += `<br><strong>空の理由:</strong> ${escapeHtml(diag.emptyReason)}`;
@@ -1709,18 +1888,23 @@
 
       renderKyosoThemedBlocks(data.themedRanking, data.themeTopLimit);
 
-      kyosoPhase1Cache = {
+      saveKyosoPhase1Cache({
         category: data.category || category,
         compositeItems: data.compositeRanking?.items || [],
         themePresets: data.themePresets || [],
         pickedFeatures: data.pickedFeatures || [],
         suggestedThemeIds: data.suggestedThemeIds || [],
         themeTopLimit: data.themeTopLimit,
-      };
+      });
       fillKyosoThemeSelectsFromFeatures(
         kyosoPhase1Cache.pickedFeatures,
         kyosoPhase1Cache.themePresets,
         kyosoPhase1Cache.suggestedThemeIds
+      );
+      setKyosoThemedMsg(
+        kyosoThemeSelectPanel && !kyosoThemeSelectPanel.hidden
+          ? 'テーマ2・3を選んで「見出し別ランキングを作成」を押すと、下に結果が表示されます。'
+          : ''
       );
 
       const rankingCtx = {
@@ -1761,10 +1945,15 @@
   });
 
   kyosoBuildThemed?.addEventListener('click', async () => {
-    showError(kyosoError, '');
-    if (!kyosoPhase1Cache?.compositeItems?.length) {
-      showError(kyosoError, '先に「① ランキング取得・横断比較」を実行してください。');
+    showKyosoThemedError('');
+    setKyosoThemedMsg('');
+    const phase1 = loadKyosoPhase1Cache();
+    if (!phase1?.compositeItems?.length) {
+      showKyosoThemedError('先に「① ランキング取得・横断比較」を実行してください。');
       return;
+    }
+    if (Array.isArray(phase1.themePresets) && phase1.themePresets.length) {
+      kyosoThemePresets = phase1.themePresets;
     }
 
     const rankingThemes = getKyosoRankingThemesFromForm();
@@ -1772,11 +1961,11 @@
       .map((t) => t.id)
       .filter((id) => id && id !== 'overall');
     if (secondaryIds.length < 2) {
-      showError(kyosoError, '需要分析の見出し候補から、テーマ2・3を選んでください。');
+      showKyosoThemedError('需要分析の見出し候補から、テーマ2・3を選んでください。');
       return;
     }
     if (new Set(secondaryIds).size < 2) {
-      showError(kyosoError, 'テーマ2とテーマ3は異なる見出しを選んでください。');
+      showKyosoThemedError('テーマ2とテーマ3は異なる見出しを選んでください。');
       return;
     }
 
@@ -1786,10 +1975,11 @@
       '見出し別ランキングを作成（テーマ2・3）',
       '作成中...'
     );
+    setKyosoThemedMsg('作成中…');
     try {
       const data = await postJson('/api/build-category-themed-rankings', {
-        category: kyosoPhase1Cache.category,
-        compositeItems: kyosoPhase1Cache.compositeItems,
+        category: phase1.category,
+        compositeItems: phase1.compositeItems,
         rankingThemes,
       });
 
@@ -1809,14 +1999,26 @@
           : `${base} / テーマ: ${themeLabels}`;
       }
 
+      const themeCount = data.themedRanking?.themes?.length || 0;
+      const itemCounts = (data.themedRanking?.themes || [])
+        .map((t) => `${t.label}:${(t.items || []).length}件`)
+        .join(' · ');
+      setKyosoThemedMsg(
+        themeCount
+          ? `作成しました（${itemCounts}）。結果は下に表示しています。`
+          : '作成しましたが、表示できるテーマがありません。'
+      );
+
       if (data.warnings?.length) {
-        showError(
-          kyosoError,
+        showKyosoThemedError(
           data.warnings.map((w) => `${w.source}: ${w.message}`).join('\n')
         );
       }
+
+      kyosoThemedBlocks?.scrollIntoView({ behavior: 'smooth', block: 'start' });
     } catch (err) {
-      showError(kyosoError, err.message);
+      showKyosoThemedError(err.message);
+      setKyosoThemedMsg('');
     } finally {
       setLoading(
         kyosoBuildThemed,
@@ -1830,10 +2032,12 @@
   document.getElementById('kyoso-reset')?.addEventListener('click', () => {
     formKyoso.reset();
     showError(kyosoError, '');
+    showKyosoThemedError('');
+    setKyosoThemedMsg('');
     kyosoResult.hidden = true;
     if (kyosoUrlPanel) kyosoUrlPanel.hidden = true;
     if (kyosoThemeSelectPanel) kyosoThemeSelectPanel.hidden = true;
-    kyosoPhase1Cache = null;
+    clearKyosoPhase1Cache();
     if (kyosoUrlNotes) kyosoUrlNotes.textContent = '';
     setKyosoSavedHint('');
     if (kyosoCompositeTbody) kyosoCompositeTbody.innerHTML = '';
@@ -1858,16 +2062,18 @@
   document.getElementById('kyoso-clear')?.addEventListener('click', () => {
     kyosoResult.hidden = true;
     showError(kyosoError, '');
+    showKyosoThemedError('');
+    setKyosoThemedMsg('');
     if (kyosoCompositeTbody) kyosoCompositeTbody.innerHTML = '';
     if (kyosoCompositeMeta) kyosoCompositeMeta.textContent = '';
     if (kyosoThemedBlocks) kyosoThemedBlocks.innerHTML = '';
     if (kyosoThemeSelectPanel) kyosoThemeSelectPanel.hidden = true;
-    kyosoPhase1Cache = null;
+    clearKyosoPhase1Cache();
   });
 
   document.getElementById('kyoso-to-headings')?.addEventListener('click', () => {
     applyRankingContextToHeadingsTab(loadRankingContextFromStorage());
-    showTab('headings');
+    showTab('pillar-new');
   });
 
   // --- 見出し生成 ---
@@ -1900,7 +2106,11 @@
       return;
     }
     applyHeadingsResultToArticleForm();
-    showTab('article');
+    showTab('pillar-new');
+    document.getElementById('panel-article')?.scrollIntoView({
+      behavior: 'smooth',
+      block: 'start',
+    });
   }
 
   document.getElementById('headings-import-sources')?.addEventListener('click', () => {
@@ -1915,9 +2125,12 @@
   });
 
   window.addEventListener('competitor-analysis-updated', () => {
-    const active = localStorage.getItem(TAB_KEY);
-    if (active === 'headings') syncHeadingsTabFromSources({ force: false });
-    if (active === 'article') syncArticleTabFromSources({ force: false });
+    const active = resolveTabName(localStorage.getItem(TAB_KEY));
+    if (active === 'pillar-new') {
+      syncHeadingsTabFromSources({ force: false });
+      syncArticleTabFromSources({ force: false });
+    }
+    if (active === 'pillar-rewrite') syncArticleTabFromSources({ force: false });
   });
 
   formHeadings?.addEventListener('submit', async (e) => {
@@ -2023,6 +2236,15 @@
     if (h4Actions) h4Actions.hidden = true;
     const h4Msg = document.getElementById('headings-h4-msg');
     if (h4Msg) h4Msg.textContent = '';
+    if (window.DraftStore) {
+      window.DraftStore.clear(window.DraftStore.KEYS.pillarNew);
+      window.DraftStore.clearHint('pillar-new-draft-hint');
+    }
+    try {
+      sessionStorage.removeItem(OUTLINE_STORAGE_KEY);
+    } catch {
+      /* ignore */
+    }
   });
 
   document.getElementById('headings-enable-h4')?.addEventListener('change', () => {
@@ -2710,23 +2932,34 @@
 
   function syncArticleModeUi() {
     const rewrite = isArticleRewriteMode();
+    const panel = document.getElementById('panel-article');
+    if (panel) panel.dataset.articleMode = rewrite ? 'rewrite' : 'create';
+
     const createDesc = document.getElementById('article-mode-desc-create');
     const rewriteDesc = document.getElementById('article-mode-desc-rewrite');
+    const modeField = document.getElementById('article-mode-field');
     const createActions = document.getElementById('article-create-actions');
     const createUrls = document.getElementById('article-create-urls');
+    const bridgeMsg = document.getElementById('article-bridge-msg');
     const rewriteFields = document.getElementById('article-rewrite-fields');
     const outlineHint = document.getElementById('article-outline-hint');
     const submitBtn = document.getElementById('article-submit');
 
+    // モード切替UIはメニュー分離後は常に非表示
+    if (modeField) modeField.hidden = true;
     if (createDesc) createDesc.hidden = rewrite;
     if (rewriteDesc) rewriteDesc.hidden = !rewrite;
     if (createActions) createActions.hidden = rewrite;
     if (createUrls) createUrls.hidden = rewrite;
+    if (bridgeMsg) {
+      bridgeMsg.hidden = rewrite || !bridgeMsg.textContent.trim();
+      if (rewrite) bridgeMsg.textContent = '';
+    }
     if (rewriteFields) rewriteFields.hidden = !rewrite;
     if (outlineHint) {
       outlineHint.textContent = rewrite
         ? 'リライト元から取り込み、良い見出しは改善した案です。必要なら戻・微修正してから本文を生成してください。'
-        : 'H4 の有無は見出し生成タブで指定済みです。ここでは誤字などの微修正のみ行い、本文を生成します。';
+        : 'H4 の有無は上の見出し欄で指定済みです。ここでは誤字などの微修正のみ行い、本文を生成します。';
     }
     if (submitBtn) {
       submitBtn.textContent = rewrite
@@ -2817,7 +3050,7 @@
         articleError,
         rewrite
           ? '見出しが空です。リライト元URLから構成を取り込んでください。'
-          : '見出しが空です。見出し生成タブで見出しを確定してから引き継いでください。'
+          : '見出しが空です。記事コンテンツ（新規）で見出しを確定してから引き継いでください。'
       );
       return;
     }
@@ -2868,6 +3101,9 @@
       articleBody.innerHTML = renderOutlineArticleResult(data);
       setArticleCmsOutput(data);
       articleResult.hidden = false;
+      if (typeof flushArticleDraftForCurrentMode === 'function') {
+        flushArticleDraftForCurrentMode();
+      }
     } catch (err) {
       showError(articleError, err.message);
       articleResult.hidden = true;
@@ -2929,14 +3165,30 @@
     articleOutlineFlexible = false;
     const rewriteMsg = document.getElementById('article-rewrite-msg');
     if (rewriteMsg) rewriteMsg.textContent = '';
-    if (document.getElementById('article-mode-create')) {
-      document.getElementById('article-mode-create').checked = true;
-    }
-    syncArticleModeUi();
+    const activeTab = resolveTabName(localStorage.getItem(TAB_KEY));
+    setArticleMode(activeTab === 'pillar-rewrite' ? 'rewrite' : 'create');
     const editor = document.getElementById('article-outline-editor');
     if (editor) {
-      editor.innerHTML =
-        '<p class="field-hint">見出し生成タブで見出しを確定し、「記事生成へ」を押してください。</p>';
+      editor.innerHTML = isArticleRewriteMode()
+        ? '<p class="field-hint">リライト元URLから「構成を取り込み」を実行してください。</p>'
+        : '<p class="field-hint">上の見出し欄で見出しを確定し、「本文へ」を押してください。</p>';
+    }
+    if (window.DraftStore) {
+      if (isArticleRewriteMode()) {
+        window.DraftStore.clear(window.DraftStore.KEYS.pillarRewrite);
+      } else {
+        // 本文リセット時は新規下書きの記事部分だけ消すため再保存で空記事を書く
+        const DS = window.DraftStore;
+        const prev = DS.load(DS.KEYS.pillarNew) || {};
+        DS.save(DS.KEYS.pillarNew, {
+          ...prev,
+          article: null,
+          articleOutline: [],
+          articleKeyword: '',
+          articleTitle: '',
+        });
+      }
+      window.DraftStore.clearHint('article-draft-hint');
     }
   });
 
@@ -2947,6 +3199,302 @@
     lastArticleData = null;
     renderAeoChecklist([]);
     clearArticleCmsOutput();
+    if (typeof schedulePillarDraftSave === 'function') schedulePillarDraftSave();
+  });
+
+  // --- 下書き（localStorage・各画面最新1件） ---
+  const DS = window.DraftStore;
+  let restoringArticleDraft = false;
+  let pillarDraftsHydrated = false;
+
+  function val(id) {
+    return document.getElementById(id)?.value ?? '';
+  }
+  function setVal(id, v) {
+    const el = document.getElementById(id);
+    if (el && v != null) el.value = String(v);
+  }
+  function checked(id) {
+    return Boolean(document.getElementById(id)?.checked);
+  }
+  function setChecked(id, v) {
+    const el = document.getElementById(id);
+    if (el) el.checked = Boolean(v);
+  }
+
+  function collectArticleFormSnapshot() {
+    return {
+      keyword: val('article-keyword').trim(),
+      title: val('article-title').trim(),
+      rewriteUrl: val('article-rewrite-url').trim(),
+      url1: val('article-url1').trim(),
+      url2: val('article-url2').trim(),
+      url3: val('article-url3').trim(),
+      refUrl: val('article-ref-url').trim(),
+      genIntro: checked('article-gen-intro'),
+      genSummary: checked('article-gen-summary'),
+      genAeo: checked('article-gen-aeo'),
+      genFaq: checked('article-gen-faq'),
+      images: typeof collectArticleImages === 'function' ? collectArticleImages() : [],
+      outline:
+        typeof readOutlineFromEditor === 'function'
+          ? readOutlineFromEditor('article-outline-editor')
+          : [],
+      outlineFlexible: Boolean(articleOutlineFlexible),
+      lastArticleData: lastArticleData || null,
+      resultVisible: Boolean(articleResult && !articleResult.hidden),
+    };
+  }
+
+  function applyArticleFormSnapshot(snap, { flexible = false } = {}) {
+    if (!snap || typeof snap !== 'object') return;
+    restoringArticleDraft = true;
+    try {
+      setVal('article-keyword', snap.keyword || '');
+      setVal('article-title', snap.title || '');
+      setVal('article-rewrite-url', snap.rewriteUrl || '');
+      setVal('article-url1', snap.url1 || '');
+      setVal('article-url2', snap.url2 || '');
+      setVal('article-url3', snap.url3 || '');
+      setVal('article-ref-url', snap.refUrl || '');
+      setChecked('article-gen-intro', snap.genIntro);
+      setChecked('article-gen-summary', snap.genSummary);
+      if (snap.genAeo != null) setChecked('article-gen-aeo', snap.genAeo);
+      if (snap.genFaq != null) setChecked('article-gen-faq', snap.genFaq);
+      clearArticleImagesList();
+      (snap.images || []).forEach((img) => addArticleImageRow(img));
+      articleOutlineFlexible = Boolean(snap.outlineFlexible || flexible);
+      const outline = snap.outline || [];
+      if (outline.length) {
+        const showH4 = outlineHasAnyH4(outline);
+        renderOutlineEditor('article-outline-editor', outline, {
+          withH4: showH4,
+          allowSuggest: false,
+          flexible: articleOutlineFlexible,
+        });
+      }
+      lastArticleData = snap.lastArticleData || null;
+      if (lastArticleData && articleBody) {
+        renderWarnings(articleWarnings, lastArticleData.warnings);
+        renderAeoChecklist(lastArticleData.aeoChecklist);
+        articleBody.innerHTML = renderOutlineArticleResult(lastArticleData);
+        setArticleCmsOutput(lastArticleData);
+        if (articleResult) articleResult.hidden = !snap.resultVisible;
+      } else if (articleResult) {
+        articleResult.hidden = true;
+      }
+    } finally {
+      restoringArticleDraft = false;
+    }
+  }
+
+  function collectHeadingsSnapshot() {
+    return {
+      keyword: val('headings-keyword').trim(),
+      refUrl: val('headings-ref-url').trim(),
+      url1: val('headings-url1').trim(),
+      url2: val('headings-url2').trim(),
+      url3: val('headings-url3').trim(),
+      candidate1: val('headings-candidate-1').trim(),
+      candidate2: val('headings-candidate-2').trim(),
+      candidate3: val('headings-candidate-3').trim(),
+      candidate4: val('headings-candidate-4').trim(),
+      candidate5: val('headings-candidate-5').trim(),
+      enableH4: checked('headings-enable-h4'),
+      outline:
+        typeof readOutlineFromEditor === 'function'
+          ? readOutlineFromEditor('headings-outline-editor')
+          : lastHeadingsData?.outline || [],
+      lastHeadingsData: lastHeadingsData || null,
+      lastHeadingsKeyword: lastHeadingsKeyword || '',
+      resultVisible: Boolean(headingsResult && !headingsResult.hidden),
+    };
+  }
+
+  function applyHeadingsSnapshot(snap) {
+    if (!snap || typeof snap !== 'object') return;
+    restoringArticleDraft = true;
+    try {
+      setVal('headings-keyword', snap.keyword || '');
+      setVal('headings-ref-url', snap.refUrl || '');
+      setVal('headings-url1', snap.url1 || '');
+      setVal('headings-url2', snap.url2 || '');
+      setVal('headings-url3', snap.url3 || '');
+      setVal('headings-candidate-1', snap.candidate1 || '');
+      setVal('headings-candidate-2', snap.candidate2 || '');
+      setVal('headings-candidate-3', snap.candidate3 || '');
+      setVal('headings-candidate-4', snap.candidate4 || '');
+      setVal('headings-candidate-5', snap.candidate5 || '');
+      setChecked('headings-enable-h4', snap.enableH4);
+      lastHeadingsData = snap.lastHeadingsData || null;
+      lastHeadingsKeyword = snap.lastHeadingsKeyword || snap.keyword || '';
+      const outline = snap.outline || lastHeadingsData?.outline || [];
+      if (outline.length) {
+        if (lastHeadingsData) lastHeadingsData.outline = outline;
+        syncHeadingsH4Ui(outline);
+        if (headingsResult) headingsResult.hidden = !snap.resultVisible;
+      }
+    } finally {
+      restoringArticleDraft = false;
+    }
+  }
+
+  function savePillarNewDraftNow() {
+    if (!DS || restoringArticleDraft) return;
+    const headings = collectHeadingsSnapshot();
+    const article = isArticleRewriteMode() ? null : collectArticleFormSnapshot();
+    const prev = DS.load(DS.KEYS.pillarNew) || {};
+    DS.save(DS.KEYS.pillarNew, {
+      headings,
+      article: article || prev.article || null,
+      enableH4: headings.enableH4,
+      headingsOutline: headings.outline,
+      headingsKeyword: headings.keyword,
+      articleKeyword: article?.keyword || prev.articleKeyword || '',
+      articleTitle: article?.title || prev.articleTitle || '',
+      articleOutline: article?.outline || prev.articleOutline || [],
+    });
+  }
+
+  function savePillarRewriteDraftNow() {
+    if (!DS || restoringArticleDraft) return;
+    if (!isArticleRewriteMode()) return;
+    const article = collectArticleFormSnapshot();
+    DS.save(DS.KEYS.pillarRewrite, { article });
+  }
+
+  function flushArticleDraftForCurrentMode() {
+    if (!DS || restoringArticleDraft) return;
+    if (isArticleRewriteMode()) savePillarRewriteDraftNow();
+    else savePillarNewDraftNow();
+  }
+
+  const schedulePillarDraftSave = DS
+    ? DS.debounce(() => {
+        if (restoringArticleDraft) return;
+        if (isArticleRewriteMode()) savePillarRewriteDraftNow();
+        else savePillarNewDraftNow();
+      }, 500)
+    : function () {};
+
+  function applyArticleDraftForMode(mode) {
+    if (!DS) return;
+    if (mode === 'rewrite') {
+      const draft = DS.load(DS.KEYS.pillarRewrite);
+      if (draft?.article) {
+        applyArticleFormSnapshot(draft.article, { flexible: true });
+        DS.setHint('article-draft-hint', draft.savedAt);
+      } else {
+        DS.clearHint('article-draft-hint');
+      }
+      return;
+    }
+    const draft = DS.load(DS.KEYS.pillarNew);
+    if (draft?.article) {
+      applyArticleFormSnapshot(draft.article);
+      DS.setHint('article-draft-hint', draft.savedAt);
+    } else {
+      DS.clearHint('article-draft-hint');
+    }
+  }
+
+  function restorePillarDraftsOnLoad() {
+    if (!DS) return;
+    if (pillarDraftsHydrated) return;
+    pillarDraftsHydrated = true;
+    // sessionStorage アウトラインを localStorage へ移行
+    try {
+      const raw = sessionStorage.getItem(OUTLINE_STORAGE_KEY);
+      if (raw && !DS.load(DS.KEYS.pillarNew)) {
+        const parsed = JSON.parse(raw);
+        if (parsed?.outline?.length) {
+          DS.save(DS.KEYS.pillarNew, {
+            headings: {
+              keyword: parsed.keyword || '',
+              outline: parsed.outline,
+              enableH4: Boolean(parsed.enableH4),
+              resultVisible: true,
+            },
+            article: {
+              keyword: parsed.keyword || '',
+              title: parsed.title || '',
+              outline: parsed.outline,
+              genAeo: true,
+              genFaq: true,
+            },
+            headingsOutline: parsed.outline,
+            headingsKeyword: parsed.keyword || '',
+            enableH4: Boolean(parsed.enableH4),
+          });
+          sessionStorage.removeItem(OUTLINE_STORAGE_KEY);
+        }
+      }
+    } catch {
+      /* ignore */
+    }
+
+    const newDraft = DS.load(DS.KEYS.pillarNew);
+    if (newDraft?.headings) {
+      applyHeadingsSnapshot(newDraft.headings);
+      DS.setHint('pillar-new-draft-hint', newDraft.savedAt);
+    } else if (newDraft?.headingsOutline?.length) {
+      applyHeadingsSnapshot({
+        keyword: newDraft.headingsKeyword || '',
+        outline: newDraft.headingsOutline,
+        enableH4: newDraft.enableH4,
+        resultVisible: true,
+      });
+      DS.setHint('pillar-new-draft-hint', newDraft.savedAt);
+    }
+  }
+
+  function discardPillarNewDraft() {
+    if (!DS) return;
+    if (!confirm('新規記事の下書きを破棄しますか？（画面の内容はそのまま残ります）')) return;
+    DS.clear(DS.KEYS.pillarNew);
+    DS.clearHint('pillar-new-draft-hint');
+    if (!isArticleRewriteMode()) DS.clearHint('article-draft-hint');
+    try {
+      sessionStorage.removeItem(OUTLINE_STORAGE_KEY);
+    } catch {
+      /* ignore */
+    }
+  }
+
+  function discardPillarRewriteDraft() {
+    if (!DS) return;
+    if (!confirm('リライトの下書きを破棄しますか？（画面の内容はそのまま残ります）')) return;
+    DS.clear(DS.KEYS.pillarRewrite);
+    if (isArticleRewriteMode()) DS.clearHint('article-draft-hint');
+  }
+
+  function discardCurrentArticleDraft() {
+    if (isArticleRewriteMode()) discardPillarRewriteDraft();
+    else discardPillarNewDraft();
+  }
+
+  document.getElementById('pillar-new-draft-discard')?.addEventListener('click', discardPillarNewDraft);
+  document.getElementById('article-draft-discard')?.addEventListener('click', discardCurrentArticleDraft);
+
+  const draftWatchRoots = [
+    document.getElementById('panel-headings'),
+    document.getElementById('panel-article'),
+  ].filter(Boolean);
+  for (const root of draftWatchRoots) {
+    root.addEventListener('input', () => {
+      if (!restoringArticleDraft) schedulePillarDraftSave();
+    });
+    root.addEventListener('change', () => {
+      if (!restoringArticleDraft) schedulePillarDraftSave();
+    });
+  }
+
+  window.addEventListener('beforeunload', () => {
+    if (typeof schedulePillarDraftSave.flush === 'function') {
+      schedulePillarDraftSave.flush();
+    } else {
+      flushArticleDraftForCurrentMode();
+    }
   });
 
 })();
