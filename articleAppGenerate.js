@@ -109,15 +109,33 @@ function collectOutlineSections(body) {
     .filter((sec) => sec.h2 && sec.items.length);
 }
 
-function bodyPromptRules() {
+function bodyPromptRules({ isMakerSection = false, includeComparisonTable = false } = {}) {
+  const makerRules = isMakerSection
+    ? `
+- メーカー紹介では宣伝調の最上級（「国内トップシェア」「No.1」等）を避け、「定評がある」「家庭用〜業務寄りのラインが厚い」など根拠の弱い断定を弱める
+- 本文末尾に必ず「向いている人: …」を1文入れる（例: 精度・自動認識を重視する方）
+- 可能ならシリーズ名・ライン名の例を1つ入れる（個別型番・価格は書かない）
+- 新興ブランドや家電量販の定番枠以外のブランドは、位置づけを一文補足する（例: デジタル機器ブランドのヘルスケア展開）
+- メーカー固有の機能名は一般名＋例示にする（例: 自動認識機能（各社の乗るだけで判別する機能 等））`
+    : '';
+  const tableRules = includeComparisonTable
+    ? `
+- 本文内に「目的 × 推奨タイプ × 確認ポイント」の比較表を Markdown 表（| 列 |）でちょうど1つ入れる（製品名・価格は書かない）
+- 表の前後は短い説明文にする`
+    : '';
   return `- キーワードとの関連性が高く、検索ユーザーの意図を満たす構成にする
 - 内容は具体的で、独自の視点・根拠・事例を交えて説明且つ信頼感があり、客観的
 - 家電販売店にふさわしいフォーマルな文体
-- 数値・比較・用途別の提案など、検索ユーザーの満足度を意識
+- 数値・条件・用途別の提案で決断しやすくする（「向いている／適している」だけで終わらせない）
+- 比較は「AならX、BならY」の条件分岐で書く（例: 部位別なら両手両足、毎日の習慣なら足裏）
+- 同一記事内で既出の論点が重複しない。重なる場合は「確認チェックリスト」に変え、同じ説明を繰り返さない
+- スマホ連携・データ管理など近いテーマが複数見出しにある場合、後続はメリット再説ではなく確認項目（対応アプリ／登録人数／自動認識の有無など）に寄せる
 - 製品名・価格は直接記載しない
+- 出典のないシェア・No.1・最上級は書かない。書くなら「傾向として」「目安」に留める
+- メーカー固有名称は一般名称を先に書き、例示として固有名を添える
 - AEO/GEO向け: content の先頭段落は「答えになる1文」（40字前後・句点で終える）を「結論:」などのラベルなしで書き、空行のあとに本文を続ける
 - 「結論:」「まとめ:」など見出しラベルを本文に書かない
-- 曖昧語（おすすめ・高品質など単体）を避け、「向いている人」「選ぶ基準」など定義・列挙を明確にする
+- 曖昧語（おすすめ・高品質など単体）を避け、「向いている人」「選ぶ基準」など定義・列挙を明確にする${makerRules}${tableRules}
 - 出力は厳密にJSONのみ`;
 }
 
@@ -172,7 +190,9 @@ async function generateH3BodyContent({
   competitorTexts,
   referenceOutputSection,
   index,
+  includeComparisonTable = false,
 }) {
+  const isMakerSection = /メーカー|ブランド/.test(String(heading_h2_first || ''));
   const prompt = `
 あなたはSEO・AEO・GEOに強い家電専門ライターです。
 以下の競合記事を分析し、キーワード「${keyword}」、タイトル「${title}」、H2見出し「${heading_h2_first}」の子見出し「${h3Heading}」の本文を作成してください。
@@ -183,9 +203,9 @@ async function generateH3BodyContent({
 {
   "h3": "${h3Heading}",
   "conclusion": "この見出しの答えになる1文（40字前後・句点で終える。ラベルは書かない）",
-  "content": "（conclusionと同じ文を先頭段落に）\\n\\n本文（合計200文字程度。先頭に答えの1文を含む）"
+  "content": "（conclusionと同じ文を先頭段落に）\\n\\n本文（合計200〜350文字程度。先頭に答えの1文を含む）"
 }
-${bodyPromptRules()}
+${bodyPromptRules({ isMakerSection, includeComparisonTable })}
 ${competitorTexts ? `\n# 他社記事\n${competitorTexts}` : ''}${referenceOutputSection}
 `;
 
@@ -211,15 +231,26 @@ async function generateH4GroupBodyContent({
   h4Headings,
   competitorTexts,
   referenceOutputSection,
+  priorH4Headings = [],
+  includeComparisonTable = false,
 }) {
   const list = h4Headings.map((h, i) => `${i + 1}. ${h}`).join('\n');
+  const prior =
+    priorH4Headings.length > 0
+      ? `\n# 同一記事で既出のH4（重複説明禁止。近いテーマなら確認チェックリスト化）\n${priorH4Headings
+          .map((h, i) => `${i + 1}. ${h}`)
+          .join('\n')}\n`
+      : '';
+  const tableHint = includeComparisonTable
+    ? `\n- 先頭のH4本文に「目的 × 推奨タイプ × 確認ポイント」の比較表を Markdown 表で1つ含める（製品名・価格は書かない）\n`
+    : '';
   const prompt = `
 あなたはSEO・AEO・GEOに強い家電専門ライターです。
 キーワード「${keyword}」、タイトル「${title}」、H2「${heading_h2_first}」、H3「${heading_h3}」の配下にある次のH4見出しそれぞれについて、本文を作成してください。
 
 # 対象H4
 ${list}
-
+${prior}
 # 出力条件
 - JSON形式で出力
 - 形式:
@@ -228,12 +259,13 @@ ${list}
     {
       "h4": "対象H4と同じ文言",
       "conclusion": "答えになる1文（40字前後。ラベルは書かない）",
-      "content": "（conclusionと同じ文を先頭段落に）\\n\\n本文（各200文字程度）"
+      "content": "（conclusionと同じ文を先頭段落に）\\n\\n本文（各200〜300文字程度）"
     }
   ]
 }
 - h4_items は対象H4と同じ件数・同じ順序
-${bodyPromptRules()}
+- 対象H4同士でも論点が重複しないよう役割分担する${tableHint}
+${bodyPromptRules({ includeComparisonTable: false })}
 ${competitorTexts ? `\n# 他社記事\n${competitorTexts}` : ''}${referenceOutputSection}
 `;
 
@@ -827,6 +859,7 @@ function buildH4SuggestPrompt({
 - 選び方の細分（例: 集じん方法の下のサイクロン式／紙パック式）や補足観点を具体化する
 - 商品おすすめ・型番紹介・ランキング掲載の見出しは作らない
 - H4は必要なときだけ。最大3つ
+- 同一H3内でテーマが重複するH4は作らない（例: 「スマホ連携」と「データ管理」を別H4にしない。片方にまとめ、もう片方は別観点にするか省略）
 
 # 出力条件
 - JSON形式で出力
@@ -863,6 +896,7 @@ ${list}
 - 選び方の細分や補足観点を具体化する
 - 商品おすすめ・型番紹介・ランキング掲載の見出しは作らない
 - 各H3あたりH4は最大3つ（不要なら少なくてよい）
+- 記事全体でテーマ重複を避ける（例: あるH3で「スマホ連携」を扱ったら、他H3で同趣旨のH4を重ねない。後続は「確認チェックリスト」向けの別観点にするか省略）
 
 # 出力条件
 - JSON形式で出力
@@ -947,9 +981,12 @@ async function generateOutlineArticleBodies({
 }) {
   const contentResults = [];
   const outlineResultSections = [];
+  const priorH4Headings = [];
+  let comparisonTableAssigned = false;
 
   for (const sec of outlineSections) {
     const outItems = [];
+    const isPointsSection = /選び|ポイント|比較/.test(String(sec.h2 || ''));
     for (const item of sec.items) {
       if (item.h4s?.length) {
         try {
@@ -957,6 +994,8 @@ async function generateOutlineArticleBodies({
             // eslint-disable-next-line no-await-in-loop
             await sleep(bodyGapMs);
           }
+          const includeComparisonTableInH4 =
+            isPointsSection && !comparisonTableAssigned && outItems.length === 0;
           // eslint-disable-next-line no-await-in-loop
           const h4_items = await generateH4GroupBodyContent({
             getGeminiModel,
@@ -967,7 +1006,11 @@ async function generateOutlineArticleBodies({
             h4Headings: item.h4s,
             competitorTexts,
             referenceOutputSection,
+            priorH4Headings: [...priorH4Headings],
+            includeComparisonTable: includeComparisonTableInH4,
           });
+          if (includeComparisonTableInH4) comparisonTableAssigned = true;
+          priorH4Headings.push(...item.h4s);
           h4_items.forEach((row) => {
             contentResults.push({
               heading: row.h4,
@@ -993,6 +1036,7 @@ async function generateOutlineArticleBodies({
             // eslint-disable-next-line no-await-in-loop
             await sleep(bodyGapMs);
           }
+          const includeComparisonTable = isPointsSection && !comparisonTableAssigned;
           // eslint-disable-next-line no-await-in-loop
           const data = await generateH3BodyContent({
             getGeminiModel,
@@ -1003,7 +1047,9 @@ async function generateOutlineArticleBodies({
             competitorTexts,
             referenceOutputSection,
             index: outItems.length + 1,
+            includeComparisonTable,
           });
+          if (includeComparisonTable) comparisonTableAssigned = true;
           outItems.push({
             h3: item.h3,
             content: data?.content || '',
@@ -1025,6 +1071,8 @@ async function generateOutlineArticleBodies({
         }
       }
     }
+    // 選び方H2でH4のみの場合、最初のH3に短い比較表用の補足本文を付けられないため
+    // H4グループの先頭H4生成時に表を入れる余地はない。AEOパック側の comparisonTable で補完する。
     outlineResultSections.push({
       h2: sec.h2,
       searchIntent: sec.searchIntent || '',
@@ -1170,8 +1218,9 @@ function buildAeoChecklist({
   faq,
   seoTitle,
   metaDescription,
-  relatedLinks,
   sourcesNote,
+  comparisonTable,
+  hasToc,
 }) {
   const flatContents = [];
   for (const sec of sections || []) {
@@ -1183,6 +1232,9 @@ function buildAeoChecklist({
     }
   }
   const withConclusion = flatContents.filter((c) => hasLeadAnswerParagraph(c));
+  const tableOk = Boolean(
+    comparisonTable?.headers?.length >= 2 && comparisonTable?.rows?.length >= 2
+  );
   return [
     {
       id: 'directAnswer',
@@ -1206,6 +1258,20 @@ function buildAeoChecklist({
       ok: (faq || []).length >= 3,
     },
     {
+      id: 'toc',
+      pillar: 'SEO',
+      label: '目次リンクあり',
+      purpose: '回遊・滞在。コジマ特集と同様に H2 へジャンプ',
+      ok: Boolean(hasToc),
+    },
+    {
+      id: 'comparisonTable',
+      pillar: 'SEO',
+      label: '目的別の比較表あり',
+      purpose: '抽象表現を減らし、決断しやすい条件提示',
+      ok: tableOk,
+    },
+    {
       id: 'seoTitle',
       pillar: 'SEO',
       label: 'SEOタイトル候補あり',
@@ -1220,13 +1286,6 @@ function buildAeoChecklist({
       ok: Boolean(String(metaDescription || '').trim()),
     },
     {
-      id: 'relatedLinks',
-      pillar: 'SEO',
-      label: '内部リンク候補あり',
-      purpose: '回遊・関連意図の補強（CMS貼り付け用）',
-      ok: (relatedLinks || []).length >= 1,
-    },
-    {
       id: 'sourcesNote',
       pillar: 'GEO',
       label: '出典・更新メモあり',
@@ -1234,6 +1293,29 @@ function buildAeoChecklist({
       ok: Boolean(String(sourcesNote || '').trim()),
     },
   ];
+}
+
+function normalizeComparisonTable(raw) {
+  if (!raw || typeof raw !== 'object') return null;
+  const headers = (Array.isArray(raw.headers) ? raw.headers : [])
+    .map((h) => String(h || '').trim())
+    .filter(Boolean)
+    .slice(0, 5);
+  const rows = (Array.isArray(raw.rows) ? raw.rows : [])
+    .map((row) =>
+      (Array.isArray(row) ? row : []).map((cell) => String(cell || '').trim()).slice(0, headers.length || 5)
+    )
+    .filter((row) => row.some(Boolean))
+    .slice(0, 8);
+  if (headers.length < 2 || rows.length < 2) return null;
+  return {
+    caption: String(raw.caption || '目的別の選び方早見').trim() || '目的別の選び方早見',
+    headers,
+    rows: rows.map((row) => {
+      while (row.length < headers.length) row.push('—');
+      return row.slice(0, headers.length);
+    }),
+  };
 }
 
 async function generateAeoSeoPack({
@@ -1279,16 +1361,21 @@ ${String(bodiesForSummary || '').slice(0, 6000)}
   "faq": [
     { "question": "よくある質問", "answer": "簡潔な回答（60〜120字）" }
   ],
-  "relatedLinks": [
-    { "anchor": "アンカーテキスト案", "hint": "リンク先の内容ヒント（例: 同カテゴリの選び方記事）" }
-  ],
-  "sourcesNote": "参考・更新に関する注記（ランキング時点・比較の留意。架空の日付は書かない）"
+  "comparisonTable": {
+    "caption": "目的別の選び方早見",
+    "headers": ["目的", "推奨タイプ", "確認ポイント"],
+    "rows": [
+      ["例: 毎日の体重管理", "例: 足裏測定の体組成計", "例: 表示の見やすさ"],
+      ["例: 部位別の体組成", "例: 両手両足測定", "例: 部位別表示の有無"]
+    ]
+  },
+  "sourcesNote": "参考・更新に関する注記（ランキング時点・比較の留意。架空の日付は書かない。シェア断定はしない）"
 }
 
 # 制約
 - faq は${generateFaq ? '3〜5件必須' : '空配列 [] でよい'}
-- relatedLinks は2〜4件（CMS貼り付け用の候補。実URLは不要）
-- 製品名・価格は直接書かない
+- comparisonTable は必須（目的×推奨タイプ×確認ポイント）。製品名・価格・出典なきシェアは書かない
+- relatedLinks / 関連記事候補は出力しない（空でもキー自体不要）
 - 誇大・最上級表現は避ける
 - 家電販売店向けの丁寧な文体
 ${competitorUrls?.length ? `\n# 他社URL（参考）\n${competitorUrls.join('\n')}` : ''}
@@ -1298,20 +1385,14 @@ ${referenceUrls?.length ? `\n# 参考URL\n${referenceUrls.join('\n')}` : ''}
   const raw = await generateGeminiTextWithRetry(getGeminiModel, prompt);
   const data = parseJsonFromModelOutput(raw) || {};
   const faq = generateFaq ? normalizeFaqList(data.faq) : [];
-  const relatedLinks = (Array.isArray(data.relatedLinks) ? data.relatedLinks : [])
-    .map((item) => ({
-      anchor: String(item?.anchor || item?.title || '').trim(),
-      hint: String(item?.hint || item?.description || '').trim(),
-    }))
-    .filter((item) => item.anchor)
-    .slice(0, 4);
 
   return {
     seoTitle: String(data.seoTitle || data.title || '').trim(),
     metaDescription: String(data.metaDescription || '').trim(),
     directAnswer: stripConclusionLabel(data.directAnswer),
     faq,
-    relatedLinks,
+    relatedLinks: [],
+    comparisonTable: normalizeComparisonTable(data.comparisonTable),
     sourcesNote: String(data.sourcesNote || '').trim(),
   };
 }
@@ -1457,8 +1538,8 @@ async function handleArticleGenerate(
     if (generateIntroduction) {
       const introductionPrompt = isRewrite
         ? `
-あなたはSEOに強い家電専門ライターです。
-キーワード「${keyword}」、タイトル「${title}」のリライト記事について、導入文を200文字程度で作成してください。
+あなたはSEO・AEOに強い家電専門ライターです。
+キーワード「${keyword}」、タイトル「${title}」のリライト記事について、導入文を作成してください。
 リライト元の導入意図を踏まえつつ文言は書き直してください。
 
 # 出力条件
@@ -1466,22 +1547,32 @@ async function handleArticleGenerate(
 - 形式:
 {
   "h1": "${title}",
-  "introduction": "導入文(200文字程度)",
+  "introduction": "導入文"
 }
+- 構成（必須）:
+  1) 先頭1文: 検索意図への答え（40〜60字・句点で終える。「結論:」ラベルなし）
+  2) 続けて2〜3文: この記事で分かること（選び方の観点／測定方式やタイプの違い／人気メーカーの見方 など）を案内し、目次へ読み進める導線にする
+- 全体で180〜280文字程度
+- 製品名・価格・出典なきシェアは書かない
 ${bodyPromptRules()}
 ${referenceOutputSection}
 `
         : `
-あなたはSEOに強い家電専門ライターです。
-以下の競合記事を分析し、キーワード「${keyword}」、タイトル「${title}」の導入文を200文字程度で作成してください。
+あなたはSEO・AEOに強い家電専門ライターです。
+以下の競合記事を分析し、キーワード「${keyword}」、タイトル「${title}」の導入文を作成してください。
 
 # 出力条件
 - JSON形式で出力
 - 形式:
 {
   "h1": "${title}",
-  "introduction": "導入文(200文字程度)",
+  "introduction": "導入文"
 }
+- 構成（必須）:
+  1) 先頭1文: 検索意図への答え（40〜60字・句点で終える。「結論:」ラベルなし）
+  2) 続けて2〜3文: この記事で分かること（選び方の観点／測定方式やタイプの違い／人気メーカーの見方 など）を案内し、目次へ読み進める導線にする
+- 全体で180〜280文字程度
+- 製品名・価格・出典なきシェアは書かない
 ${bodyPromptRules()}
 ${competitorTexts ? `\n# 他社記事\n${competitorTexts}` : ''}${referenceOutputSection}
   `;
@@ -1538,16 +1629,19 @@ ${competitorTexts ? `\n# 他社記事\n${competitorTexts}` : ''}${referenceOutpu
         : '';
       const summaryPrompt = `
 あなたはSEOに強い家電専門ライターです。
-キーワード「${keyword}」、タイトル「${title}」の記事について、${introSection ? '導入文と' : ''}各見出し本文を踏まえたまとめ文を150〜200文字で作成してください。
+キーワード「${keyword}」、タイトル「${title}」の記事について、${introSection ? '導入文と' : ''}各見出し本文を踏まえたまとめ文を作成してください。
 
 ${introSection}# 見出し本文
 ${bodiesForSummary}
 
 # 出力条件
 - JSON形式で出力
-- 形式: { "summary": "まとめ文(150〜200文字)" }
+- 形式: { "summary": "まとめ文" }
+- 導入文の言い換えにしない
+- 読者の次アクションで締める（例: 目的を決める → タイプを選ぶ → 家族利用なら自動認識 → 記録重視ならアプリ対応を確認）
+- 150〜220文字
 - 家電販売店にふさわしいフォーマルな文体
-- 製品名・価格は直接記載しない
+- 製品名・価格・出典なきシェアは書かない
 - 出力は厳密にJSONのみ
 ${isRewrite ? referenceOutputSection : `${competitorTexts ? `\n# 他社記事\n${competitorTexts}` : ''}${referenceOutputSection}`}
 `;
@@ -1574,6 +1668,7 @@ ${isRewrite ? referenceOutputSection : `${competitorTexts ? `\n# 他社記事\n$
       directAnswer: '',
       faq: [],
       relatedLinks: [],
+      comparisonTable: null,
       sourcesNote: '',
     };
 
@@ -1612,8 +1707,9 @@ ${isRewrite ? referenceOutputSection : `${competitorTexts ? `\n# 他社記事\n$
       faq: aeoPack.faq,
       seoTitle: aeoPack.seoTitle,
       metaDescription: aeoPack.metaDescription,
-      relatedLinks: aeoPack.relatedLinks,
       sourcesNote: aeoPack.sourcesNote,
+      comparisonTable: aeoPack.comparisonTable,
+      hasToc: (outlineResultSections || []).some((s) => String(s.h2 || '').trim()),
     });
 
     console.log(
@@ -1634,7 +1730,8 @@ ${isRewrite ? referenceOutputSection : `${competitorTexts ? `\n# 他社記事\n$
       metaDescription: aeoPack.metaDescription,
       directAnswer: aeoPack.directAnswer,
       faq: aeoPack.faq,
-      relatedLinks: aeoPack.relatedLinks,
+      relatedLinks: [],
+      comparisonTable: aeoPack.comparisonTable,
       sourcesNote: aeoPack.sourcesNote,
       aeoChecklist,
       introduction: introductionData.introduction || '',
@@ -1646,7 +1743,8 @@ ${isRewrite ? referenceOutputSection : `${competitorTexts ? `\n# 他社記事\n$
         metaDescription: aeoPack.metaDescription,
         directAnswer: aeoPack.directAnswer,
         faq: aeoPack.faq,
-        relatedLinks: aeoPack.relatedLinks,
+        relatedLinks: [],
+        comparisonTable: aeoPack.comparisonTable,
         sourcesNote: aeoPack.sourcesNote,
         introduction: introductionData.introduction || '',
         summary: summaryData?.summary || '',

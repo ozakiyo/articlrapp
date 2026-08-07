@@ -44,7 +44,7 @@
         <section class="panel guide-panel">
           <h2>役割の分担</h2>
           <ul class="guide-list">
-            <li><strong>週次レポート</strong> … 競合記事URL・見出し差分・改修登録・KPI・確定（データ更新はランキング側）</li>
+            <li><strong>週次レポート</strong> … CV・売上の結果確認、需要変化、打ち手TOP3、競合ギャップ、改修登録・確定（データ更新はランキング側）</li>
             <li><strong>ランキング</strong> … ランキングURLの設定、横断取得、「取得して、週次レポート用に保存する」</li>
             <li><strong>用途別おすすめ</strong> … 掲載商品の用途別3選と説明・機能表（冒頭に答えの1文）</li>
             <li><strong>記事コンテンツ（新規）</strong> … 見出し（H2×2＋各H3×3、必要ならH4）→ 本文＋AEO/GEO/SEO補助</li>
@@ -84,7 +84,7 @@
             <li>
               <span class="pillar-tag pillar-seo">SEO</span>
               <strong>検索で見つかる・読まれる</strong>
-              <p>タイトル／メタ候補、見出しの意図タグ、内部リンク案で、検索結果と回遊を意識します。</p>
+              <p>タイトル／メタ候補、見出しの意図タグ、目次・比較表で、検索結果と回遊を意識します。</p>
             </li>
             <li>
               <span class="pillar-tag pillar-aeo">AEO</span>
@@ -109,12 +109,38 @@
               <strong>用途別おすすめ</strong> … 冒頭の答え1文（AEO）＋向いている人を本文に自然埋め込み＋機能表
             </li>
             <li>
-              <strong>記事コンテンツ（新規／リライト）— 本文</strong> … 冒頭に答えの1文（AEO）＋補助オプションで直接回答・FAQ・title/meta・内部リンク・出典メモ
+              <strong>記事コンテンツ（新規／リライト）— 本文</strong> … 冒頭に答えの1文（AEO）＋補助オプションで直接回答・FAQ・title/meta・比較表・出典メモ
             </li>
           </ul>
           <p class="field-hint">
             記事生成後のチェックリストは、意図どおり揃っているかの確認用です（緑＝揃っている／赤＝不足）。
           </p>
+        </section>
+
+        <section class="panel guide-panel">
+          <h2>週次レポートの進め方（CV・売上）</h2>
+          <ol class="guide-steps">
+            <li>
+              <strong>ランキング</strong>
+              <p>今週データを「取得して、週次レポート用に保存する」。</p>
+            </li>
+            <li>
+              <strong>週次レポート — CV結果</strong>
+              <p>前週・今週の KPI（CV / 商品詳細遷移 / PV）を貼り、結果を見る。</p>
+            </li>
+            <li>
+              <strong>需要変化と打ち手3件</strong>
+              <p>売れ筋・上昇を見て、CV寄与の見込みが高い打ち手を最大3件決める。</p>
+            </li>
+            <li>
+              <strong>実行と改修登録</strong>
+              <p>記事コンテンツ／用途別／個別商品で実行し、改修を登録する。</p>
+            </li>
+            <li>
+              <strong>確定 → 来週検証</strong>
+              <p>「週次レポートを確定」し、翌週の CV 結果で効果を確認する。</p>
+            </li>
+          </ol>
         </section>
 
         <section class="panel guide-panel">
@@ -126,7 +152,7 @@
             </li>
             <li>
               <strong>週次レポート</strong>
-              <p>競合記事URLの登録・比較、改修登録・KPI確認・確定を行う。</p>
+              <p>CVを貼って結果を見る → 需要変化と打ち手3件を決める → 記事/用途別で実行し改修登録 → 確定（来週検証）。</p>
             </li>
             <li>
               <strong>記事コンテンツ（新規）</strong>
@@ -144,11 +170,11 @@
           <ol class="guide-steps">
             <li>
               <strong>ランキング</strong>
-              <p>必要なら「取得して、週次レポート用に保存する」。URLが変わったときだけ編集・保存する。</p>
+              <p>今週データを「取得して、週次レポート用に保存する」。URLが変わったときだけ編集・保存する。</p>
             </li>
             <li>
               <strong>週次レポート</strong>
-              <p>競合記事比較・改修確認・確定。</p>
+              <p>CVを貼り結果を見る → 需要変化と打ち手3件を決める → 記事/用途別で実行し改修登録 → 確定（来週検証）。</p>
             </li>
             <li>
               <strong>記事コンテンツ（新規）</strong> または <strong>記事コンテンツ（リライト）</strong>
@@ -164,7 +190,7 @@
             <li>他社URLは空欄でも可。生成時にSEO上位の家電量販店記事を自動取得します。</li>
             <li>H4 を作るかは見出し欄で指定。先に見出しを決め、本文は下の欄で生成します。</li>
             <li>商品のおすすめ見出し・説明は<strong>用途別おすすめ</strong>側で作ります。</li>
-            <li>ランキングでURL設定と「取得して、週次レポート用に保存する」。毎週の確認・確定は週次レポートです。</li>
+            <li>ランキングでURL設定と「取得して、週次レポート用に保存する」。毎週のCV確認・打ち手・確定は週次レポートです。</li>
             <li>月が変わっただけではURL設定のやり直しは不要です（URL変更時のみ）。</li>
             <li>AIは上部ナビ右端で <strong>Gemini / ChatGPT / Cursor</strong> を選択できます（用途別も含む）。ChatGPT は <code>OPENAI_API_KEY</code>、Cursor は <code>CURSOR_API_KEY</code> が必要です。</li>
             <li>AEO/GEO/SEO の詳細は上の専用セクションを参照。各作業タブ上部の意図パネルと結果のチェックリストも併用してください。</li>
@@ -332,13 +358,13 @@
       </div>
       </section>
 
-      <!-- 週次レポート（②-A） -->
+      <!-- 週次レポート（CV・売上オペレーション） -->
       <section id="panel-weekly" class="tab-panel">
         <header>
           <h1>週次レポート</h1>
           <p>
-            ②-A 市場データAI — 毎週ここから「何が変わったか」「今週何を直すか」を確認します。
-            <span class="weekly-demo-badge" id="weekly-phase-badge">Phase 1</span>
+            CV・売上を伸ばす週次オペレーション — 結果を見て、需要変化から打ち手を決め、翌週に検証します。
+            <span class="weekly-demo-badge" id="weekly-phase-badge">CV重視</span>
           </p>
         </header>
 
@@ -375,54 +401,198 @@
           </p>
           <div class="actions">
             <a id="weekly-csv-link" class="button-link secondary" href="#" hidden>CSVダウンロード</a>
+            <button type="button" class="secondary" id="weekly-go-ranking">ランキングでデータ更新</button>
           </div>
-          <p class="field-hint">
-            データの更新（横断ランキング取得）は<strong>ランキング</strong>メニューの「取得して、週次レポート用に保存する」から行います。
+          <p class="field-hint" id="weekly-fetch-hint">
+            需要データ（売れ筋）は<strong>ランキング</strong>の「取得して、週次レポート用に保存する」で更新します。未取得のままでは打ち手が出ません。
           </p>
           <p class="field-hint" id="weekly-compare-note" hidden></p>
           <p id="weekly-error" class="error" hidden></p>
         </section>
 
-        <section class="panel" id="kyoso-article-panel">
-          <h2>競合記事 URL（記事改修用）</h2>
+        <!-- 1. CV結果 -->
+        <section class="panel weekly-q-panel weekly-cv-result-panel" id="weekly-cv-result-panel">
+          <h2>1. 今週のCV結果</h2>
           <p class="field-hint">
-            各サイトのおすすめ記事 URL をカテゴリごとに保存します（<code>data/competitor-articles.json</code>）。
-            保存後「競合記事を取得・比較」で見出し構成を自社記事コンテンツと比較できます。
+            主KPIは<strong>CV（売上）</strong>。補助は商品詳細遷移 → 記事PV。会社数値はブラウザのみ（サーバー非保存）。
           </p>
-          <div id="kyoso-article-url-list" class="competitor-article-list"></div>
-          <div class="actions">
-            <button type="button" class="secondary" id="kyoso-article-add">行を追加</button>
-            <button type="button" class="secondary" id="kyoso-article-save">記事URLを保存</button>
-            <button type="button" id="kyoso-article-analyze">競合記事を取得・比較</button>
+          <div class="weekly-cv-cards" id="weekly-cv-cards">
+            <div class="weekly-cv-card" data-kpi="cv">
+              <span class="weekly-cv-card-label">CV（売上）</span>
+              <strong class="weekly-cv-card-value" id="weekly-cv-value">—</strong>
+              <span class="weekly-cv-card-change" id="weekly-cv-change">未貼付</span>
+            </div>
+            <div class="weekly-cv-card" data-kpi="clicks">
+              <span class="weekly-cv-card-label">商品詳細遷移</span>
+              <strong class="weekly-cv-card-value" id="weekly-clicks-value">—</strong>
+              <span class="weekly-cv-card-change" id="weekly-clicks-change">未貼付</span>
+            </div>
+            <div class="weekly-cv-card" data-kpi="pv">
+              <span class="weekly-cv-card-label">記事PV</span>
+              <strong class="weekly-cv-card-value" id="weekly-pv-value">—</strong>
+              <span class="weekly-cv-card-change" id="weekly-pv-change">未貼付</span>
+            </div>
           </div>
-          <p class="field-hint" id="kyoso-article-saved-hint"></p>
-          <p id="kyoso-article-error" class="error" hidden></p>
-          <div id="kyoso-article-result" class="generated-block" hidden>
-            <h3>競合記事 見出し比較</h3>
-            <p class="note" id="kyoso-article-meta"></p>
+          <p class="field-hint" id="weekly-cv-summary-msg">下の欄に前週・今週のKPIを貼ると、ここに前週比が出ます。</p>
+
+          <h3 class="weekly-subsection-title">KPIを貼り付け（前週・今週）</h3>
+          <p class="field-hint">例（各行: 指標 / 前週 / 今週）:<br>
+            <code>PV&#9;82000&#9;78700</code><br>
+            <code>商品詳細遷移&#9;2115&#9;2185</code><br>
+            <code>CV&#9;1720000&#9;1850000</code>
+          </p>
+          <label class="field">
+            <span>貼り付け欄</span>
+            <textarea id="weekly-kpi-paste" rows="5" placeholder="ここに前週・今週を貼り付け…"></textarea>
+          </label>
+          <div class="actions weekly-kpi-paste-actions">
+            <button type="button" class="secondary" id="weekly-kpi-preview">解釈を確認</button>
+            <button type="button" id="weekly-kpi-apply">表示に反映</button>
+          </div>
+          <p class="field-hint" id="weekly-kpi-paste-msg"></p>
+          <div class="weekly-kpi-preview" id="weekly-kpi-preview-box" hidden>
+            <table class="ranking-table weekly-table">
+              <thead>
+                <tr><th>指標</th><th>前週</th><th>今週</th></tr>
+              </thead>
+              <tbody id="weekly-kpi-preview-tbody"></tbody>
+            </table>
+          </div>
+
+          <h3 class="weekly-subsection-title">改修の結果 <span class="weekly-q-hint">（貼り付けKPIの前後比）</span></h3>
+          <p class="field-hint" id="weekly-change-effects-msg"></p>
+          <div class="ranking-table-wrap">
+            <table class="ranking-table weekly-table">
+              <thead>
+                <tr>
+                  <th>判定</th>
+                  <th>改修内容</th>
+                  <th>対象</th>
+                  <th>PV</th>
+                  <th>商品詳細遷移</th>
+                  <th>CV（売上）</th>
+                  <th>理由</th>
+                  <th>改修週</th>
+                </tr>
+              </thead>
+              <tbody id="weekly-change-effects-tbody">
+                <tr><td colspan="8" class="weekly-empty-cell">先週登録した改修がありません</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        <!-- 2. 需要の変化 -->
+        <section class="panel weekly-q-panel weekly-demand-panel" id="weekly-demand-panel">
+          <h2>2. 需要の変化（売れる商品）</h2>
+          <p class="field-hint">市場で売れているものが、記事・用途別・個別商品ページのCV源です。ランキング未取得なら空になります。</p>
+
+          <h3 class="weekly-subsection-title">売れ筋（横断）</h3>
+          <div class="ranking-table-wrap">
+            <table class="ranking-table weekly-table">
+              <thead>
+                <tr>
+                  <th>順位</th>
+                  <th>メーカー</th>
+                  <th>商品名</th>
+                  <th>型番</th>
+                  <th>Amazon</th>
+                  <th>楽天</th>
+                  <th>Yahoo!</th>
+                  <th>コジマ</th>
+                  <th>ビック</th>
+                </tr>
+              </thead>
+              <tbody id="weekly-products-tbody">
+                <tr><td colspan="9" class="weekly-empty-cell">ランキング未取得、または該当なし</td></tr>
+              </tbody>
+            </table>
+          </div>
+
+          <h3 class="weekly-subsection-title">上昇・差し替え候補</h3>
+          <div class="weekly-demand-split">
             <div class="ranking-table-wrap">
-              <table class="ranking-table">
+              <table class="ranking-table weekly-table">
                 <thead>
-                  <tr>
-                    <th>優先</th>
-                    <th>競合サイト</th>
-                    <th>見出し</th>
-                    <th>レベル</th>
-                    <th>理由</th>
-                    <th>参考URL</th>
-                  </tr>
+                  <tr><th>変化</th><th>商品</th><th>理由</th></tr>
                 </thead>
-                <tbody id="kyoso-article-tbody"></tbody>
+                <tbody id="weekly-rising-tbody">
+                  <tr><td colspan="3" class="weekly-empty-cell">上昇なし</td></tr>
+                </tbody>
+              </table>
+            </div>
+            <div class="ranking-table-wrap">
+              <table class="ranking-table weekly-table">
+                <thead>
+                  <tr><th>差し替え</th><th>理由</th></tr>
+                </thead>
+                <tbody id="weekly-replacements-tbody">
+                  <tr><td colspan="2" class="weekly-empty-cell">差し替え候補なし</td></tr>
+                </tbody>
               </table>
             </div>
           </div>
         </section>
-        <section class="panel weekly-q-panel weekly-competitor-panel" id="weekly-competitor-panel">
-          <h2>各社記事の確認 <span class="weekly-q-hint">（更新見出し）</span></h2>
-          <div class="weekly-competitor-actions">
-            <button type="button" class="secondary" id="weekly-competitor-analyze">競合記事を取得・比較（更新見出し）</button>
+
+        <!-- 3. 打ち手 TOP3 -->
+        <section class="panel weekly-q-panel weekly-priority-panel" id="weekly-priority-panel">
+          <h2>3. 今週の打ち手 TOP3 <span class="weekly-q-hint">（CV寄与の見込み順）</span></h2>
+          <p class="field-hint">最大3件に絞り、記事・用途別・個別商品ページで実行します。実行後は下の「改修登録」へ。</p>
+          <p class="field-hint" id="weekly-task-progress"></p>
+          <ul class="weekly-priority-list" id="weekly-priority-list">
+            <li class="weekly-task-empty">ランキング取得後に優先度TOP3を表示します</li>
+          </ul>
+          <ul class="weekly-task-list" id="weekly-task-list" hidden></ul>
+          <div class="actions">
+            <button type="button" class="secondary" id="weekly-to-usecase">用途別おすすめへ</button>
+            <button type="button" class="secondary" id="weekly-to-headings-from-tasks">記事コンテンツ（新規）へ</button>
+            <button type="button" class="secondary" id="weekly-to-productlp">個別商品ページへ</button>
           </div>
-          <p class="field-hint" id="weekly-competitor-msg">上で記事 URL を保存後、比較を実行してください。</p>
+        </section>
+
+        <!-- 4. 競合ギャップ -->
+        <section class="panel weekly-q-panel weekly-competitor-panel" id="weekly-competitor-panel">
+          <h2>4. 競合ギャップ <span class="weekly-q-hint">（CV阻害になりうる見出し）</span></h2>
+          <p class="field-hint">
+            自社に無く競合にある見出し・更新された見出しは、比較検討〜購入の離脱要因になりやすいです。打ち手の材料として使います。
+          </p>
+          <details class="weekly-details" id="kyoso-article-panel" open>
+            <summary>競合記事 URL の設定・比較</summary>
+            <p class="field-hint">
+              各サイトのおすすめ記事 URL をカテゴリごとに保存（<code>data/competitor-articles.json</code>）。
+            </p>
+            <div id="kyoso-article-url-list" class="competitor-article-list"></div>
+            <div class="actions">
+              <button type="button" class="secondary" id="kyoso-article-add">行を追加</button>
+              <button type="button" class="secondary" id="kyoso-article-save">記事URLを保存</button>
+              <button type="button" id="kyoso-article-analyze">競合記事を取得・比較</button>
+            </div>
+            <p class="field-hint" id="kyoso-article-saved-hint"></p>
+            <p id="kyoso-article-error" class="error" hidden></p>
+            <div id="kyoso-article-result" class="generated-block" hidden>
+              <h3>競合記事 見出し比較</h3>
+              <p class="note" id="kyoso-article-meta"></p>
+              <div class="ranking-table-wrap">
+                <table class="ranking-table">
+                  <thead>
+                    <tr>
+                      <th>優先</th>
+                      <th>競合サイト</th>
+                      <th>見出し</th>
+                      <th>レベル</th>
+                      <th>理由</th>
+                      <th>参考URL</th>
+                    </tr>
+                  </thead>
+                  <tbody id="kyoso-article-tbody"></tbody>
+                </table>
+              </div>
+            </div>
+          </details>
+          <div class="weekly-competitor-actions">
+            <button type="button" class="secondary" id="weekly-competitor-analyze">更新見出しを再取得</button>
+          </div>
+          <p class="field-hint" id="weekly-competitor-msg">記事 URL を保存後、比較を実行してください。</p>
           <p class="field-hint" id="weekly-heading-updates-hint">初回取得後、次回の比較から追加・削除された見出しを表示します。</p>
           <div class="ranking-table-wrap">
             <table class="ranking-table weekly-table">
@@ -443,9 +613,10 @@
           </div>
         </section>
 
+        <!-- 5. 改修登録 -->
         <section class="panel weekly-q-panel weekly-change-register-panel" id="weekly-change-register-panel">
-          <h2>記事改修を登録</h2>
-          <p class="field-hint">今週直した箇所を登録し、「週次レポートを確定」で保存します。来週「改修の結果」に前後比が出ます。</p>
+          <h2>5. 記事改修を登録</h2>
+          <p class="field-hint">打ち手を実行したら登録し、「週次レポートを確定」で保存。来週「1. 今週のCV結果」で前後比が出ます。</p>
           <div class="weekly-change-form" id="weekly-change-form">
             <label class="field weekly-field-inline">
               <span>改修日</span>
@@ -459,11 +630,11 @@
             </label>
             <label class="field weekly-field-grow">
               <span>改修内容</span>
-              <input type="text" id="weekly-change-description" placeholder="例: 選び方に静音性を追加" />
+              <input type="text" id="weekly-change-description" placeholder="例: 上昇機種を用途別3選の1位に掲載" />
             </label>
             <label class="field weekly-field-inline">
-              <span>期待する変化（任意）</span>
-              <input type="text" id="weekly-change-expected" placeholder="例: PV増 / 商品詳細遷移増 / CV増" />
+              <span>期待する変化</span>
+              <input type="text" id="weekly-change-expected" placeholder="例: CV増 / 商品詳細遷移増" value="CV増" />
             </label>
             <div class="actions">
               <button type="button" class="secondary" id="weekly-change-add">行を追加</button>
@@ -489,89 +660,10 @@
           </div>
         </section>
 
-        <section class="panel weekly-q-panel weekly-kpi-paste-panel" id="weekly-kpi-paste-panel">
-          <h2>KPIを貼り付け（前週・今週）</h2>
-          <p class="field-hint"><strong>サーバーには保存しません。</strong>会社の数値はブラウザ上での表示専用です。毎回、前週分と今週分をまとめて貼り付けてください。</p>
-          <p class="field-hint">例（各行: 指標 / 前週 / 今週）:<br>
-            <code>PV&#9;82000&#9;78700</code><br>
-            <code>商品詳細遷移&#9;2115&#9;2185</code><br>
-            <code>CV&#9;1720000&#9;1850000</code>
-          </p>
-          <label class="field">
-            <span>貼り付け欄</span>
-            <textarea id="weekly-kpi-paste" rows="6" placeholder="ここに前週・今週を貼り付け…"></textarea>
-          </label>
-          <div class="actions weekly-kpi-paste-actions">
-            <button type="button" class="secondary" id="weekly-kpi-preview">解釈を確認</button>
-            <button type="button" id="weekly-kpi-apply">表示に反映</button>
-          </div>
-          <p class="field-hint" id="weekly-kpi-paste-msg"></p>
-          <div class="weekly-kpi-preview" id="weekly-kpi-preview-box" hidden>
-            <table class="ranking-table weekly-table">
-              <thead>
-                <tr><th>指標</th><th>前週</th><th>今週</th></tr>
-              </thead>
-              <tbody id="weekly-kpi-preview-tbody"></tbody>
-            </table>
-          </div>
-        </section>
-
-        <section class="panel weekly-q-panel weekly-change-effects-panel" id="weekly-change-effects-panel">
-          <h2>改修の結果 <span class="weekly-q-hint">（貼り付けKPIの前後比）</span></h2>
-          <p class="field-hint" id="weekly-change-effects-msg"></p>
-          <p class="field-hint">主要KPIの数値は上で貼り付けた内容のみを使い、サーバーへは送りません。</p>
-          <div class="ranking-table-wrap">
-            <table class="ranking-table weekly-table">
-              <thead>
-                <tr>
-                  <th>判定</th>
-                  <th>改修内容</th>
-                  <th>対象</th>
-                  <th>PV</th>
-                  <th>商品詳細遷移</th>
-                  <th>CV（売上）</th>
-                  <th>理由</th>
-                  <th>改修週</th>
-                </tr>
-              </thead>
-              <tbody id="weekly-change-effects-tbody">
-                <tr><td colspan="8" class="weekly-empty-cell">先週登録した改修がありません</td></tr>
-              </tbody>
-            </table>
-          </div>
-        </section>
-
+        <!-- 6. 話題（参考） -->
         <section class="panel weekly-topics-panel" id="weekly-topics-panel">
-          <h2>季節・ニュース・話題</h2>
-
-          <h3 class="weekly-subsection-title">季節・イベント</h3>
-          <p class="weekly-season-inline" id="weekly-season-inline">—</p>
-
-          <h3 class="weekly-subsection-title">ニュース・新製品</h3>
-          <div class="ranking-table-wrap">
-            <table class="ranking-table weekly-table weekly-news-table">
-              <thead>
-                <tr><th>日付</th><th>内容</th><th>影響</th><th>記事アクション</th></tr>
-              </thead>
-              <tbody id="weekly-news-tbody">
-                <tr><td colspan="4" class="weekly-empty-cell">ニュースなし</td></tr>
-              </tbody>
-            </table>
-          </div>
-          <p class="field-hint">※ ニュース・新製品は記事マスタ（`news`）で手動更新</p>
-
-          <h3 class="weekly-subsection-title">SNS・話題</h3>
-          <div class="ranking-table-wrap">
-            <table class="ranking-table weekly-table">
-              <thead>
-                <tr><th>日付</th><th>話題</th><th>出典</th><th>リンク</th></tr>
-              </thead>
-              <tbody id="weekly-sns-tbody">
-                <tr><td colspan="4" class="weekly-empty-cell">SNS・話題なし</td></tr>
-              </tbody>
-            </table>
-          </div>
-          <p class="field-hint">※ SNS話題は記事マスタ（`snsTopics`）で手動更新</p>
+          <h2>6. 話題（参考）</h2>
+          <p class="field-hint">検索の話題は需要のヒント。季節・ニュースは記事マスタがある場合のみ。</p>
 
           <h3 class="weekly-subsection-title">検索の話題 <span class="weekly-q-hint">（Google サジェスト）</span></h3>
           <div class="ranking-table-wrap">
@@ -585,16 +677,48 @@
             </table>
           </div>
           <p class="field-hint" id="weekly-interest-footnote">※ Google サジェストから自動取得</p>
+
+          <details class="weekly-details">
+            <summary>季節・ニュース・SNS（記事マスタ）</summary>
+            <h3 class="weekly-subsection-title">季節・イベント</h3>
+            <p class="weekly-season-inline" id="weekly-season-inline">—</p>
+
+            <h3 class="weekly-subsection-title">ニュース・新製品</h3>
+            <div class="ranking-table-wrap">
+              <table class="ranking-table weekly-table weekly-news-table">
+                <thead>
+                  <tr><th>日付</th><th>内容</th><th>影響</th><th>記事アクション</th></tr>
+                </thead>
+                <tbody id="weekly-news-tbody">
+                  <tr><td colspan="4" class="weekly-empty-cell">ニュースなし</td></tr>
+                </tbody>
+              </table>
+            </div>
+
+            <h3 class="weekly-subsection-title">SNS・話題</h3>
+            <div class="ranking-table-wrap">
+              <table class="ranking-table weekly-table">
+                <thead>
+                  <tr><th>日付</th><th>話題</th><th>出典</th><th>リンク</th></tr>
+                </thead>
+                <tbody id="weekly-sns-tbody">
+                  <tr><td colspan="4" class="weekly-empty-cell">SNS・話題なし</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </details>
           <p class="field-hint" id="weekly-topics-footnote" hidden></p>
         </section>
 
+        <!-- 7. 確定 -->
         <section class="panel weekly-footer-panel">
+          <h2>7. 確定</h2>
           <div class="actions">
             <button type="button" id="weekly-confirm">週次レポートを確定</button>
             <button type="button" class="secondary" id="weekly-to-headings-main">記事コンテンツ（新規）へ進む</button>
           </div>
           <p class="field-hint" id="weekly-confirm-msg">
-            確定すると今週のスナップショットを保存し、来週の前週比に使います。
+            確定すると改修ログを保存し、来週の「CV結果」検証に使います（会社KPI数値はサーバーへ送りません）。
           </p>
         </section>
       </section>
@@ -990,7 +1114,7 @@
             <ul class="aeo-intent-list">
               <li>
                 <span class="pillar-tag pillar-seo">SEO</span>
-                検索で見つかる・読まれる（タイトル／メタ、見出し意図、内部リンク候補）
+                検索で見つかる・読まれる（タイトル／メタ、見出し意図、目次リンク・比較表）
               </li>
               <li>
                 <span class="pillar-tag pillar-aeo">AEO</span>
@@ -1079,14 +1203,14 @@
               </label>
               <label class="checkbox-field">
                 <input type="checkbox" id="article-gen-aeo" checked />
-                <span>AEO/GEO/SEO補助を作成する <em class="opt-intent">（直接回答・title/meta・内部リンク・出典）</em></span>
+                <span>AEO/GEO/SEO補助を作成する <em class="opt-intent">（直接回答・title/meta・比較表・出典）</em></span>
               </label>
               <label class="checkbox-field">
                 <input type="checkbox" id="article-gen-faq" checked />
-                <span>FAQ（3〜5問）を作成する <em class="opt-intent">（AEO: 質問単位の抜き出し）</em></span>
+                <span>FAQ（3〜5問）を作成する <em class="opt-intent">（AEO: 質問単位の抜き出し＋FAQPage）</em></span>
               </label>
               <p class="field-hint">
-                本文は各見出しの冒頭に答えの1文を自然に埋め込みます（AEO向け。「結論:」とは書きません）。補助ブロックは CMS 貼り付け用です。
+                本文は各見出しの冒頭に答えの1文を自然に埋め込みます。CMS用HTMLには目次リンク・比較表・FAQ構造化を付けます（関連記事候補は出力しません）。
               </p>
             </div>
 

@@ -1,5 +1,9 @@
 /**
- * 週次レポート設計の確定事項（プラン合意内容をコード化）
+ * 週次レポート設計（目的: CV・売上・利益）
+ * 主KPI = CV（売上）、補助 = 商品詳細遷移 → 記事PV
+ * 毎週の成果物 = CVを伸ばす打ち手最大3件
+ *
+ * 将来拡張: 粗利率が取れるようになったら CV金額 × 粗利率 で利益表示を追加可能
  */
 module.exports = {
   defaultCategory: '掃除機',
@@ -17,7 +21,7 @@ module.exports = {
     minMallCountForHighlight: 2,
   },
 
-  /** 記事コンテンツ1ページPV + 商品別・見出し別クリック */
+  /** 記事コンテンツ1ページPV + 商品別・見出し別クリック（CV補助指標） */
   articlePerformancePhase: 'hub-clicks',
 
   reasonMode: 'rule',
@@ -34,14 +38,23 @@ module.exports = {
     maxPriorityTasks: 3,
   },
 
+  /** 判定閾値（主: CV → 商品詳細遷移 → PV） */
   performance: {
     hubPvDeclineAlertPercent: -10,
     hubPvGrowthPercent: 5,
     menuClickGrowthPercent: 10,
     highProductClickThreshold: 200,
+    /** CV 前週比（貼付KPI） */
+    cvGrowthPercent: 5,
+    cvDeclineAlertPercent: -10,
+    productDetailGrowthPercent: 10,
+    productDetailDeclineAlertPercent: -15,
   },
 
-  /** 優先度 = 商品クリック + 見出しクリック + 掲載順位 + 記事コンテンツPV変化 */
+  /**
+   * 優先度 = CV寄与の見込み
+   * 商品詳細クリック（購入導線）> 見出しクリック > 掲載順位 > 記事PV変化
+   */
   priorityScoring: {
     productClickWeight: 0.8,
     menuClickWeight: 0.3,

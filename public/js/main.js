@@ -2487,7 +2487,8 @@
     const summary = data.summary || data.article?.summary || '';
     const sections = data.sections || data.article?.sections || [];
     const faq = data.faq || data.article?.faq || [];
-    const related = data.relatedLinks || data.article?.relatedLinks || [];
+    const comparisonTable =
+      data.comparisonTable || data.article?.comparisonTable || null;
     const sources = data.sourcesNote || data.article?.sourcesNote || '';
 
     const used = new Set();
@@ -2532,7 +2533,36 @@
       parts.push(renderArticleFullOrLoneImage(img));
     }
 
+    const tocItems = [];
     let ank = 1;
+    sections.forEach((sec) => {
+      const h2 = String(sec.h2 || '').trim();
+      if (!h2) return;
+      const ankId = `ank${String(ank).padStart(2, '0')}`;
+      tocItems.push({ id: ankId, label: h2 });
+      ank += 1;
+    });
+    if (summary) tocItems.push({ id: 'ank-summary', label: 'まとめ' });
+    if (faq.length) tocItems.push({ id: 'ank-faq', label: 'よくある質問' });
+
+    if (tocItems.length) {
+      parts.push('<div class="commentblock pc_mb30" id="article-toc">');
+      parts.push('<p class="pc_mb10"><strong>目次</strong></p>');
+      parts.push('<ul class="listmark_m">');
+      tocItems.forEach((item) => {
+        parts.push(
+          `<li><a href="#${item.id}">▶ ${escapeHtml(item.label)}</a></li>`
+        );
+      });
+      parts.push('</ul>');
+      parts.push('</div>');
+    }
+
+    if (comparisonTable?.headers?.length && comparisonTable?.rows?.length) {
+      parts.push(renderArticleComparisonTable(comparisonTable));
+    }
+
+    ank = 1;
     sections.forEach((sec) => {
       const h2 = String(sec.h2 || '').trim();
       const ankId = `ank${String(ank).padStart(2, '0')}`;
@@ -2580,7 +2610,7 @@
       parts.push(renderArticleFullOrLoneImage(img));
     }
     if (summary) {
-      parts.push('<h2 class="title">まとめ</h2>');
+      parts.push('<h2 class="title" id="ank-summary">まとめ</h2>');
       parts.push(articleParagraphsHtml(summary));
     }
 
@@ -2588,23 +2618,14 @@
       parts.push(renderArticleFullOrLoneImage(img));
     }
     if (faq.length) {
-      parts.push('<h2 class="title">よくある質問</h2>');
+      parts.push('<h2 class="title" id="ank-faq">よくある質問</h2>');
       faq.forEach((q) => {
         parts.push(`<h3>${escapeHtml(q.question)}</h3>`);
         parts.push(articleParagraphsHtml(q.answer));
       });
+      parts.push(renderFaqJsonLd(faq));
     }
 
-    if (related.length) {
-      parts.push('<h2 class="title">関連記事（候補）</h2>');
-      parts.push('<ul class="listmark_m">');
-      related.forEach((r) => {
-        parts.push(
-          `<li>${escapeHtml(r.anchor)}${r.hint ? ` — ${escapeHtml(r.hint)}` : ''}</li>`
-        );
-      });
-      parts.push('</ul>');
-    }
     if (sources) {
       parts.push(
         `<p class="pc_font12 pc_mb20"><small>${escapeHtml(sources)}</small></p>`
@@ -2770,15 +2791,91 @@
   }
 
   function articleParagraphsHtml(text) {
-    return String(text || '')
+    const blocks = String(text || '')
       .split(/\n\n+/)
       .map((p) => p.trim())
-      .filter(Boolean)
+      .filter(Boolean);
+    return blocks
+      .map((block) => {
+        const tableHtml = markdownTableToHtml(block);
+        if (tableHtml) return tableHtml;
+        return `<p class="pc_mb20">${escapeHtml(block).replace(/\n/g, '<br>')}</p>`;
+      })
+      .join('\n');
+  }
+
+  function markdownTableToHtml(block) {
+    const lines = String(block || '')
+      .split(/\n/)
+      .map((l) => l.trim())
+      .filter(Boolean);
+    if (lines.length < 2) return null;
+    if (!lines.every((l) => l.includes('|'))) return null;
+    const parseRow = (line) =>
+      line
+        .replace(/^\|/, '')
+        .replace(/\|$/, '')
+        .split('|')
+        .map((c) => c.trim());
+    const isSep = (line) => /^\|?\s*:?-{3,}:?\s*(\|\s*:?-{3,}:?\s*)+\|?$/.test(line);
+    const headers = parseRow(lines[0]);
+    let bodyStart = 1;
+    if (isSep(lines[1])) bodyStart = 2;
+    const rows = lines.slice(bodyStart).map(parseRow).filter((r) => r.some(Boolean));
+    if (headers.length < 2 || rows.length < 1) return null;
+    return renderArticleComparisonTable({
+      caption: '',
+      headers,
+      rows: rows.map((row) => {
+        while (row.length < headers.length) row.push('—');
+        return row.slice(0, headers.length);
+      }),
+    });
+  }
+
+  function renderArticleComparisonTable(table) {
+    if (!table?.headers?.length || !table?.rows?.length) return '';
+    const caption = String(table.caption || '').trim();
+    const head = table.headers
+      .map((h) => `<th>${escapeHtml(h)}</th>`)
+      .join('');
+    const body = table.rows
       .map(
-        (p) =>
-          `<p class="pc_mb20">${escapeHtml(p).replace(/\n/g, '<br>')}</p>`
+        (row) =>
+          `<tr>${row.map((cell) => `<td>${escapeHtml(cell)}</td>`).join('')}</tr>`
       )
       .join('\n');
+    return `<div class="ranking-table-wrap pc_mb20">
+${caption ? `<p class="pc_mb10"><strong>${escapeHtml(caption)}</strong></p>` : ''}
+<table class="ranking-table">
+<thead><tr>${head}</tr></thead>
+<tbody>
+${body}
+</tbody>
+</table>
+</div>`;
+  }
+
+  function renderFaqJsonLd(faq) {
+    if (!faq?.length) return '';
+    const mainEntity = faq.map((q) => ({
+      '@type': 'Question',
+      name: String(q.question || '').trim(),
+      acceptedAnswer: {
+        '@type': 'Answer',
+        text: String(q.answer || '')
+          .replace(/\n+/g, ' ')
+          .trim(),
+      },
+    }));
+    const payload = {
+      '@context': 'https://schema.org',
+      '@type': 'FAQPage',
+      mainEntity,
+    };
+    // </script> を壊さない
+    const json = JSON.stringify(payload, null, 2).replace(/</g, '\\u003c');
+    return `<script type="application/ld+json">\n${json}\n</script>`;
   }
 
   function renderArticleImageInner(img) {
@@ -2845,7 +2942,8 @@
     const seoTitle = data.seoTitle || '';
     const meta = data.metaDescription || '';
     const faq = data.faq || data.article?.faq || [];
-    const related = data.relatedLinks || data.article?.relatedLinks || [];
+    const comparisonTable =
+      data.comparisonTable || data.article?.comparisonTable || null;
     const sources = data.sourcesNote || data.article?.sourcesNote || '';
     let html = '';
     if (data.mode === 'rewrite') {
@@ -2869,8 +2967,13 @@
     }
     if (intro) {
       html += `<div class="generated-block"><h3><span class="pillar-tag pillar-seo">SEO</span> 導入文</h3>
-        <p class="field-hint">続きを読む導線。直接回答のあとに詳しく説明する想定です。</p>
+        <p class="field-hint">答え1文＋この記事で分かること。目次への導線になります。</p>
         <div class="generated-text">${paragraphsHtml(intro)}</div></div>`;
+    }
+    if (comparisonTable?.headers?.length) {
+      html += `<div class="generated-block"><h3><span class="pillar-tag pillar-seo">SEO</span> 目的別比較表</h3>
+        <p class="field-hint">決断しやすい条件提示（製品名・価格は含めません）。</p>
+        ${renderArticleComparisonTable(comparisonTable)}</div>`;
     }
     sections.forEach((sec) => {
       const intent = sec.searchIntent
@@ -2896,24 +2999,16 @@
     });
     if (summary) {
       html += `<div class="generated-block"><h3><span class="pillar-tag pillar-seo">SEO</span> / <span class="pillar-tag pillar-geo">GEO</span> まとめ</h3>
-        <p class="field-hint">記事の要点再提示。引用・要約の材料にもなります。</p>
+        <p class="field-hint">次アクションで締める要点。引用・要約の材料にもなります。</p>
         <div class="generated-text">${paragraphsHtml(summary)}</div></div>`;
     }
     if (faq.length) {
       html += `<div class="generated-block"><h3><span class="pillar-tag pillar-aeo">AEO</span> FAQ</h3>
-        <p class="field-hint">よくある質問単位で答えを渡すためのブロックです。</p>`;
+        <p class="field-hint">よくある質問単位で答えを渡すためのブロックです（CMS用HTMLに FAQPage 構造化も付与）。</p>`;
       faq.forEach((q) => {
         html += `<div class="generated-block"><h4>${escapeHtml(q.question)}</h4><div class="generated-text">${paragraphsHtml(q.answer)}</div></div>`;
       });
       html += `</div>`;
-    }
-    if (related.length) {
-      html += `<div class="generated-block"><h3><span class="pillar-tag pillar-seo">SEO</span> 内部リンク候補</h3>
-        <p class="field-hint">同カテゴリ・関連意図への回遊用（CMSで実URLに差し替え）。</p><ul>`;
-      related.forEach((r) => {
-        html += `<li><strong>${escapeHtml(r.anchor)}</strong>${r.hint ? ` — ${escapeHtml(r.hint)}` : ''}</li>`;
-      });
-      html += `</ul></div>`;
     }
     if (sources) {
       html += `<div class="generated-block"><h3><span class="pillar-tag pillar-geo">GEO</span> 出典・更新メモ</h3>

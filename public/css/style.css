@@ -906,6 +906,16 @@ button.secondary {
 .article-cms-preview .listmark_m {
   margin: 0 0 1rem 1.25rem;
 }
+.article-cms-preview #article-toc a {
+  color: #1f4e79;
+  text-decoration: none;
+}
+.article-cms-preview #article-toc a:hover {
+  text-decoration: underline;
+}
+.article-cms-preview .ranking-table-wrap {
+  margin: 0.75rem 0 1.25rem;
+}
 @media (max-width: 700px) {
   .article-cms-preview .commentblock .block2 {
     float: none;
@@ -1502,8 +1512,15 @@ button.secondary {
   font-size: 0.8rem;
   font-weight: 600;
   border-radius: 4px;
-  background: #fef3c7;
-  color: #92400e;
+  background: #ecfdf5;
+  color: #047857;
+  border: 1px solid #a7f3d0;
+}
+
+.weekly-phase-badge.phase-cv {
+  background: #ecfdf5;
+  color: #047857;
+  border: 1px solid #a7f3d0;
 }
 
 .weekly-header-grid {
@@ -1621,6 +1638,92 @@ button.secondary {
   background: #f8fafc;
   border: 1px solid #e2e8f0;
   border-radius: 10px;
+}
+
+.weekly-cv-cards {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.75rem;
+  margin: 0.75rem 0 1rem;
+}
+
+.weekly-cv-card {
+  padding: 0.9rem 1rem;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+}
+
+.weekly-cv-card-label {
+  display: block;
+  font-size: 0.8rem;
+  color: #52606d;
+  font-weight: 600;
+}
+
+.weekly-cv-card-value {
+  display: block;
+  margin-top: 0.25rem;
+  font-size: 1.35rem;
+  color: #1e3a8a;
+}
+
+.weekly-cv-card-change {
+  display: block;
+  margin-top: 0.35rem;
+  font-size: 0.85rem;
+  color: #64748b;
+}
+
+.weekly-cv-card-change.is-up {
+  color: #166534;
+  font-weight: 600;
+}
+
+.weekly-cv-card-change.is-down {
+  color: #b91c1c;
+  font-weight: 600;
+}
+
+.weekly-demand-split {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+}
+
+.weekly-details {
+  margin: 0.75rem 0 1rem;
+  padding: 0.75rem 1rem;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  background: #fff;
+}
+
+.weekly-details > summary {
+  cursor: pointer;
+  font-weight: 600;
+  color: #1e3a8a;
+}
+
+.weekly-task-cv-hint {
+  display: block;
+  margin-top: 0.25rem;
+  font-size: 0.8rem;
+  color: #64748b;
+}
+
+.weekly-task-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin-top: 0.5rem;
+}
+
+@media (max-width: 800px) {
+  .weekly-cv-cards,
+  .weekly-demand-split {
+    grid-template-columns: 1fr;
+  }
 }
 
 .weekly-hub-pv-label {

@@ -775,17 +775,19 @@ function computeTaskPriorityScore(task, hubPerformance, replacements, articleMas
 }
 
 function buildPriorityReason(task, score, level, hubPerformance) {
-  const parts = [`優先度: ${level}（スコア ${score}）`];
+  const parts = [`CV優先度: ${level}（スコア ${score}）`];
   if (task.performanceHint) parts.push(task.performanceHint);
   if (task.detail) parts.push(task.detail);
   const hubPv = hubPerformance?.hubPv;
   if (hubPv?.pvChangePercent != null && !task.performanceHint) {
-    parts.push(`記事コンテンツPV ${formatPv(hubPv.weeklyPv)}（${hubPv.pvChangePercent > 0 ? '+' : ''}${hubPv.pvChangePercent}%）`);
+    parts.push(
+      `記事PV ${formatPv(hubPv.weeklyPv)}（${hubPv.pvChangePercent > 0 ? '+' : ''}${hubPv.pvChangePercent}%）→ 詳細遷移〜CVの入口`
+    );
   }
   return parts.join(' — ');
 }
 
-/** 問い7: 優先アクション TOP3 */
+/** 今週のCV向け優先アクション TOP3 */
 function buildPriorityTasks(tasks, hubPerformance, replacements, articleMaster) {
   const scored = tasks.map((task) => {
     const score = computeTaskPriorityScore(task, hubPerformance, replacements, articleMaster);
@@ -1264,9 +1266,9 @@ function buildWeeklyTasks(replacements, newProposals, sectionChanges) {
       productId: r.productId,
       productLabel: r.fromLabel,
       title: r.articleTitle
-        ? `「${r.articleTitle}」${r.fromPosition ? `${r.fromPosition}位` : ''}を差し替え`
-        : `商品差し替え: ${r.fromLabel}`,
-      detail: `${r.fromLabel} → ${r.toLabel}`,
+        ? `用途別/記事掲載を差し替え（${r.fromLabel} → ${r.toLabel}）`
+        : `上昇機種を掲載してCV源を更新: ${r.toLabel}`,
+      detail: `${r.fromLabel} → ${r.toLabel}（売れ筋変化に合わせて商品詳細遷移〜CVを狙う）`,
       headingCandidate: r.headingCandidate,
     });
   }
@@ -1277,8 +1279,8 @@ function buildWeeklyTasks(replacements, newProposals, sectionChanges) {
       sectionId: null,
       articleId: null,
       articleTitle: null,
-      title: `新規記事検討: ${p.theme}`,
-      detail: p.reason,
+      title: `購入比較の見出しを追加: ${p.theme}`,
+      detail: `${p.reason}（比較検討の離脱を防ぎCVにつなげる）`,
       headingCandidate: p.headingCandidate,
     });
   }
@@ -1290,7 +1292,7 @@ function buildWeeklyTasks(replacements, newProposals, sectionChanges) {
       sectionId: c.sectionId,
       articleId: c.sectionId,
       articleTitle: c.title,
-      title: `「${c.title}」を更新`,
+      title: `「${c.title}」を改修してCV導線を強化`,
       detail: c.recommendation,
       headingCandidate: c.headingCandidate,
     });
@@ -1303,7 +1305,7 @@ function buildWeeklyPoints(articleMaster, comparison, replacements, priorityTask
 
   if (comparison.hasPrevious && replacements[0]) {
     const r = replacements[0];
-    const auto = `ランキング${r.fromPosition ? `${r.fromPosition}位` : ''}「${r.fromLabel}」→「${r.toLabel}」差し替え検討`;
+    const auto = `CV源の更新: 「${r.fromLabel}」→「${r.toLabel}」を用途別/記事に反映`;
     if (!points.some((p) => p.includes(r.fromLabel))) points.push(auto);
   }
 
@@ -1311,12 +1313,12 @@ function buildWeeklyPoints(articleMaster, comparison, replacements, priorityTask
     .filter((m) => m.clickChangePercent != null && m.clickChangePercent >= (config.performance?.menuClickGrowthPercent ?? 10))
     .sort((a, b) => (b.clickChangePercent ?? 0) - (a.clickChangePercent ?? 0))[0];
   if (topMenuUp && points.length < 6) {
-    const auto = `「${topMenuUp.label}」見出しのクリック増 — 該当セクションを確認`;
+    const auto = `「${topMenuUp.label}」クリック増 — 該当見出しから商品詳細〜CVを強化`;
     if (!points.some((p) => p.includes(topMenuUp.label))) points.push(auto);
   }
 
   if (priorityTasks?.[0] && points.length < 6) {
-    const auto = `今週の最優先: ${priorityTasks[0].title}`;
+    const auto = `今週のCV向け最優先: ${priorityTasks[0].title}`;
     if (!points.some((p) => p.includes(priorityTasks[0].title))) points.push(auto);
   }
 
@@ -1325,7 +1327,7 @@ function buildWeeklyPoints(articleMaster, comparison, replacements, priorityTask
     season: articleMaster.season || {},
     footnote: comparison.hasPrevious
       ? null
-      : '前週スナップショットなし。今週の取得を確定すると来週から前週比が有効になります。',
+      : '前週スナップショットなし。ランキング取得を確定すると来週から前週比が有効になります。',
   };
 }
 

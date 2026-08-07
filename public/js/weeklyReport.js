@@ -281,6 +281,106 @@
     return `${esc(rep.fromLabel)} → <strong>${esc(rep.toLabel)}</strong>`;
   }
 
+  function renderCvSummary() {
+    const kpi = pastedKpiCompare;
+    const setCard = (valueId, changeId, before, now, formatter) => {
+      const valueEl = document.getElementById(valueId);
+      const changeEl = document.getElementById(changeId);
+      if (!valueEl || !changeEl) return;
+      if (before == null && now == null) {
+        valueEl.textContent = '—';
+        changeEl.textContent = '未貼付';
+        changeEl.className = 'weekly-cv-card-change';
+        return;
+      }
+      valueEl.textContent = formatter(now ?? before);
+      const chg = clientPctChange(now, before);
+      if (chg == null) {
+        changeEl.textContent = '前週比 —';
+        changeEl.className = 'weekly-cv-card-change';
+        return;
+      }
+      const cls =
+        chg >= 5 ? 'weekly-cv-card-change is-up' : chg <= -10 ? 'weekly-cv-card-change is-down' : 'weekly-cv-card-change';
+      changeEl.className = cls;
+      changeEl.innerHTML = `前週比 ${chg > 0 ? '+' : ''}${chg}%（${formatter(before)}→${formatter(now)}）`;
+    };
+
+    setCard(
+      'weekly-cv-value',
+      'weekly-cv-change',
+      kpi?.before?.weeklyCv,
+      kpi?.now?.weeklyCv,
+      formatCv
+    );
+    setCard(
+      'weekly-clicks-value',
+      'weekly-clicks-change',
+      kpi?.before?.weeklyProductDetailClicks,
+      kpi?.now?.weeklyProductDetailClicks,
+      (n) => (n == null ? '—' : Number(n).toLocaleString('ja-JP'))
+    );
+    setCard(
+      'weekly-pv-value',
+      'weekly-pv-change',
+      kpi?.before?.weeklyPv,
+      kpi?.now?.weeklyPv,
+      formatPv
+    );
+
+    const msg = document.getElementById('weekly-cv-summary-msg');
+    if (msg) {
+      msg.textContent = kpi
+        ? '貼り付けKPIの前週比です（サーバー非保存）。改修の結果は下表で確認できます。'
+        : '下の欄に前週・今週のKPIを貼ると、ここに前週比が出ます。主KPIはCV（売上）です。';
+    }
+  }
+
+  function renderRisingAndReplacements(report) {
+    const risingTbody = document.getElementById('weekly-rising-tbody');
+    const repTbody = document.getElementById('weekly-replacements-tbody');
+    const rising = report.rising || [];
+    const replacements = report.replacements || [];
+
+    if (risingTbody) {
+      if (!rising.length) {
+        risingTbody.innerHTML =
+          '<tr><td colspan="3" class="weekly-empty-cell">上昇なし（または比較データなし）</td></tr>';
+      } else {
+        risingTbody.innerHTML = rising
+          .map((r) => {
+            const badge =
+              r.type === 'new'
+                ? '<span class="weekly-badge weekly-badge-new">新規</span>'
+                : '<span class="weekly-badge weekly-badge-up">上昇</span>';
+            const label = r.label || [r.manufacturer, r.productName, r.modelCode].filter(Boolean).join(' ');
+            return `<tr>
+              <td>${badge}</td>
+              <td>${esc(label)}</td>
+              <td class="weekly-reason-cell">${esc(r.reason || '—')}</td>
+            </tr>`;
+          })
+          .join('');
+      }
+    }
+
+    if (repTbody) {
+      if (!replacements.length) {
+        repTbody.innerHTML =
+          '<tr><td colspan="2" class="weekly-empty-cell">差し替え候補なし</td></tr>';
+      } else {
+        repTbody.innerHTML = replacements
+          .map(
+            (r) => `<tr>
+            <td>${replacementCell(r)}</td>
+            <td class="weekly-reason-cell">${esc(r.reason || '—')}</td>
+          </tr>`
+          )
+          .join('');
+      }
+    }
+  }
+
   function renderProducts(report) {
     const tbody = document.getElementById('weekly-products-tbody');
     if (!tbody) return;
@@ -427,15 +527,8 @@
     const phaseBadge = document.getElementById('weekly-phase-badge');
 
     if (phaseBadge) {
-      const phase = report.config?.articlePerformancePhase || 'phase1';
-      phaseBadge.textContent =
-        phase === 'hub-clicks'
-          ? '記事コンテンツPV + クリック'
-          : phase === 'phase1.5'
-            ? 'Phase 1.5（PV・クリック + ランキング）'
-            : phase === 'phase1'
-              ? 'Phase 1（ランキング+手動マスタ）'
-              : 'Phase 2';
+      phaseBadge.textContent = '目的: CV・売上';
+      phaseBadge.className = 'weekly-demo-badge weekly-phase-badge phase-cv';
     }
 
     const meta = report.comparisonMeta || report.summary || {};
@@ -549,16 +642,23 @@
         <span class="weekly-task-body">
           ${showPriority && t.priorityLevel ? `${priorityBadge(t.priorityLevel)} ` : ''}
           <strong>${esc(t.title)}</strong>
-          <span class="weekly-task-detail">${esc(t.priorityReason || t.detail)}</span>
+          <span class="weekly-task-detail">${esc(t.priorityReason || t.detail || '')}</span>
+          ${
+            showPriority
+              ? '<span class="weekly-task-cv-hint">CV寄与: 掲載・見出し・用途別の見直しで商品詳細遷移〜CVを狙う</span>'
+              : ''
+          }
         </span>
       </label>
-      ${
-        t.headingCandidate
-          ? `<div class="weekly-task-actions">
-          <button type="button" class="secondary weekly-to-headings-btn" data-heading="${esc(t.headingCandidate)}">見出しへ</button>
-        </div>`
-          : ''
-      }
+      <div class="weekly-task-actions">
+        ${
+          t.headingCandidate
+            ? `<button type="button" class="secondary weekly-to-headings-btn" data-heading="${esc(t.headingCandidate)}">記事新規へ</button>`
+            : `<button type="button" class="secondary weekly-to-headings-btn">記事新規へ</button>`
+        }
+        <button type="button" class="secondary weekly-to-usecase-btn">用途別へ</button>
+        <button type="button" class="secondary weekly-to-productlp-btn">個別商品へ</button>
+      </div>
     </li>`;
   }
 
@@ -592,6 +692,16 @@
       cb.addEventListener('change', updateTaskProgress);
     });
     bindHeadingButtons();
+    document.querySelectorAll('.weekly-to-usecase-btn').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        if (typeof window.showTab === 'function') window.showTab('usecase');
+      });
+    });
+    document.querySelectorAll('.weekly-to-productlp-btn').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        if (typeof window.showTab === 'function') window.showTab('productlp');
+      });
+    });
     updateTaskProgress();
   }
 
@@ -992,7 +1102,7 @@
         hasData: false,
         message:
           base.message ||
-          '先週登録した改修がありません。上で改修を登録して週次を確定すると、ここに一覧が出ます。',
+          '先週登録した改修がありません。「5. 記事改修を登録」→確定すると、ここに検証結果が出ます。',
       };
     }
 
@@ -1093,6 +1203,7 @@
       msg.textContent =
         '表示に反映しました（このブラウザの表示のみ。サーバーには保存していません）。';
     }
+    renderCvSummary();
     if (currentReport) renderChangeEffects(currentReport);
   }
 
@@ -1292,13 +1403,26 @@
     currentReport = report;
     renderHeader(report);
     renderCompareSelect(report);
+    renderCvSummary();
+    renderChangeEffects(report);
     renderProducts(report);
+    renderRisingAndReplacements(report);
+    renderTasks(report);
     currentCompetitorAnalysis = await resolveCompetitorAnalysis(report);
     renderCompetitorComparison(currentCompetitorAnalysis);
     initChangeRegisterForm(report);
-    renderChangeEffects(report);
     renderTopics(report);
-    if (report?.bestsellers?.length || report?.compositeRanking?.items?.length) {
+
+    const hasData = Boolean(
+      report?.bestsellers?.length || report?.compositeRanking?.items?.length
+    );
+    const fetchHint = document.getElementById('weekly-fetch-hint');
+    if (fetchHint) {
+      fetchHint.textContent = hasData
+        ? '需要データあり。CV結果を貼り、打ち手TOP3を実行して改修登録→確定してください。'
+        : '需要データ（売れ筋）はランキングの「取得して、週次レポート用に保存する」で更新します。未取得のままでは打ち手が出ません。';
+    }
+    if (hasData) {
       saveWeeklyContextToStorage(report);
     }
   }
@@ -1559,6 +1683,20 @@
   document.getElementById('weekly-fetch')?.addEventListener('click', fetchRankings);
   document.getElementById('weekly-confirm')?.addEventListener('click', confirmReport);
   document.getElementById('weekly-compare')?.addEventListener('change', loadReport);
+
+  document.getElementById('weekly-go-ranking')?.addEventListener('click', () => {
+    if (typeof window.openRankingTab === 'function') window.openRankingTab();
+    else if (typeof window.showTab === 'function') window.showTab('ranking');
+  });
+  document.getElementById('weekly-to-usecase')?.addEventListener('click', () => {
+    if (typeof window.showTab === 'function') window.showTab('usecase');
+  });
+  document.getElementById('weekly-to-productlp')?.addEventListener('click', () => {
+    if (typeof window.showTab === 'function') window.showTab('productlp');
+  });
+  document.getElementById('weekly-to-headings-from-tasks')?.addEventListener('click', () => {
+    goToHeadings(collectHeadings(currentReport || {}));
+  });
 
   // categories-ready 後に loadReport する（初期は空の select になりうる）
 })();
